@@ -135,6 +135,8 @@ button.ghost { background: #e6eef6; color: var(--ink); }
 .lang button { padding: 4px 10px; font-size: 12px; }
 button.lang-on { background: var(--primary); color: white; }
 .btn-enter { background: linear-gradient(135deg, #38bdf8, #14b8a6); }
+.btn-enter-doc { background: linear-gradient(135deg, #3b82f6, #6366f1); }
+@media (max-width: 900px) { .nav .toolbar { width: 100%; } .nav .toolbar button { flex: 1; } }
 .brand-link { display: flex; align-items: center; gap: 8px; color: white !important; font-size: 17px; }
 .footer-brand { display: flex; align-items: center; gap: 8px; justify-content: center; font-weight: 800; font-size: 15px; margin-bottom: 6px; }
 .footer-note { opacity: .75; font-size: 12px; }

@@ -41,7 +41,10 @@ export function Layout({ children }) {
           </div>
         </div>
         <span className="spacer" />
-        <Link to="/danisan-girisi"><button className="btn-enter">👤 {t('nav_login_patient')}</button></Link>
+        <span className="toolbar">
+          <Link to="/hekim-girisi"><button className="btn-enter btn-enter-doc">👨‍⚕️ {t('nav_login_doctor')}</button></Link>
+          <Link to="/danisan-girisi"><button className="btn-enter">👤 {t('nav_login_patient')}</button></Link>
+        </span>
       </nav>
 
       <main>{children}</main>
