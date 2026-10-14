@@ -78,6 +78,10 @@ button.ghost { background: #e6eef6; color: var(--ink); }
 .tooth:hover { transform: translateY(-2px); }
 .tooth small { font-size: 10px; font-weight: 600; }
 .tooth.sel { outline: 3px solid var(--primary); }
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.tab { background: #e6eef6; color: var(--ink); padding: 10px 16px; border-radius: 12px; position: relative; }
+.tab.active { background: var(--primary); color: white; }
+.tab-count { background: #dc2626; color: white; font-size: 11px; border-radius: 12px; padding: 1px 7px; margin-left: 6px; }
 .section-title { margin: 22px 0 6px; }
 @media (max-width: 640px) {
   main { padding: 14px 12px 28px; }

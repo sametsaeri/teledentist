@@ -1,24 +1,12 @@
-// Hibrit auth: Supabase varsa gerçek giriş, yoksa localStorage demo
+// Hibrit auth: Supabase varsa gerçek giriş, yoksa yerel hesaplar
 // Politika: hasta/ebeveyn kaydını yalnızca hekim açar.
-import { load, save, keys, getSession, setSession } from './store.js'
+import { load, save, getSession, setSession } from './store.js'
 import { supabase, hasSupabase } from './supabase.js'
-import { demoUsers } from '../data/mock.js'
 
 const USERS_KEY = 'td_users'
-const SEED = [
-  { id: 'h1', role: 'hasta', email: 'hasta@demo', pass: 'hasta123', name: 'Demo Hasta', children: [] },
-  { id: 'h2', role: 'hasta', email: 'ayse@demo', pass: 'hasta123', name: 'Ayşe Demo', children: [] },
-  { id: 'e1', role: 'ebeveyn', email: 'ebeveyn@demo', pass: 'ebeveyn123', name: 'Demo Ebeveyn', children: ['h1'] },
-  { id: 'd1', role: 'hekim', email: 'hekim@demo', pass: 'hekim123', name: 'Dt. Demo Hekim', children: [] }
-]
 
 export function allUsers() {
-  let u = load(USERS_KEY, null)
-  if (!u) {
-    u = SEED.map((s) => ({ ...s, ...(demoUsers.find((d) => d.id === s.id) || {}) }))
-    save(USERS_KEY, u)
-  }
-  return u
+  return load(USERS_KEY, [])
 }
 
 export async function login(email, pass) {
@@ -32,13 +20,13 @@ export async function login(email, pass) {
     return { user: prof }
   }
   const u = allUsers().find((x) => x.email === email)
-  if (!u) return { error: 'Hesap bulunamadı.' }
+  if (!u) return { error: 'Hesap bulunamadı, hekiminize başvurun.' }
   if (u.pass !== pass) return { error: 'Şifre hatalı.' }
   setSession({ ...u, loginAt: new Date().toISOString() })
   return { user: u }
 }
 
-// Yalnızca hekim hasta/ebeveyn açar (Supabase'te de RLS bunu zorunlu kılar)
+// Yalnızca hekim hasta/ebeveyn açar
 export async function createUserByDoctor({ name, email, pass, role, childId }) {
   const me = getSession()
   if (!me || me.role !== 'hekim') return { error: 'Yetkisiz işlem.' }
@@ -46,8 +34,7 @@ export async function createUserByDoctor({ name, email, pass, role, childId }) {
   if (!name || !email || !pass) return { error: 'Ad, e-posta ve şifre zorunlu.' }
   if (!['hasta', 'ebeveyn'].includes(role)) return { error: 'Hekim yalnızca hasta/ebeveyn açabilir.' }
   if (hasSupabase) {
-    // Not: service_role gerekir; MVP'de hekim panelinden davet linki üretilir.
-    return { error: 'Supabase modunda kullanıcı hekim tarafından Auth panelinden açılmalı (RLS: hekim_insert).' }
+    return { error: 'Kullanıcıyı önce Authentication ekranından açın, sonra panelden profili tamamlayın.' }
   }
   const users = allUsers()
   if (users.some((x) => x.email === email)) return { error: 'Bu e-posta kayıtlı.' }
@@ -59,7 +46,7 @@ export async function createUserByDoctor({ name, email, pass, role, childId }) {
 
 export async function logout() {
   if (hasSupabase) await supabase.auth.signOut()
-  localStorage.removeItem(keys.session)
+  localStorage.removeItem('td_session')
 }
 
 export function currentUser() { return getSession() }

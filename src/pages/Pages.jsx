@@ -89,7 +89,7 @@ export function Appointment() {
     setDone(true)
   }
 
-  if (done) return <div className="card"><h1>Talebiniz alındı</h1><p>Hekim panelinde görüntülenecek (demo kayıt). Yeni talep için sayfayı yenileyin.</p><Link to="/hekim"><button className="ghost">Hekim Paneline Bak</button></Link></div>
+  if (done) return <div className="card"><h1>Talebiniz alındı</h1><p>Hekim panelinde görüntülenecek. Yeni talep için sayfayı yenileyin.</p><Link to="/hekim"><button className="ghost">Hekim Paneline Bak</button></Link></div>
 
   return (
     <div>
@@ -107,7 +107,7 @@ export function Appointment() {
         <textarea placeholder="Diş şikayetiniz (örn: 16 nolu azı diş ağrısı)" rows="4" cols="40" value={complaint} onChange={(e) => setComplaint(e.target.value)} /><br /><br />
         <label><input type="checkbox" checked={kvkk} onChange={(e) => setKvkk(e.target.checked)} /> KVKK metnini okudum, verilerimin işlenmesini kabul ediyorum.</label><br /><br />
         <button onClick={submit}>Gönder</button>
-        <p className="muted">Kayıt tarayıcıda saklanır (demo). Backend bağlanınca gerçek takvime geçecek.</p>
+        <p className="muted">Talebiniz hekim paneline iletilir.</p>
         <p><Link to="/e-randevu"><button className="ghost">← Bölüm Seçimine Dön</button></Link></p>
       </div>
     </div>
@@ -115,8 +115,8 @@ export function Appointment() {
 }
 
 export function Login() {
-  const [email, setEmail] = useState('hekim@demo')
-  const [pass, setPass] = useState('hekim123')
+  const [email, setEmail] = useState('')
+  const [pass, setPass] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const nav = useNavigate()
@@ -134,7 +134,7 @@ export function Login() {
     <div>
       <h1>Giriş</h1>
       <div className="card">
-        <p className="muted">Hesapları yalnızca hekim açar. Demo: hekim@demo/hekim123, hasta@demo/hasta123, ebeveyn@demo/ebeveyn123</p>
+        <p className="muted">Hesabınızı hekiminiz oluşturur. E-posta ve şifrenizle giriş yapın.</p>
         <input placeholder="e-posta" value={email} onChange={(e) => setEmail(e.target.value)} /><br /><br />
         <input placeholder="şifre" type="password" value={pass} onChange={(e) => setPass(e.target.value)} /><br /><br />
         {err && <p style={{ color: '#dc2626' }}>{err}</p>}

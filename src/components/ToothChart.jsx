@@ -1,4 +1,4 @@
-import { FDI_UPPER, FDI_LOWER, STATUS_TR } from '../data/mock.js'
+import { FDI_UPPER, FDI_LOWER, STATUS_TR } from '../data/teeth.js'
 
 const STATUS_COLOR = {
   saglam: '#dcfce7',
@@ -69,7 +69,7 @@ export function ToothVisual({ no, status }) {
       <div>
         <strong style={{ fontSize: 18 }}>{no} nolu diş</strong>
         <div className="muted">Durum: {STATUS_TR[status] || status}</div>
-        <div className="muted">İnteraktif önizleme. Gerçek 3D model Faz 2'de eklenecek.</div>
+        <div className="muted">İnteraktif diş önizlemesi.</div>
       </div>
     </div>
   )

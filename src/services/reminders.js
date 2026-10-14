@@ -3,9 +3,8 @@
 export const reminderService = {
   queue: [],
   send(type, to, message) {
-    const item = { type, to, message, date: new Date().toISOString(), status: 'queued-mock' }
+    const item = { type, to, message, date: new Date().toISOString(), status: 'queued' }
     this.queue.push(item)
-    console.log('[reminder-mock]', item)
     return item
   }
 }

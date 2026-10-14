@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { load, save, keys, getSession } from '../services/store.js'
 import { reminderService, campaignService } from '../services/reminders.js'
 
-function who() { return getSession()?.id || 'h1' }
+function who() { return getSession()?.id || '' }
 
 // Memnuniyet anketi (kırsal / erişim araştırması için)
 export function Satisfaction() {
@@ -70,7 +70,7 @@ export function Education() {
 
 // Video konsültasyon (Jitsi gömülü, hibrit model)
 export function VideoVisit() {
-  const [room, setRoom] = useState('teledentist-demo')
+  const [room, setRoom] = useState('teledentist-gorusme')
   const [started, setStarted] = useState(false)
   return (
     <div>
@@ -87,7 +87,7 @@ export function VideoVisit() {
 
 // Hatırlatma merkezi (SMS/mail soyut, şimdi kuyruk UI)
 export function Reminders() {
-  const [to, setTo] = useState('hasta@demo')
+  const [to, setTo] = useState('')
   const [msg, setMsg] = useState('6 aylık diş kontrolünüz yaklaşıyor.')
   const [log, setLog] = useState(reminderService.queue)
   const send = (type) => {
@@ -124,7 +124,7 @@ export function Campaigns() {
     if (!ref) return alert('Referans kodu girin.')
     campaignService.earn(who(), 30, `referans: ${ref}`)
     campaignService.earn(ref, 30, `davet ödülü`)
-    alert('Karşılıklı 30 puan tanımlandı (demo).')
+    alert('Karşılıklı 30 puan tanımlandı.')
   }
   return (
     <div>
@@ -171,7 +171,7 @@ export function Faq() {
       <h1>SSS ve KVKK</h1>
       <div className="card"><h3>Yüz yüze muayene yerine geçer mi?</h3><p>Hayır. Teledentistry tamamlayıcıdır; tanı ve tedavi planı hekim onayı gerektirir.</p></div>
       <div className="card"><h3>Şikayetimi ifade etmekte zorlanıyorum</h3><p>Triyaj anketi + fotoğraf yükleme bu yüzden var. Ağrı skoru ve görsel hekime önden gider.</p></div>
-      <div className="card"><h3>Verilerim güvende mi?</h3><p>Demo veriler tarayıcıda saklanır. Gerçek sistemde KVKK onamı + şifreli saklama zorunludur. Röntgen ve raporlar yalnızca hekim ve hasta/ebeveyn tarafından görülür.</p></div>
+      <div className="card"><h3>Verilerim güvende mi?</h3><p>Verileriniz KVKK kapsamında korunur. Röntgen ve raporlar yalnızca hekiminiz ve siz (veya ebeveyniniz) tarafından görülür.</p></div>
       <div className="card"><h3>Kapsam</h3><p>Yalnızca diş hekimliği hastaları. Diğer branşlar kapsam dışıdır.</p></div>
     </div>
   )

@@ -16,7 +16,7 @@ export function ERandevu() {
         <img src="/ktu-logo.png" alt="KTÜ" className="ktu-logo" />
         <div>
           <strong>KARADENİZ TEKNİK ÜNİVERSİTESİ</strong>
-          <div className="muted">Diş Hekimliği Fakültesi | DHF E-Randevu (Demo)</div>
+          <div className="muted">Diş Hekimliği Fakültesi | DHF E-Randevu</div>
         </div>
       </div>
 

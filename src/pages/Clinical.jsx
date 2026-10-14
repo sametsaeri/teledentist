@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { demoUsers, demoTeeth, STATUS_TR } from '../data/mock.js'
+import { STATUS_TR } from '../data/teeth.js'
 import { load, save, keys, getSession } from '../services/store.js'
 import { triageScore, anxietyLevel, hygieneTip } from '../services/clinical.js'
 import { suggestRecall } from '../ai/recall.js'
 import { toothEducation } from '../ai/toothAi.js'
+import { getPatient, getTeeth } from '../services/db.js'
 
-function pid() { return getSession()?.id || 'h1' }
+function pid() { return getSession()?.id || '' }
 
 // 1. Triyaj anketi
 export function Triage() {
@@ -150,19 +151,25 @@ export function PhotoReview() {
 
 // 5. PDF rapor ve onam (yazdırma)
 export function Report({ patientId }) {
-  const p = demoUsers.find((u) => u.id === patientId) || demoUsers[0]
-  const teeth = demoTeeth[p.id] || {}
-  const recall = suggestRecall({ lastVisit: p.lastVisit, treatmentType: p.treatmentType, plaqueIndex: p.plaqueIndex, anxietyScore: p.anxietyScore })
+  const [p, setP] = useState(null)
+  const [teeth, setTeeth] = useState({})
+  useEffect(() => {
+    getPatient(patientId).then((x) => setP(x || null))
+    getTeeth(patientId).then(setTeeth)
+  }, [patientId])
+  if (!p) return <p>Yükleniyor...</p>
+  const recall = suggestRecall({ lastVisit: p.last_visit || p.lastVisit || new Date().toISOString().slice(0, 10), treatmentType: p.treatment_type || p.treatmentType || 'kontrol', plaqueIndex: Number(p.plaque_index ?? p.plaqueIndex ?? 1), anxietyScore: Number(p.anxiety_score ?? p.anxietyScore ?? 3) })
   const anx = load(keys.anxiety, []).filter((a) => a.patientId === p.id).slice(-1)[0]
   return (
     <div>
       <div className="card">
         <img src="/ktu-logo.png" alt="KTÜ" className="ktu-logo-lg" />
         <h1>Diş Hekimliği Hasta Raporu</h1>
-        <p><strong>Hasta:</strong> {p.name} | <strong>Son muayene:</strong> {p.lastVisit}</p>
-        <p><strong>Plak:</strong> {p.plaqueIndex} | <strong>Anksiyete:</strong> {anx ? `${anx.total} puan` : p.anxietyScore}</p>
+        <p><strong>Hasta:</strong> {p.name} | <strong>Son muayene:</strong> {p.last_visit || p.lastVisit || '-'}</p>
+        <p><strong>Plak:</strong> {p.plaque_index ?? p.plaqueIndex ?? '-'} | <strong>Anksiyete:</strong> {anx ? `${anx.total} puan` : (p.anxiety_score ?? p.anxietyScore ?? '-')}</p>
         <p><strong>AI recall:</strong> {recall.nextVisit} ({recall.reason})</p>
         <h3>Diş Durumu</h3>
+        {Object.keys(teeth).length === 0 && <p className="muted">Kayıtlı diş tedavisi yok.</p>}
         {Object.entries(teeth).map(([no, t]) => (
           <p key={no}><strong>{no}</strong> ({STATUS_TR[t.status]}): {t.doctorNote} <span className="muted">[{toothEducation(no, t.status)}]</span></p>
         ))}
