@@ -11,25 +11,50 @@ export function Home() {
   return (
     <div>
       <div className="hero">
-        <h1>{t('home_title')}</h1>
-        <p>{t('home_desc')} Kapsam yalnızca diş hekimliği hastalarıdır.</p>
+        <h1>Diş Kliniğiniz Cebinizde</h1>
+        <p>Teledentist ile muayene öncesi triyaj, röntgen ve fotoğrafla ön değerlendirme, tedavi takibi tek panelde. Yalnızca diş hekimliği.</p>
         <div className="hero-actions">
-          <Link to="/randevu"><span className="btn btn-primary">{t('home_cta1')}</span></Link>
+          <Link to="/e-randevu"><span className="btn btn-primary">Hemen Randevu Al</span></Link>
           <Link to="/teledentistry"><span className="btn btn-ghost">{t('home_cta2')}</span></Link>
-          <Link to="/hekim"><span className="btn btn-teal">Hekim Portalı</span></Link>
         </div>
         <div className="stat-row">
-          <div className="stat"><b>32</b>FDI diş takibi</div>
-          <div className="stat"><b>3/6/12</b>AI recall önerisi</div>
-          <div className="stat"><b>TR/EN</b>Çift dil</div>
+          <div className="stat"><b>4</b>Diş bölümü</div>
+          <div className="stat"><b>32</b>Diş takibi (FDI)</div>
+          <div className="stat"><b>3/6/12</b>Ay kontrol önerisi</div>
         </div>
       </div>
-      <h2 className="section-title">Diş Hekimliğine Özel Modüller</h2>
-      <div className="grid">
-        <div className="card feature"><span className="feature-icon">T</span><div><h3>Tarama / Triyaj</h3><p className="muted">Diş şikayetine özel ilk değerlendirme ve yönlendirme.</p><Link to="/randevu"><button>Randevu Al</button></Link></div></div>
-        <div className="card feature"><span className="feature-icon">H</span><div><h3>Hekim Portalı</h3><p className="muted">Diş hastası yönetimi, röntgen, diş bazlı değerlendirme.</p><Link to="/hekim"><button className="ghost">Hekim Girişi</button></Link></div></div>
-        <div className="card feature"><span className="feature-icon">D</span><div><h3>Hasta Paneli</h3><p className="muted">Diş haritası, röntgenim, hekim notu, AI bilgilendirme.</p><Link to="/hastam"><button className="ghost">Dişlerim</button></Link></div></div>
-      </div>
+
+      <Reveal>
+        <div className="card">
+          <h2>Hekimlerimizin Amacı</h2>
+          <p>Yüz yüze muayenenin yerini almak değil, onu hızlandırmak. Şikayetinizi önden alıyoruz, röntgen ve fotoğraflarınızı inceliyoruz, kliniğe hazır bir tedavi planıyla geliyorsunuz. Kırsalda yaşayan, hareket kısıtlılığı olan ve özel bakım gereksinimi olan hastalar için erişimi kolaylaştırıyoruz.</p>
+        </div>
+      </Reveal>
+
+      <Reveal>
+        <div className="card">
+          <h2>Takip Nasıl İşler?</h2>
+          <div className="grid">
+            <div><h3>1. Randevu</h3><p className="muted">Bölümünü seç, şikayetini yaz, 15 dakika önce klinikte ol.</p></div>
+            <div><h3>2. Ön Değerlendirme</h3><p className="muted">Triyaj anketi + fotoğraf yükle, hekim önden incelesin.</p></div>
+            <div><h3>3. Tedavi</h3><p className="muted">Klinikte muayene ve tedavi, diş haritana işlenir.</p></div>
+            <div><h3>4. Kontrol</h3><p className="muted">Riskine göre 3/6/12 ay sonra hatırlatma alırsın.</p></div>
+          </div>
+        </div>
+      </Reveal>
+
+      <Reveal>
+        <div className="card">
+          <h2>Bölümlerimiz</h2>
+          <div className="grid">
+            <div><h3>Restoratif (Dolgu)</h3><p className="muted">Çürük ve kırık dişler.</p></div>
+            <div><h3>Endodonti (Kanal)</h3><p className="muted">Kanal tedavileri.</p></div>
+            <div><h3>Periodontoloji</h3><p className="muted">Diş eti ve diş taşı.</p></div>
+            <div><h3>Pedodonti</h3><p className="muted">Çocuk diş sağlığı.</p></div>
+          </div>
+          <p><Link to="/e-randevu"><button>Bölüm Seç ve Randevu Al</button></Link></p>
+        </div>
+      </Reveal>
     </div>
   )
 }

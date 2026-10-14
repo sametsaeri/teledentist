@@ -68,6 +68,40 @@ export async function lastRecords(pid) {
   }
 }
 
+// Hekim hasta adına ölçüm girer
+export async function insertTriage(pid, row) {
+  if (hasSupabase) {
+    const { error } = await supabase.from('triage').insert({ patient_id: pid, ...row })
+    return { error: error?.message }
+  }
+  const list = load(keys.triage, [])
+  list.push({ id: Date.now(), patientId: pid, ...row })
+  save(keys.triage, list)
+  return {}
+}
+
+export async function insertHygiene(pid, row) {
+  if (hasSupabase) {
+    const { error } = await supabase.from('hygiene').insert({ patient_id: pid, plaque: row.plaque, brush: row.brush })
+    return { error: error?.message }
+  }
+  const list = load(keys.hygiene, [])
+  list.push({ id: Date.now(), patientId: pid, ...row })
+  save(keys.hygiene, list)
+  return {}
+}
+
+export async function insertAnxiety(pid, total) {
+  if (hasSupabase) {
+    const { error } = await supabase.from('anxiety').insert({ patient_id: pid, total })
+    return { error: error?.message }
+  }
+  const list = load(keys.anxiety, [])
+  list.push({ id: Date.now(), patientId: pid, total })
+  save(keys.anxiety, list)
+  return {}
+}
+
 // Hekim panelinden profil tamamlama (Auth kullanıcısı panelden açıldıktan sonra)
 export async function createProfile({ uid, role, email, name, childId, createdBy }) {
   if (!uid || !role || !email || !name) return { error: 'UID, rol, e-posta ve ad zorunlu.' }

@@ -5,7 +5,8 @@ import { ToothChart, ToothVisual } from '../components/ToothChart.jsx'
 import { toothEducation, recallForTooth } from '../ai/toothAi.js'
 import { suggestRecall } from '../ai/recall.js'
 import { load, save, keys, getSession } from '../services/store.js'
-import { listPatients, getPatient, getTeeth, saveTooth, lastRecords, createProfile, getChildren } from '../services/db.js'
+import { listPatients, getPatient, getTeeth, saveTooth, lastRecords, createProfile, getChildren, insertTriage, insertHygiene, insertAnxiety } from '../services/db.js'
+import { triageScore } from '../services/clinical.js'
 
 function xrayKey(pid, tooth) { return `${pid}_${tooth}` }
 
@@ -159,21 +160,38 @@ export function DoctorPatient() {
   const [rec, setRec] = useState({ triage: '-', hygiene: '-', anxiety: '-' })
   const [selected, setSelected] = useState(16)
   const [note, setNote] = useState('')
+  const [status, setStatus] = useState('saglam')
+  const [treatment, setTreatment] = useState('')
+  const [mPain, setMPain] = useState(0)
+  const [mPlaque, setMPlaque] = useState(1)
+  const [mAnx, setMAnx] = useState(5)
+  const [mMsg, setMMsg] = useState('')
   useEffect(() => {
     getPatient(id).then((p) => setPatient(p || null))
     getTeeth(id).then(setTeeth)
     lastRecords(id).then(setRec)
   }, [id])
+  useEffect(() => { setStatus(sel.status); setTreatment(sel.treatment === '-' ? '' : sel.treatment) }, [selected])
 
   if (!patient) return <p>Yükleniyor...</p>
   const sel = teeth[selected] || { status: 'saglam', treatment: '-', date: '-', doctorNote: 'Kayıt yok.' }
   const shownNote = sel.doctorNote
 
   const saveNote = async () => {
-    await saveTooth(id, selected, { status: sel.status, treatment: sel.treatment, doctorNote: note || shownNote })
-    setTeeth((prev) => ({ ...prev, [selected]: { ...sel, doctorNote: note || shownNote, date: new Date().toISOString().slice(0, 10) } }))
+    await saveTooth(id, selected, { status, treatment: treatment || '-', doctorNote: note || shownNote })
+    setTeeth((prev) => ({ ...prev, [selected]: { status, treatment: treatment || '-', doctorNote: note || shownNote, date: new Date().toISOString().slice(0, 10) } }))
     setNote('')
     alert(`${selected} nolu dişe değerlendirme kaydedildi.`)
+  }
+
+  const saveMeasure = async () => {
+    const ts = triageScore({ pain: Number(mPain), swelling: false, trauma: false, bleeding: false, fever: false })
+    const r1 = await insertTriage(id, { tooth: String(selected), pain: Number(mPain), swelling: false, trauma: false, bleeding: false, fever: false, score: ts.score, level: ts.level })
+    const r2 = await insertHygiene(id, { plaque: Number(mPlaque), brush: 2, date: new Date().toISOString().slice(0, 10) })
+    const r3 = await insertAnxiety(id, Number(mAnx))
+    const err = r1.error || r2.error || r3.error
+    setMMsg(err || 'Ölçümler kaydedildi.')
+    lastRecords(id).then(setRec)
   }
 
   const recall = suggestRecall({ lastVisit: patient.lastVisit || new Date().toISOString().slice(0, 10), treatmentType: patient.treatmentType || 'kontrol', plaqueIndex: Number(patient.plaqueIndex || 1), anxietyScore: Number(patient.anxietyScore || 3) })
@@ -192,12 +210,30 @@ export function DoctorPatient() {
         <p><strong>Durum:</strong> {STATUS_TR[sel.status]} | <strong>Tedavi:</strong> {sel.treatment} | <strong>Tarih:</strong> {sel.date}</p>
         <p><strong>Mevcut hekim notu:</strong> {shownNote}</p>
         <p className="muted"><strong>AI önerisi:</strong> {toothEducation(selected, sel.status)} ({recallForTooth(sel.status)})</p>
+        <h4>Diş tanımı (hekim doldurur)</h4>
+        <div className="toolbar">
+          <label>Durum: <select value={status} onChange={(e) => setStatus(e.target.value)}>
+            {Object.entries(STATUS_TR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select></label>
+          <input placeholder="Tedavi (örn: Kompozit dolgu)" value={treatment} onChange={(e) => setTreatment(e.target.value)} />
+        </div><br />
         <h4>Röntgen (yükle / görüntüle)</h4>
         <XrayBox pid={id} tooth={selected} />
-        <h4>Yeni değerlendirme yaz</h4>
+        <h4>Değerlendirme notu</h4>
         <textarea rows="3" cols="50" value={note} onChange={(e) => setNote(e.target.value)} placeholder={`${selected} nolu diş için değerlendirme...`} />
         <br /><br />
-        <button onClick={saveNote}>Değerlendirmeyi Kaydet</button>
+        <button onClick={saveNote}>Diş Kaydını Kaydet</button>
+      </div>
+      <div className="card">
+        <h3>Hasta Ölçümleri (hekim girer)</h3>
+        <p className="muted">Son: Triyaj {rec.triage} | Hijyen {rec.hygiene} | Anksiyete {rec.anxiety}</p>
+        <div className="toolbar">
+          <label>Ağrı (0-10): <input type="number" min="0" max="10" value={mPain} onChange={(e) => setMPain(e.target.value)} style={{ width: 70 }} /></label>
+          <label>Plak (0-3): <input type="number" step="0.1" min="0" max="3" value={mPlaque} onChange={(e) => setMPlaque(e.target.value)} style={{ width: 70 }} /></label>
+          <label>Anksiyete (5-25): <input type="number" min="5" max="25" value={mAnx} onChange={(e) => setMAnx(e.target.value)} style={{ width: 70 }} /></label>
+          <button onClick={saveMeasure}>Ölçümleri Kaydet</button>
+        </div>
+        {mMsg && <p className="muted">{mMsg}</p>}
       </div>
       <div className="card">
         <h3>Tedavi Geçmişi</h3>
