@@ -52,8 +52,8 @@ export function Layout({ children }) {
         <span className="spacer" />
         {session ? (
           <span className="toolbar">
-            <Link to={session.role === 'hekim' ? '/hekim' : session.role === 'admin' ? '/admin' : '/hastam'}>{session.name}</Link>
-            {session.role === 'admin' && <Link to="/admin"><button className="ghost">Admin</button></Link>}
+            <span className={`role-badge ${session.role}`}>{session.role === 'hekim' ? 'Hekim' : session.role === 'admin' ? 'Admin' : session.role === 'ebeveyn' ? 'Ebeveyn' : 'Hasta'}</span>
+            <Link to={session.role === 'hekim' ? '/hekim' : session.role === 'admin' ? '/admin' : '/hastam'}><button>{session.role === 'hekim' ? 'Hekim Paneli' : session.role === 'admin' ? 'Admin Paneli' : 'Dişlerim'}</button></Link>
             <button className="ghost" onClick={out}>Çıkış</button>
           </span>
         ) : (

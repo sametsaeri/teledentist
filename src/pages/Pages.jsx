@@ -152,19 +152,21 @@ export function Login() {
     setBusy(false)
     if (r.error) return setErr(r.error)
     const u = r.user
-    if (u.role === 'hekim') nav('/hekim')
+    if (u.role === 'admin') nav('/admin')
+    else if (u.role === 'hekim') nav('/hekim')
     else nav('/hastam')
   }
   return (
-    <div>
-      <h1>Giriş</h1>
-      <div className="card">
-        <p className="muted">Hesabınızı hekiminiz oluşturur. E-posta ve şifrenizle giriş yapın.</p>
-        <input placeholder="e-posta" value={email} onChange={(e) => setEmail(e.target.value)} /><br /><br />
-        <input placeholder="şifre" type="password" value={pass} onChange={(e) => setPass(e.target.value)} /><br /><br />
-        {err && <p style={{ color: '#dc2626' }}>{err}</p>}
-        <button onClick={doLogin} disabled={busy}>{busy ? 'Giriş yapılıyor...' : 'Giriş Yap'}</button>
-        <p className="muted">Hasta kaydı için hekiminize başvurun.</p>
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <img src="/ktu-logo.png" alt="KTÜ" className="ktu-logo-lg" />
+        <h1>TeleDentist Giriş</h1>
+        <p className="muted">KTÜ Diş Hekimliği Fakültesi | Hasta, hekim ve yönetici girişi</p>
+        <input placeholder="e-posta" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /><br /><br />
+        <input placeholder="şifre" type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="current-password" /><br /><br />
+        {err && <p className="auth-err">{err}</p>}
+        <button onClick={doLogin} disabled={busy} style={{ width: '100%' }}>{busy ? 'Giriş yapılıyor...' : 'Giriş Yap'}</button>
+        <p className="muted">Hesabınız yoksa hekiminize veya klinik yönetimine başvurun. Kayıtlar yalnızca hekim/admin tarafından açılır.</p>
       </div>
     </div>
   )

@@ -82,6 +82,14 @@ button.ghost { background: #e6eef6; color: var(--ink); }
 .tab { background: #e6eef6; color: var(--ink); padding: 10px 16px; border-radius: 12px; position: relative; }
 .tab.active { background: var(--primary); color: white; }
 .tab-count { background: #dc2626; color: white; font-size: 11px; border-radius: 12px; padding: 1px 7px; margin-left: 6px; }
+.auth-wrap { display: flex; justify-content: center; padding: 30px 0; }
+.auth-card { background: white; border: 1px solid var(--line); border-radius: 20px; padding: 32px; max-width: 420px; width: 100%; box-shadow: var(--shadow); text-align: center; }
+.auth-card input { width: 100%; }
+.auth-err { color: #dc2626; font-size: 14px; }
+.role-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 800; background: #e0f2fe; color: #075985; }
+.role-badge.hekim { background: #dbeafe; color: #1d4ed8; }
+.role-badge.admin { background: #ede9fe; color: #6d28d9; }
+.role-badge.hasta, .role-badge.ebeveyn { background: #dcfce7; color: #15803d; }
 .section-title { margin: 22px 0 6px; }
 @media (max-width: 640px) {
   main { padding: 14px 12px 28px; }
