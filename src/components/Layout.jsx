@@ -1,13 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate } from 'react-router-dom'
-import { getSession } from '../services/store.js'
-import { logout } from '../services/auth.js'
+import { Link } from 'react-router-dom'
 
 export function Layout({ children }) {
   const { t, i18n } = useTranslation()
-  const nav = useNavigate()
-  const session = getSession()
-  const out = async () => { await logout(); nav('/') }
   return (
     <div className="layout">
       <div className="topbar">
@@ -39,26 +34,23 @@ export function Layout({ children }) {
       <nav className="nav appnav">
         <span className="brand"><span className="brand-mark">TD</span> {t('brand')}</span>
         <Link to="/">{t('nav_home')}</Link>
-        <Link to="/e-randevu">E-Randevu</Link>
-        <Link to="/hastam">Dişlerim</Link>
-        <Link to="/hekim">Hekim</Link>
-        <Link to="/triyaj">Triyaj</Link>
-        <Link to="/hijyen">Hijyen</Link>
-        <Link to="/on-degerlendirme">Foto</Link>
-        <Link to="/video">Video</Link>
-        <Link to="/egitim">Eğitim</Link>
-        <Link to="/kampanya">Kampanya</Link>
-        <Link to="/sss">SSS</Link>
+        <div className="dropdown">
+          <span className="drop-btn">Randevu</span>
+          <div className="dropdown-menu">
+            <Link to="/e-randevu">E-Randevu</Link>
+            <Link to="/randevu">Randevu / İletişim</Link>
+          </div>
+        </div>
+        <div className="dropdown">
+          <span className="drop-btn">Kaynaklar</span>
+          <div className="dropdown-menu">
+            <Link to="/teledentistry">{t('nav_about')}</Link>
+            <Link to="/egitim">Eğitim</Link>
+            <Link to="/sss">SSS</Link>
+          </div>
+        </div>
         <span className="spacer" />
-        {session ? (
-          <span className="toolbar">
-            <span className={`role-badge ${session.role}`}>{session.role === 'hekim' ? 'Hekim' : session.role === 'admin' ? 'Admin' : session.role === 'ebeveyn' ? 'Ebeveyn' : 'Hasta'}</span>
-            <Link to={session.role === 'hekim' ? '/hekim' : session.role === 'admin' ? '/admin' : '/hastam'}><button>{session.role === 'hekim' ? 'Hekim Paneli' : session.role === 'admin' ? 'Admin Paneli' : 'Dişlerim'}</button></Link>
-            <button className="ghost" onClick={out}>Çıkış</button>
-          </span>
-        ) : (
-          <Link to="/giris">{t('nav_login')}</Link>
-        )}
+        <Link to="/giris">{t('nav_login')}</Link>
       </nav>
       <main>{children}</main>
       <footer className="footer">

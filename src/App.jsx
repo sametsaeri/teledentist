@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, useParams, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout.jsx'
+import { PanelLayout } from './components/PanelLayout.jsx'
 import { Home, About, Appointment, Login, Dashboard } from './pages/Pages.jsx'
 import { DoctorList, DoctorPatient, PatientPanel } from './pages/Portal.jsx'
 import { Triage, Hygiene, Anxiety, PhotoReview, Report } from './pages/Clinical.jsx'
@@ -15,6 +16,18 @@ function Require({ roles, children }) {
   return children
 }
 
+function Public({ children }) {
+  return <Layout>{children}</Layout>
+}
+
+function Panel({ roles, children }) {
+  return (
+    <Require roles={roles}>
+      <PanelLayout>{children}</PanelLayout>
+    </Require>
+  )
+}
+
 function ReportWrapper() {
   const { id } = useParams()
   return <Report patientId={id} />
@@ -23,32 +36,30 @@ function ReportWrapper() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/teledentistry" element={<About />} />
-          <Route path="/randevu" element={<Appointment />} />
-          <Route path="/giris" element={<Login />} />
-          <Route path="/panel" element={<Require roles={['hekim']}><Dashboard /></Require>} />
-          <Route path="/hastam" element={<Require roles={['hasta', 'ebeveyn']}><PatientPanel /></Require>} />
-          <Route path="/hekim" element={<Require roles={['hekim']}><DoctorList /></Require>} />
-          <Route path="/hekim/hasta/:id" element={<Require roles={['hekim']}><DoctorPatient /></Require>} />
-          <Route path="/triyaj" element={<Triage />} />
-          <Route path="/hijyen" element={<Hygiene />} />
-          <Route path="/anksiyete" element={<Anxiety />} />
-          <Route path="/on-degerlendirme" element={<PhotoReview />} />
-          <Route path="/rapor/:id" element={<ReportWrapper />} />
-          <Route path="/memnuniyet" element={<Satisfaction />} />
-          <Route path="/egitim" element={<Education />} />
-          <Route path="/video" element={<VideoVisit />} />
-          <Route path="/hatirlatma" element={<Reminders />} />
-          <Route path="/kampanya" element={<Campaigns />} />
-          <Route path="/konsultasyon" element={<Consultation />} />
-          <Route path="/sss" element={<Faq />} />
-          <Route path="/e-randevu" element={<ERandevu />} />
-          <Route path="/admin" element={<Require roles={['admin']}><AdminPanel /></Require>} />
-        </Routes>
-      </Layout>
+      <Routes>
+        <Route path="/giris" element={<Login />} />
+        <Route path="/" element={<Public><Home /></Public>} />
+        <Route path="/teledentistry" element={<Public><About /></Public>} />
+        <Route path="/e-randevu" element={<Public><ERandevu /></Public>} />
+        <Route path="/randevu" element={<Public><Appointment /></Public>} />
+        <Route path="/egitim" element={<Public><Education /></Public>} />
+        <Route path="/sss" element={<Public><Faq /></Public>} />
+        <Route path="/panel" element={<Panel roles={['hekim']}><Dashboard /></Panel>} />
+        <Route path="/hastam" element={<Panel roles={['hasta', 'ebeveyn']}><PatientPanel /></Panel>} />
+        <Route path="/hekim" element={<Panel roles={['hekim']}><DoctorList /></Panel>} />
+        <Route path="/hekim/hasta/:id" element={<Panel roles={['hekim']}><DoctorPatient /></Panel>} />
+        <Route path="/triyaj" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><Triage /></Panel>} />
+        <Route path="/hijyen" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><Hygiene /></Panel>} />
+        <Route path="/anksiyete" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><Anxiety /></Panel>} />
+        <Route path="/on-degerlendirme" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><PhotoReview /></Panel>} />
+        <Route path="/rapor/:id" element={<Panel roles={['hekim']}><ReportWrapper /></Panel>} />
+        <Route path="/memnuniyet" element={<Panel roles={['hasta', 'ebeveyn']}><Satisfaction /></Panel>} />
+        <Route path="/video" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><VideoVisit /></Panel>} />
+        <Route path="/hatirlatma" element={<Panel roles={['hekim']}><Reminders /></Panel>} />
+        <Route path="/kampanya" element={<Panel roles={['hasta', 'ebeveyn']}><Campaigns /></Panel>} />
+        <Route path="/konsultasyon" element={<Panel roles={['hekim']}><Consultation /></Panel>} />
+        <Route path="/admin" element={<Panel roles={['admin']}><AdminPanel /></Panel>} />
+      </Routes>
     </BrowserRouter>
   )
 }

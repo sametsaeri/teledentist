@@ -167,6 +167,7 @@ export function Login() {
         {err && <p className="auth-err">{err}</p>}
         <button onClick={doLogin} disabled={busy} style={{ width: '100%' }}>{busy ? 'Giriş yapılıyor...' : 'Giriş Yap'}</button>
         <p className="muted">Hesabınız yoksa hekiminize veya klinik yönetimine başvurun. Kayıtlar yalnızca hekim/admin tarafından açılır.</p>
+        <p><Link to="/">← Siteye Dön</Link></p>
       </div>
     </div>
   )

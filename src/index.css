@@ -90,6 +90,30 @@ button.ghost { background: #e6eef6; color: var(--ink); }
 .role-badge.hekim { background: #dbeafe; color: #1d4ed8; }
 .role-badge.admin { background: #ede9fe; color: #6d28d9; }
 .role-badge.hasta, .role-badge.ebeveyn { background: #dcfce7; color: #15803d; }
+.dropdown { position: relative; }
+.drop-btn { color: white; padding: 8px 12px; border-radius: 10px; font-size: 14px; cursor: pointer; display: inline-block; }
+.dropdown:hover .drop-btn { background: rgba(255,255,255,0.14); }
+.dropdown-menu { display: none; position: absolute; top: 100%; left: 0; background: white; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); min-width: 200px; padding: 6px; z-index: 30; }
+.dropdown:hover .dropdown-menu { display: block; }
+.dropdown-menu a { display: block; color: var(--ink); padding: 9px 12px; border-radius: 8px; }
+.dropdown-menu a:hover { background: #eef4fa; }
+.panel { min-height: 100vh; display: flex; background: #0e2233; }
+.panel-side { width: 250px; flex-shrink: 0; background: linear-gradient(180deg, #0b3d5f, #082a42); color: white; display: flex; flex-direction: column; padding: 18px 14px; position: sticky; top: 0; height: 100vh; }
+.panel-brand { display: flex; align-items: center; gap: 8px; font-weight: 800; margin-bottom: 18px; flex-wrap: wrap; }
+.panel-menu { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.panel-menu a { color: #cfe3f5; padding: 10px 12px; border-radius: 10px; font-size: 14px; }
+.panel-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
+.panel-menu a.active { background: #14b8a6; color: white; font-weight: 700; }
+.panel-foot { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 12px; }
+.panel-foot .muted { color: #9db8d1; }
+.panel-foot a { color: #9db8d1; font-size: 13px; }
+.panel-main { flex: 1; background: #eef3f8; min-width: 0; display: flex; flex-direction: column; }
+.panel-main main { flex: 1; padding: 24px; max-width: 1100px; width: 100%; margin: 0 auto; }
+@media (max-width: 760px) {
+  .panel { flex-direction: column; }
+  .panel-side { width: 100%; height: auto; position: static; }
+  .panel-menu { flex-direction: row; flex-wrap: wrap; }
+}
 .section-title { margin: 22px 0 6px; }
 @media (max-width: 640px) {
   main { padding: 14px 12px 28px; }
