@@ -110,6 +110,22 @@ export async function insertAnxiety(pid, total) {
   return {}
 }
 
+export async function listReferrals() {
+  if (hasSupabase) {
+    const { data } = await supabase.from('referrals').select('*').order('created_at', { ascending: false }).limit(50)
+    if (data) return data
+  }
+  return []
+}
+
+export async function referPatient({ patientId, toDoctor, branch, note, fromDoctor }) {
+  if (hasSupabase) {
+    const { error } = await supabase.from('referrals').insert({ patient_id: patientId, from_doctor: fromDoctor || null, to_doctor: toDoctor, branch: branch || 'genel', note: note || '' })
+    return { error: error?.message }
+  }
+  return { error: 'Supabase bağlı değil.' }
+}
+
 // Hekim panelinden profil tamamlama (Auth kullanıcısı panelden açıldıktan sonra)
 export async function createProfile({ uid, role, email, name, childId, createdBy }) {
   if (!uid || !role || !email || !name) return { error: 'UID, rol, e-posta ve ad zorunlu.' }

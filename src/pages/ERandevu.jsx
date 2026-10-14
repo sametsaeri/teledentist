@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DEPARTMENTS } from '../data/departments.js'
+import { listDoctors } from '../services/db.js'
 
 function ToothIcon({ color }) {
   return (
@@ -10,6 +12,8 @@ function ToothIcon({ color }) {
 }
 
 export function ERandevu() {
+  const [doctors, setDoctors] = useState([])
+  useEffect(() => { listDoctors().then(setDoctors) }, [])
   return (
     <div>
       <div className="faculty-bar">
@@ -48,6 +52,20 @@ export function ERandevu() {
         <span className="badge">Bilgi</span>
         <span>Randevu saatinden en az 15 dakika önce klinikte hazır bulunun.</span>
         <Link to="/randevu"><button className="ghost">E-RANDEVU SİSTEMİNE GİRİŞ İÇİN TIKLAYINIZ</button></Link>
+      </div>
+
+      <div className="grid">
+        <div className="card">
+          <h3>Klinik Bilgileri</h3>
+          <p className="muted">KTÜ Diş Hekimliği Fakültesi Kliniği</p>
+          <p>Hafta içi 08:30 - 17:30 | Randevulu hasta kabulü</p>
+          <p className="muted">Adres ve telefon bilgisini klinik yönetiminden alıp buraya yazacağız.</p>
+        </div>
+        <div className="card">
+          <h3>Hekimlerimiz ({doctors.length})</h3>
+          {doctors.length === 0 && <p className="muted">Hekim listesi yakında burada.</p>}
+          {doctors.map((d) => <p key={d.id}><strong>{d.name}</strong> {d.branch && d.branch !== 'genel' ? <span className="muted">({d.branch})</span> : null}</p>)}
+        </div>
       </div>
     </div>
   )

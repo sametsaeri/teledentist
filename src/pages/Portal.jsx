@@ -5,7 +5,7 @@ import { ToothChart, ToothVisual } from '../components/ToothChart.jsx'
 import { toothEducation, recallForTooth } from '../ai/toothAi.js'
 import { suggestRecall } from '../ai/recall.js'
 import { load, save, keys, getSession } from '../services/store.js'
-import { listPatients, getPatient, getTeeth, saveTooth, lastRecords, createProfile, getChildren, insertTriage, insertHygiene, insertAnxiety } from '../services/db.js'
+import { listPatients, getPatient, getTeeth, saveTooth, lastRecords, createProfile, getChildren, insertTriage, insertHygiene, insertAnxiety, listDoctors, listReferrals, referPatient } from '../services/db.js'
 import { triageScore } from '../services/clinical.js'
 
 function xrayKey(pid, tooth) { return `${pid}_${tooth}` }
@@ -51,7 +51,11 @@ export function DoctorList() {
   const [all, setAll] = useState([])
   const [form, setForm] = useState({ uid: '', role: 'hasta', email: '', name: '', childId: '' })
   const [msg, setMsg] = useState('')
-  useEffect(() => { listPatients().then(setAll) }, [])
+  const [doctors, setDoctors] = useState([])
+  const [refs, setRefs] = useState([])
+  const [refTo, setRefTo] = useState({})
+  const [refMsg, setRefMsg] = useState('')
+  useEffect(() => { listPatients().then(setAll); listDoctors().then(setDoctors); listReferrals().then(setRefs) }, [])
   const patients = all.filter((u) => (u.role === 'hasta' || u.role === 'ebeveyn') && (u.name || '').toLowerCase().includes(q.toLowerCase()))
   const appts = load(keys.appointments, [])
   const triage = load(keys.triage, []).slice().sort((a, b) => b.score - a.score)
@@ -100,10 +104,35 @@ export function DoctorList() {
       )}
 
       {tab === 'triyaj' && (
-        <div className="card">
-          <h3>Triyaj Kuyruğu ({triage.length})</h3>
-          {triage.length === 0 && <p className="muted">Triyaj kaydı yok.</p>}
-          {triage.map((t) => <p key={t.id}><span className="badge">{t.score} - {t.level}</span> <strong>{t.patientId}</strong> diş {t.tooth}, ağrı {t.pain} <span className="muted">[{t.date}]</span></p>)}
+        <div>
+          <div className="card">
+            <h3>Triyaj Kuyruğu ({triage.length})</h3>
+            {triage.length === 0 && <p className="muted">Triyaj kaydı yok.</p>}
+            {triage.map((t) => (
+              <div key={t.id} style={{ margin: '8px 0' }}>
+                <p><span className="badge">{t.score} - {t.level}</span> <strong>{t.patientId}</strong> diş {t.tooth}, ağrı {t.pain} <span className="muted">[{t.date}]</span></p>
+                <div className="toolbar">
+                  <select value={refTo[t.id] || ''} onChange={(e) => setRefTo((s) => ({ ...s, [t.id]: e.target.value }))}>
+                    <option value="">Doktor seç (sevke göre branş önerilir)...</option>
+                    {doctors.map((d) => <option key={d.id} value={d.id}>{d.name} {d.branch ? `(${d.branch})` : ''}</option>)}
+                  </select>
+                  <button className="ghost" onClick={async () => {
+                    const doc = doctors.find((d) => d.id === (refTo[t.id] || ''))
+                    if (!doc) return alert('Önce doktor seçin.')
+                    const r = await referPatient({ patientId: t.patientId, toDoctor: doc.id, branch: doc.branch || 'genel', note: `${t.tooth} nolu diş, ağrı ${t.pain}`, fromDoctor: getSession()?.id })
+                    setRefMsg(r.error || `${t.patientId} → ${doc.name} hekimine sevk edildi.`)
+                    listReferrals().then(setRefs)
+                  }}>Sevk Et</button>
+                </div>
+              </div>
+            ))}
+            {refMsg && <p className="muted">{refMsg}</p>}
+          </div>
+          <div className="card">
+            <h3>Sevkler ({refs.length})</h3>
+            {refs.length === 0 && <p className="muted">Sevk yok.</p>}
+            {refs.map((r) => <p key={r.id}><strong>{r.patient_id}</strong> → {doctors.find((d) => d.id === r.to_doctor)?.name || r.to_doctor} <span className="muted">({r.branch}, {r.status})</span></p>)}
+          </div>
         </div>
       )}
 
