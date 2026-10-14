@@ -1,10 +1,18 @@
-import { BrowserRouter, Routes, Route, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useParams, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout.jsx'
 import { Home, About, Appointment, Login, Dashboard } from './pages/Pages.jsx'
 import { DoctorList, DoctorPatient, PatientPanel } from './pages/Portal.jsx'
 import { Triage, Hygiene, Anxiety, PhotoReview, Report } from './pages/Clinical.jsx'
 import { Satisfaction, Education, VideoVisit, Reminders, Campaigns, Consultation, Faq } from './pages/Extra.jsx'
 import { ERandevu } from './pages/ERandevu.jsx'
+import { currentUser } from './services/auth.js'
+
+function Require({ roles, children }) {
+  const u = currentUser()
+  if (!u) return <Navigate to="/giris" replace />
+  if (roles && !roles.includes(u.role)) return <div className="card"><h1>Yetkisiz</h1><p>Bu panel {roles.join('/')} rolüne özeldir.</p></div>
+  return children
+}
 
 function ReportWrapper() {
   const { id } = useParams()
@@ -20,10 +28,10 @@ export default function App() {
           <Route path="/teledentistry" element={<About />} />
           <Route path="/randevu" element={<Appointment />} />
           <Route path="/giris" element={<Login />} />
-          <Route path="/panel" element={<Dashboard />} />
-          <Route path="/hastam" element={<PatientPanel />} />
-          <Route path="/hekim" element={<DoctorList />} />
-          <Route path="/hekim/hasta/:id" element={<DoctorPatient />} />
+          <Route path="/panel" element={<Require roles={['hekim']}><Dashboard /></Require>} />
+          <Route path="/hastam" element={<Require roles={['hasta', 'ebeveyn']}><PatientPanel /></Require>} />
+          <Route path="/hekim" element={<Require roles={['hekim']}><DoctorList /></Require>} />
+          <Route path="/hekim/hasta/:id" element={<Require roles={['hekim']}><DoctorPatient /></Require>} />
           <Route path="/triyaj" element={<Triage />} />
           <Route path="/hijyen" element={<Hygiene />} />
           <Route path="/anksiyete" element={<Anxiety />} />

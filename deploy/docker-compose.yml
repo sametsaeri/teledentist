@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: teledentist
+      POSTGRES_USER: telesaglik
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-degistir-guclu-sifre}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  api:
+    # Backend Faz 2'de eklenecek (Node/Express). Şimdilik yer tutucu.
+    image: node:22-alpine
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../backend:/app
+    command: ["node", "server.js"]
+    environment:
+      DATABASE_URL: postgres://telesaglik:${PG_PASSWORD:-degistir-guclu-sifre}@postgres:5432/teledentist
+    ports:
+      - "127.0.0.1:4000:4000"
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

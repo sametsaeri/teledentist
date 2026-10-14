@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
-import { demoUsers } from '../data/mock.js'
 import { Reveal } from '../components/Reveal.jsx'
-import { load, save, keys, setSession } from '../services/store.js'
+import { load, save, keys } from '../services/store.js'
+import { login, allUsers } from '../services/auth.js'
 import { suggestRecall } from '../ai/recall.js'
 
 export function Home() {
@@ -115,30 +115,38 @@ export function Appointment() {
 }
 
 export function Login() {
-  const [email, setEmail] = useState('hasta@demo')
+  const [email, setEmail] = useState('hekim@demo')
+  const [pass, setPass] = useState('hekim123')
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
   const nav = useNavigate()
-  const login = () => {
-    const u = demoUsers.find((x) => x.email === email.trim())
-    if (!u) return alert('Demo hesap bulunamadı. Örn: hasta@demo')
-    setSession({ ...u, loginAt: new Date().toISOString() })
+  const doLogin = async () => {
+    setBusy(true)
+    setErr('')
+    const r = await login(email, pass)
+    setBusy(false)
+    if (r.error) return setErr(r.error)
+    const u = r.user
     if (u.role === 'hekim') nav('/hekim')
-    else if (u.role === 'ebeveyn') nav('/hastam')
     else nav('/hastam')
   }
   return (
     <div>
-      <h1>Hasta / Ebeveyn / Hekim Girişi (Demo)</h1>
+      <h1>Giriş</h1>
       <div className="card">
-        <p>Demo: hasta@demo / ebeveyn@demo / hekim@demo / ayse@demo</p>
+        <p className="muted">Hesapları yalnızca hekim açar. Demo: hekim@demo/hekim123, hasta@demo/hasta123, ebeveyn@demo/ebeveyn123</p>
         <input placeholder="e-posta" value={email} onChange={(e) => setEmail(e.target.value)} /><br /><br />
-        <button onClick={login}>Giriş Yap</button>
+        <input placeholder="şifre" type="password" value={pass} onChange={(e) => setPass(e.target.value)} /><br /><br />
+        {err && <p style={{ color: '#dc2626' }}>{err}</p>}
+        <button onClick={doLogin} disabled={busy}>{busy ? 'Giriş yapılıyor...' : 'Giriş Yap'}</button>
+        <p className="muted">Hasta kaydı için hekiminize başvurun.</p>
       </div>
     </div>
   )
 }
 
 export function Dashboard() {
-  const pats = demoUsers.filter((u) => u.role === 'hasta')
+  const pats = allUsers().filter((u) => u.role === 'hasta')
   return (
     <div>
       <h1>Panelim</h1>
