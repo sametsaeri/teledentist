@@ -68,7 +68,7 @@ export default function App() {
         <Route path="/giris" element={<Navigate to="/danisan-girisi" replace />} />
 
         {/* --- Danışan paneli --- */}
-        <Route path="/hastam" element={<Panel roles={['hasta', 'ebeveyn']}><PatientPanel /></Panel>} />
+        <Route path="/hastam" element={<Panel roles={['hasta', 'ebeveyn', 'hekim', 'admin']}><PatientPanel /></Panel>} />
 
         {/* --- Hekim paneli --- */}
         <Route path="/hekim" element={<Panel roles={['hekim']}><DoctorList /></Panel>} />

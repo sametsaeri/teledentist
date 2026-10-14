@@ -210,3 +210,57 @@ button.tiny { padding: 2px 6px; font-size: 10px; border-radius: 6px; }
 .table th, .table td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .table th { background: #f1f5f9; font-weight: 800; color: #33587a; }
 .table tr:hover td { background: #f8fbfe; }
+
+/* --- Panel başlığı, gruplanmış menü, modal --- */
+.panel-hero { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; background: linear-gradient(135deg, #0b3d5f, #0284c7); color: #fff; border-radius: 18px; padding: 20px 24px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.panel-hero h1 { margin: 0 0 2px; font-size: 22px; display: flex; align-items: center; gap: 8px; }
+.panel-hero .muted { color: #cfe6f5; margin: 0; }
+.panel-hero .spacer { flex: 1; }
+.btn-new { background: #fff; color: #0b3d5f; display: inline-flex; align-items: center; gap: 6px; padding: 11px 16px; border-radius: 12px; font-weight: 800; box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+.kpi.kpi-btn { border: none; cursor: pointer; text-align: center; transition: transform .15s ease, box-shadow .15s ease; display: flex; flex-direction: column; justify-content: center; min-height: 74px; }
+.kpi.kpi-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(2,132,199,.28); }
+.alert-num { color: #fde047; }
+.group-tabs { display: flex; gap: 12px; flex-wrap: wrap; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px; box-shadow: var(--shadow); }
+.tab-group { display: flex; flex-direction: column; gap: 6px; }
+.group-label { font-size: 10.5px; font-weight: 900; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); padding-left: 4px; }
+.group-items { display: flex; gap: 6px; flex-wrap: wrap; }
+.tab { display: inline-flex; align-items: center; gap: 6px; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(8,26,42,.62); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; padding: 28px 16px; z-index: 60; overflow: auto; animation: fadeUp .25s ease both; }
+.modal { background: #fff; border-radius: 20px; width: 100%; max-width: 860px; padding: 24px; box-shadow: 0 30px 70px rgba(0,0,0,.35); }
+.modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 6px; }
+.modal-head h3 { margin: 0; font-size: 19px; }
+.modal-head .muted { margin: 2px 0 0; }
+.modal-sub { margin: 18px 0 8px; font-size: 14px; color: #0a3a7a; border-left: 4px solid var(--accent); padding-left: 9px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid var(--line); padding-top: 14px; }
+
+/* --- İkon hizalama --- */
+.nav a, .drop-btn, .panel-menu a, .panel-foot a, .panel-foot button, .btn, .tab, .btn-enter,
+.bell, .auth-card h1, .card h2, .card h3, .auth-foot a, .dept-mini b, .h1-flex {
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.card h2, .card h3 { margin-top: 0; }
+.dept-mini { display: flex; flex-direction: column; gap: 4px; }
+.dept-mini svg { color: var(--primary); }
+.hero-badge, .modal-actions button, .kpi-btn, .btn-new, .panel-top button { display: inline-flex; align-items: center; gap: 6px; }
+.nav a svg, .drop-btn svg, .panel-menu a svg { flex-shrink: 0; }
+.bell { position: relative; }
+.auth-err, .auth-ok { display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+/* --- Üst menüyü tek satırda tut --- */
+@media (max-width: 1200px) {
+  .nav { gap: 2px; padding: 10px 12px; }
+  .nav a, .drop-btn { padding: 7px 9px; font-size: 13px; }
+  .nav .toolbar button { padding: 8px 11px; font-size: 12.5px; }
+  .brand-link { font-size: 15px; }
+  .brand-link svg { width: 22px; height: 22px; }
+}
+
+/* Hareket azaltma tercihi olan kullanıcilar icin animasyonlari kapat */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .reveal { opacity: 1 !important; transform: none !important; }
+}

@@ -2,42 +2,47 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { currentUser, logout } from '../services/auth.js'
 import { listNotifications } from '../services/db.js'
+import {
+  Logo, Shield, Stethoscope, Users, Clipboard, Drop, Sparkle, Camera, Video, Chat,
+  Clock, User, LogOut, Globe, Bell, ChevronDown, Alert
+} from './Icons.jsx'
 
 const MENUS = {
   admin: [
-    ['/admin/panel', '🛡️ Süper Admin'],
-    ['/hekim', '👨‍⚕️ Hekim Paneli'],
-    ['/hatirlatma', '⏰ Hatırlatmalar'],
-    ['/konsultasyon', '💬 Konsültasyon']
+    ['/admin/panel', Shield, 'Süper Admin'],
+    ['/hekim', Stethoscope, 'Hekim Paneli'],
+    ['/hastam', User, 'Hasta Paneli'],
+    ['/hatirlatma', Clock, 'Hatırlatmalar'],
+    ['/konsultasyon', Chat, 'Konsültasyon']
   ],
   hekim: [
-    ['/hekim', '🧑‍⚕️ Hekim Paneli'],
-    ['/triyaj', '🩺 Triyaj'],
-    ['/hijyen', '🪥 Hijyen'],
-    ['/anksiyete', '😌 Anksiyete'],
-    ['/on-degerlendirme', '📷 Foto Değerlendirme'],
-    ['/video', '📹 Online Görüşme'],
-    ['/konsultasyon', '💬 Konsültasyon'],
-    ['/hatirlatma', '⏰ Hatırlatmalar']
+    ['/hekim', Stethoscope, 'Hekim Paneli'],
+    ['/hastam', User, 'Hasta Paneli'],
+    ['/triyaj', Clipboard, 'Triyaj'],
+    ['/hijyen', Drop, 'Hijyen'],
+    ['/anksiyete', Sparkle, 'Anksiyete'],
+    ['/on-degerlendirme', Camera, 'Foto Değerlendirme'],
+    ['/video', Video, 'Online Görüşme'],
+    ['/konsultasyon', Chat, 'Konsültasyon'],
+    ['/hatirlatma', Clock, 'Hatırlatmalar']
   ],
   hasta: [
-    ['/hastam', '🦷 Dişlerim'],
-    ['/triyaj', '🩺 Triyaj'],
-    ['/hijyen', '🪥 Hijyen'],
-    ['/anksiyete', '😌 Anksiyete'],
-    ['/on-degerlendirme', '📷 Foto'],
-    ['/video', '📹 Online Görüşme'],
-    ['/egitim', '🎓 Eğitim'],
-    ['/kampanya', '🎉 Kampanya'],
-    ['/memnuniyet', '⭐ Memnuniyet']
+    ['/hastam', Clipboard, 'Dişlerim'],
+    ['/triyaj', Clipboard, 'Triyaj'],
+    ['/hijyen', Drop, 'Hijyen'],
+    ['/anksiyete', Sparkle, 'Anksiyete'],
+    ['/on-degerlendirme', Camera, 'Foto'],
+    ['/video', Video, 'Online Görüşme'],
+    ['/egitim', Sparkle, 'Eğitim'],
+    ['/kampanya', Sparkle, 'Kampanya'],
+    ['/memnuniyet', Sparkle, 'Memnuniyet']
   ]
 }
 MENUS.ebeveyn = MENUS.hasta
 
 const ROLE_TR = { hekim: 'Hekim', hasta: 'Hasta', ebeveyn: 'Ebeveyn', admin: 'Süper Admin' }
 
-// Sağ üstteki bildirim zili
-function Bell() {
+function BellBox() {
   const [items, setItems] = useState([])
   const [open, setOpen] = useState(false)
   useEffect(() => {
@@ -50,7 +55,8 @@ function Bell() {
   return (
     <div className="bell-wrap">
       <button className="bell" onClick={() => setOpen(!open)} aria-label="Bildirimler">
-        🔔 <span className="bell-count">{items.length}</span>
+        <Bell size={18} />
+        {items.length > 0 && <span className="bell-count">{items.length}</span>}
       </button>
       {open && (
         <div className="bell-menu">
@@ -58,13 +64,13 @@ function Bell() {
           {items.length === 0 && <p className="muted">Şu an acil bildirim yok.</p>}
           {items.map((n) => (
             <div key={n.id} className={`bell-item ${n.type}`}>
-              <b>{n.days === 0 ? '🔴 BUGÜN' : `⏳ ${n.days} gün`}</b>
+              <b><Alert size={12} /> {n.days === 0 ? 'BUGÜN' : `${n.days} gün kaldı`}</b>
               <strong>{n.title}</strong>
               <p>{n.text}</p>
               {n.patientId && <Link to={`/hekim/hasta/${n.patientId}`} onClick={() => setOpen(false)}>Hastayı aç →</Link>}
             </div>
           ))}
-          <p className="muted">Bildirimler hastanın hatırlatma gününe göre otomatik üretilir.</p>
+          <p className="muted">Hatırlatmalar, hastanın seçtiği gün sayısı kadar önceden üretilir.</p>
         </div>
       )}
     </div>
@@ -82,19 +88,21 @@ export function PanelLayout({ children }) {
     <div className="panel">
       <aside className="panel-side">
         <div className="panel-brand">
-          <span className="brand-mark">🦷</span>
+          <Logo size={26} />
           <span>TeleDentist</span>
-          <span className={`role-badge ${u?.role}`}>{ROLE_TR[u?.role]}</span>
         </div>
+        <span className={`role-badge ${u?.role}`}>{ROLE_TR[u?.role]}</span>
         <nav className="panel-menu">
-          {menu.map(([to, label]) => (
-            <Link key={to} to={to} className={loc.pathname === to ? 'active' : ''}>{label}</Link>
+          {menu.map(([to, Icon, label]) => (
+            <Link key={to} to={to} className={loc.pathname === to ? 'active' : ''}>
+              <Icon size={17} /> {label}
+            </Link>
           ))}
         </nav>
         <div className="panel-foot">
-          <span className="panel-user">👤 {u?.name}</span>
-          <button className="ghost" onClick={out}>🚪 Çıkış</button>
-          <Link to="/">🌐 Siteye Dön</Link>
+          <span className="panel-user"><User size={15} /> {u?.name}</span>
+          <button className="ghost" onClick={out}><LogOut size={15} /> Çıkış</button>
+          <Link to="/"><Globe size={15} /> Siteye Dön</Link>
         </div>
       </aside>
 
@@ -102,7 +110,7 @@ export function PanelLayout({ children }) {
         <header className="panel-top">
           <span className="muted">{new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
           <span className="spacer" />
-          {isStaff && <Bell />}
+          {isStaff && <BellBox />}
         </header>
         <main>{children}</main>
         <footer className="footer">

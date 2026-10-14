@@ -4,18 +4,22 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Reveal } from '../components/Reveal.jsx'
 import { login, registerRequest } from '../services/auth.js'
 import { insertAppointment } from '../services/db.js'
+import {
+  Logo, User, Stethoscope, Shield, Calendar, Phone, Book, Help, Cap,
+  CheckCircle, Alert, Clipboard, FileText, DeptRestorative, DeptEndo, DeptPerio, DeptPedo
+} from '../components/Icons.jsx'
 
 export function Home() {
   const { t } = useTranslation()
   return (
     <div>
       <div className="hero">
-        <div className="hero-badge">🦷 KTÜ Diş Hekimliği Fakültesi</div>
+        <div className="hero-badge"><Cap size={15} /> KTÜ Diş Hekimliği Fakültesi</div>
         <h1>{t('home_title')}</h1>
         <p>{t('home_desc')}</p>
         <div className="hero-actions">
-          <Link to="/e-randevu"><span className="btn btn-primary">📆 {t('home_cta1')}</span></Link>
-          <Link to="/teledentistry"><span className="btn btn-ghost">🔬 {t('home_cta2')}</span></Link>
+          <Link to="/e-randevu"><span className="btn btn-primary"><Calendar size={17} /> {t('home_cta1')}</span></Link>
+          <Link to="/teledentistry"><span className="btn btn-ghost"><Book size={17} /> {t('home_cta2')}</span></Link>
         </div>
         <div className="stat-row">
           <div className="stat"><b>{t('stat1_n')}</b>{t('stat1_l')}</div>
@@ -26,14 +30,14 @@ export function Home() {
 
       <Reveal>
         <div className="card">
-          <h2>🎯 {t('aim_title')}</h2>
+          <h2><CheckCircle size={20} /> {t('aim_title')}</h2>
           <p>{t('aim_desc')}</p>
         </div>
       </Reveal>
 
       <Reveal>
         <div className="card">
-          <h2>🔄 {t('steps_title')}</h2>
+          <h2><Calendar size={20} /> {t('steps_title')}</h2>
           <div className="grid">
             <div className="step"><b>{t('step1_t')}</b><p className="muted">{t('step1_d')}</p></div>
             <div className="step"><b>{t('step2_t')}</b><p className="muted">{t('step2_d')}</p></div>
@@ -47,12 +51,12 @@ export function Home() {
         <div className="card">
           <h2>🏥 {t('dept_title')}</h2>
           <div className="grid">
-            <div className="dept-mini"><b>🦷 {t('dept_rest')}</b><p className="muted">{t('dept_rest_d')}</p></div>
-            <div className="dept-mini"><b>🩻 {t('dept_endo')}</b><p className="muted">{t('dept_endo_d')}</p></div>
-            <div className="dept-mini"><b>🫧 {t('dept_perio')}</b><p className="muted">{t('dept_perio_d')}</p></div>
-            <div className="dept-mini"><b>🧒 {t('dept_pedo')}</b><p className="muted">{t('dept_pedo_d')}</p></div>
+            <div className="dept-mini"><DeptRestorative size={20} /><b>{t('dept_rest')}</b><p className="muted">{t('dept_rest_d')}</p></div>
+            <div className="dept-mini"><DeptEndo size={20} /><b>{t('dept_endo')}</b><p className="muted">{t('dept_endo_d')}</p></div>
+            <div className="dept-mini"><DeptPerio size={20} /><b>{t('dept_perio')}</b><p className="muted">{t('dept_perio_d')}</p></div>
+            <div className="dept-mini"><DeptPedo size={20} /><b>{t('dept_pedo')}</b><p className="muted">{t('dept_pedo_d')}</p></div>
           </div>
-          <p><Link to="/e-randevu"><button>📆 {t('dept_cta')}</button></Link></p>
+          <p><Link to="/e-randevu"><button><Calendar size={16} /> {t('dept_cta')}</button></Link></p>
         </div>
       </Reveal>
     </div>
@@ -78,9 +82,9 @@ export function About() {
       ))}
       <Reveal>
         <div className="card toolbar">
-          <Link to="/triyaj"><button>🩺 {t('about_try')}</button></Link>
-          <Link to="/egitim"><button className="ghost">🎓 {t('about_edu')}</button></Link>
-          <Link to="/e-randevu"><button className="ghost">📆 {t('about_erd')}</button></Link>
+          <Link to="/triyaj"><button><Clipboard size={16} /> {t('about_try')}</button></Link>
+          <Link to="/egitim"><button className="ghost"><Cap size={16} /> {t('about_edu')}</button></Link>
+          <Link to="/e-randevu"><button className="ghost"><Calendar size={16} /> {t('about_erd')}</button></Link>
         </div>
       </Reveal>
     </div>
@@ -110,14 +114,14 @@ export function Appointment() {
 
   if (done) return (
     <div className="card">
-      <h1>✅ {t('appt_sent_t')}</h1>
+      <h1><CheckCircle size={24} /> {t('appt_sent_t')}</h1>
       <p>{t('appt_sent_d')}</p>
     </div>
   )
 
   return (
     <div>
-      <h1>📝 {t('appt_title')}</h1>
+      <h1><FileText size={24} /> {t('appt_title')}</h1>
       <div className="card">
         <label>{t('appt_dept')}
           <select value={dept} onChange={(e) => setDept(e.target.value)}>
@@ -144,13 +148,14 @@ export function Appointment() {
 
 // ----------------- Giriş ekranları -----------------
 
-function AuthShell({ title, sub, children, footer, tone }) {
+function AuthShell({ title, sub, children, footer, tone, icon }) {
   const { t, i18n } = useTranslation()
+  const I = icon || User
   return (
     <div className={`auth-wrap ${tone || ''}`}>
       <div className="auth-card">
-        <div className="auth-logo">🦷</div>
-        <h1>{title}</h1>
+        <div className="auth-logo"><Logo size={54} /></div>
+        <h1><I size={22} /> {title}</h1>
         <p className="muted">{sub}</p>
         {children}
         <div className="auth-foot">{footer}</div>
@@ -180,9 +185,9 @@ function LoginForm({ roles, to, register }) {
   }
   return (
     <>
-      <input placeholder={t('login_email')} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+      <input placeholder="Kullanıcı adı veya e-posta" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
       <input placeholder={t('login_pass')} type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="current-password" />
-      {err && <p className="auth-err">⚠️ {err}</p>}
+      {err && <p className="auth-err"><Alert size={15} /> {err}</p>}
       <button className="btn-full" onClick={doLogin} disabled={busy}>{busy ? t('login_busy') : t('login_go')}</button>
       {register && <p className="muted"><Link to="/kayit">{t('login_no_account')}</Link></p>}
     </>
@@ -194,9 +199,10 @@ export function PatientLogin() {
   return (
     <AuthShell
       tone="tone-patient"
-      title={`👤 ${t('login_patient_t')}`}
+      icon={User}
+      title={t('login_patient_t')}
       sub={t('login_patient_s')}
-      footer={<Link to="/hekim-girisi">👨‍⚕️ {t('login_doctor_btn')}</Link>}
+      footer={<Link to="/hekim-girisi"><Stethoscope size={16} /> {t('login_doctor_btn')}</Link>}
     >
       <LoginForm roles={['hasta', 'ebeveyn']} to="/hastam" register />
     </AuthShell>
@@ -208,11 +214,12 @@ export function DoctorLogin() {
   return (
     <AuthShell
       tone="tone-doctor"
-      title={`👨‍⚕️ ${t('login_doctor_t')}`}
+      icon={Stethoscope}
+      title={t('login_doctor_t')}
       sub={t('login_doctor_s')}
-      footer={<Link to="/danisan-girisi">👤 {t('login_patient_btn')}</Link>}
+      footer={<Link to="/danisan-girisi"><User size={16} /> {t('login_patient_btn')}</Link>}
     >
-      <LoginForm roles={['hekim']} to="/hekim" />
+      <LoginForm roles={['hekim', 'admin']} to="/hekim" />
     </AuthShell>
   )
 }
@@ -222,9 +229,10 @@ export function AdminLogin() {
   return (
     <AuthShell
       tone="tone-admin"
-      title="🛡️ Süper Admin"
+      icon={Shield}
+      title="Süper Admin"
       sub="Bu sayfa yalnızca sistem yöneticisi içindir."
-      footer={<Link to="/hekim-girisi">👨‍⚕️ {t('login_doctor_btn')}</Link>}
+      footer={<Link to="/hekim-girisi"><Stethoscope size={16} /> {t('login_doctor_btn')}</Link>}
     >
       <LoginForm roles={['admin']} to="/admin/panel" />
     </AuthShell>
@@ -247,7 +255,7 @@ export function RegisterRequest() {
     setMsg(t('reg_ok'))
   }
   return (
-    <AuthShell title={`📝 ${t('reg_t')}`} sub={t('reg_s')} footer={<Link to="/danisan-girisi">← {t('reg_back')}</Link>}>
+    <AuthShell icon={FileText} title={t('reg_t')} sub={t('reg_s')} footer={<Link to="/danisan-girisi">← {t('reg_back')}</Link>}>
       <input placeholder={t('reg_name')} value={name} onChange={(e) => setName(e.target.value)} />
       <input placeholder={t('login_email')} value={email} onChange={(e) => setEmail(e.target.value)} />
       <input placeholder={t('login_pass')} type="password" value={pass} onChange={(e) => setPass(e.target.value)} />
@@ -256,8 +264,8 @@ export function RegisterRequest() {
         <option value="ebeveyn">{t('reg_role_p')}</option>
       </select>
       {role === 'ebeveyn' && <input placeholder={t('reg_child')} value={childEmail} onChange={(e) => setChildEmail(e.target.value)} />}
-      {err && <p className="auth-err">⚠️ {err}</p>}
-      {msg && <p className="auth-ok">✅ {msg}</p>}
+      {err && <p className="auth-err"><Alert size={15} /> {err}</p>}
+      {msg && <p className="auth-ok"><CheckCircle size={15} /> {msg}</p>}
       <button className="btn-full" onClick={submit}>{t('reg_send')}</button>
     </AuthShell>
   )

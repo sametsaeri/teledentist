@@ -10,8 +10,17 @@ export function allUsers() {
 }
 
 export async function login(email, pass, allowedRoles) {
-  email = String(email).trim().toLowerCase()
+  email = String(email || '').trim()
+  if (!email) return { error: 'Kullanıcı adı veya e-posta girin.' }
   if (hasSupabase) {
+    // Kullanıcı adı ile giriş: adı e-postaya çevir
+    if (!email.includes('@')) {
+      const { data: rid, error: rerr } = await supabase.rpc('resolve_login_id', { p_identifier: email })
+      if (rerr) return { error: 'Giriş başarısız: ' + rerr.message }
+      if (!rid) return { error: 'Bu kullanıcı adı bulunamadı.' }
+      email = rid
+    }
+    email = email.toLowerCase()
     const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass })
     if (error) return { error: 'Giriş başarısız: ' + error.message }
     const { data: prof } = await supabase.from('profiles').select('*').eq('id', data.user.id).single()
@@ -20,7 +29,8 @@ export async function login(email, pass, allowedRoles) {
     setSession({ ...prof, loginAt: new Date().toISOString(), supabase: true })
     return { user: prof }
   }
-  const u = allUsers().find((x) => x.email === email)
+  const lkey = email.toLowerCase()
+  const u = allUsers().find((x) => x.email === lkey || (x.username || '').toLowerCase() === lkey)
   if (!u) return { error: 'Hesap bulunamadı, hekiminize başvurun.' }
   if (u.pass !== pass) return { error: 'Şifre hatalı.' }
   if (allowedRoles && !allowedRoles.includes(u.role)) return { error: 'Bu giriş bu role kapalı.' }
@@ -46,7 +56,7 @@ export async function registerRequest({ name, email, pass, role, childEmail }) {
 // Hekim veya süper admin panelden tek tuşla hesap açar (UID gerekmez)
 // - hekim yalnızca hasta/ebeveyn açabilir
 // - süper admin hekim/hasta/ebeveyn açabilir
-export async function createUserByDoctor({ name, email, pass, role, childEmail, branch, extra }) {
+export async function createUserByDoctor({ name, email, pass, role, childEmail, branch, username, extra }) {
   const me = getSession()
   if (!me || (me.role !== 'hekim' && me.role !== 'admin')) return { error: 'Yetkisiz işlem.' }
   email = String(email || '').trim().toLowerCase()
@@ -55,13 +65,34 @@ export async function createUserByDoctor({ name, email, pass, role, childEmail, 
   if (role === 'hekim' && me.role !== 'admin') return { error: 'Hekim hesabını yalnızca süper admin açabilir.' }
   if (pass.length < 6) return { error: 'Şifre en az 6 karakter olmalı.' }
   if (hasSupabase) {
-    // Auth kullanıcısını aç; hekimin oturumu bozulmasın diye sakla ve geri yükle
+    // Yöntem 1 (tercih edilen): veritabanı fonksiyonu — signup kapalıyken de çalışır
+    const { data: res, error: rerr } = await supabase.rpc('create_account', {
+      p_email: email,
+      p_password: pass,
+      p_name: name,
+      p_role: role,
+      p_branch: role === 'hekim' ? (branch || 'genel') : 'genel',
+      p_username: username || '',
+      p_extra: extra || {}
+    })
+    if (!rerr && res && res.ok) {
+      if (role === 'ebeveyn' && childEmail) {
+        const { data: child } = await supabase.from('profiles').select('id').eq('email', String(childEmail).toLowerCase()).single()
+        if (child) await supabase.from('parent_child').upsert({ parent_id: res.uid, child_id: child.id }, { onConflict: 'parent_id,child_id' })
+      }
+      return { ok: true, uid: res.uid }
+    }
+    // Yöntem 2: yedek — doğrudan signup (func kurulmamışsa)
     const { data: s } = await supabase.auth.getSession()
     const prev = s?.session
     const { data, error } = await supabase.auth.signUp({ email, password: pass })
     if (error) {
       if (prev) await supabase.auth.setSession({ access_token: prev.access_token, refresh_token: prev.refresh_token })
-      return { error: /already registered/i.test(error.message) ? 'Bu e-posta zaten kayıtlı.' : error.message }
+      return { error: /already registered/i.test(error.message)
+        ? 'Bu e-posta zaten kayıtlı.'
+        : /signups not allowed/i.test(error.message)
+          ? 'Sunucu kayıtları kapalı. db/migration_users.sql dosyasını çalıştırın.'
+          : error.message }
     }
     const uid = data.user?.id
     if (prev) await supabase.auth.setSession({ access_token: prev.access_token, refresh_token: prev.refresh_token })
@@ -70,6 +101,7 @@ export async function createUserByDoctor({ name, email, pass, role, childEmail, 
       id: uid, role, email, name,
       created_by: me.id,
       branch: role === 'hekim' ? (branch || 'genel') : 'genel',
+      username: username || '',
       reminder_days: 5,
       last_visit: new Date().toISOString().slice(0, 10),
       ...(extra || {})
@@ -86,6 +118,7 @@ export async function createUserByDoctor({ name, email, pass, role, childEmail, 
   if (users.some((x) => x.email === email)) return { error: 'Bu e-posta kayıtlı.' }
   const nu = {
     id: 'u' + Date.now(), role, email, pass, name,
+    username: username || '',
     branch: role === 'hekim' ? (branch || 'genel') : 'genel',
     children: role === 'ebeveyn' && childEmail ? [childEmail] : [],
     created_by: me.id,

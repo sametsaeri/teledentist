@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { STATUS_TR } from '../data/teeth.js'
 import { ToothChart, ToothVisual } from '../components/ToothChart.jsx'
@@ -12,6 +12,10 @@ import {
   listAppointments, approveAppointment, completeAppointment, listRequests, approveRequest
 } from '../services/db.js'
 import { triageScore } from '../services/clinical.js'
+import {
+  Logo, Chart, Users, Calendar, Send, Clipboard, Camera, FileText, Search, Plus, Check,
+  CheckCircle, Clock, Stethoscope, User, Save, X, Alert, Camera as CameraIcon
+} from '../components/Icons.jsx'
 
 function xrayKey(pid, tooth) { return `${pid}_${tooth}` }
 
@@ -39,15 +43,135 @@ function XrayBox({ pid, tooth }) {
 }
 
 const TABS = [
-  { id: 'ozet', label: '📊 Genel Bakış' },
-  { id: 'hastalar', label: '🧑‍🦷 Hastalar' },
-  { id: 'yeni', label: '➕ Yeni Hasta' },
-  { id: 'takvim', label: '📆 Takvim' },
-  { id: 'randevu', label: '📥 Randevu Talepleri' },
-  { id: 'triyaj', label: '🩺 Triyaj & Sevk' },
-  { id: 'foto', label: '📷 Fotoğraflar' },
-  { id: 'istek', label: '📝 Kayıt İstekleri' }
+  { id: 'ozet', label: 'Genel Bakış', Icon: Chart },
+  { id: 'hastalar', label: 'Hastalar', Icon: Users },
+  { id: 'takvim', label: 'Takvim', Icon: Calendar },
+  { id: 'randevu', label: 'Randevu Talepleri', Icon: Send },
+  { id: 'triyaj', label: 'Triyaj & Sevk', Icon: Clipboard },
+  { id: 'foto', label: 'Fotoğraflar', Icon: Camera },
+  { id: 'istek', label: 'Kayıt İstekleri', Icon: FileText }
 ]
+
+// Menüyü konulara göre gruplandır
+const GROUPS = [
+  { label: 'Klinik', items: ['ozet', 'hastalar'] },
+  { label: 'Planlama', items: ['takvim', 'randevu'] },
+  { label: 'Değerlendirme', items: ['triyaj', 'foto'] },
+  { label: 'Kayıtlar', items: ['istek'] }
+]
+
+function Modal({ title, sub, onClose, children }) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <div>
+            <h3>{title}</h3>
+            {sub && <p className="muted">{sub}</p>}
+          </div>
+          <button className="ghost" onClick={onClose}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function NewPatientForm({ onDone, onClose }) {
+  const [form, setForm] = useState(emptyForm())
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const save = async () => {
+    setBusy(true); setMsg('')
+    const extra = {
+      tc_no: form.tc_no, gender: form.gender, phone: form.phone, address: form.address,
+      city: form.city, district: form.district, blood: form.blood, insurance: form.insurance,
+      school: form.school, occupation: form.occupation, near_name: form.near_name,
+      near_phone: form.near_phone, near_relation: form.near_relation,
+      reminder_days: Number(form.reminder_days)
+    }
+    Object.keys(extra).forEach((k) => { if (!extra[k]) delete extra[k] })
+    if (form.birth_date) {
+      extra.birth_date = form.birth_date
+      extra.last_visit = new Date().toISOString().slice(0, 10)
+    }
+    const r = await createUserByDoctor({
+      name: form.name, email: form.email, pass: form.pass, role: form.role,
+      childEmail: form.childEmail, username: form.username, extra
+    })
+    setBusy(false)
+    if (r.error) return setMsg(r.error)
+    setMsg(`✅ ${form.name} hesabı açıldı.`)
+    onDone({ name: form.name, email: form.email, pass: form.pass })
+  }
+
+  return (
+    <>
+      <h4 className="modal-sub">🔑 Giriş Bilgileri</h4>
+      <div className="grid form-grid">
+        <label>Ad Soyad *<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+        <label>E-posta (giriş için) *<input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+        <label>Geçici şifre *<input value={form.pass} onChange={(e) => setForm({ ...form, pass: e.target.value })} /></label>
+        <label>Kullanıcı adı (giriş için)<input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="örn: mehmet.yilmaz" /></label>
+        <label>Rol
+          <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+            <option value="hasta">Hasta</option>
+            <option value="ebeveyn">Ebeveyn</option>
+          </select>
+        </label>
+        {form.role === 'ebeveyn' && (
+          <label>Çocuğun e-postası<input value={form.childEmail} onChange={(e) => setForm({ ...form, childEmail: e.target.value })} /></label>
+        )}
+      </div>
+
+      <h4 className="modal-sub">🪪 Kimlik Bilgileri</h4>
+      <div className="grid form-grid">
+        <label>TC Kimlik No<input value={form.tc_no} maxLength={11} onChange={(e) => setForm({ ...form, tc_no: e.target.value })} /></label>
+        <label>Doğum Tarihi<input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} /></label>
+        <label>Cinsiyet
+          <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
+            <option value="">Seç</option><option value="Kadın">Kadın</option><option value="Erkek">Erkek</option>
+          </select>
+        </label>
+        <label>Kan Grubu
+          <select value={form.blood} onChange={(e) => setForm({ ...form, blood: e.target.value })}>
+            <option value="">Seç</option>{['A0','A Rh+','A Rh-','B0','B Rh+','B Rh-','AB0','AB Rh+','AB Rh-','O0','O Rh+','O Rh-'].map((b) => <option key={b}>{b}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <h4 className="modal-sub">📞 İletişim ve Adres</h4>
+      <div className="grid form-grid">
+        <label>Telefon<input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
+        <label>Adres<input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
+        <label>İl<input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></label>
+        <label>İlçe<input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} /></label>
+      </div>
+
+      <h4 className="modal-sub">👪 Yakın ve Sosyal Bilgiler</h4>
+      <div className="grid form-grid">
+        <label>Yakın Adı<input value={form.near_name} onChange={(e) => setForm({ ...form, near_name: e.target.value })} /></label>
+        <label>Yakın Telefonu<input value={form.near_phone} onChange={(e) => setForm({ ...form, near_phone: e.target.value })} /></label>
+        <label>Yakınlık Derecesi<input value={form.near_relation} onChange={(e) => setForm({ ...form, near_relation: e.target.value })} /></label>
+        <label>Okul<input value={form.school} onChange={(e) => setForm({ ...form, school: e.target.value })} /></label>
+        <label>Meslek<input value={form.occupation} onChange={(e) => setForm({ ...form, occupation: e.target.value })} /></label>
+        <label>Sağlık Sigortası<input value={form.insurance} onChange={(e) => setForm({ ...form, insurance: e.target.value })} /></label>
+        <label>Hatırlatma (gün önce)
+          <select value={form.reminder_days} onChange={(e) => setForm({ ...form, reminder_days: e.target.value })}>
+            {[1, 2, 3, 5, 7, 10, 14].map((d) => <option key={d} value={d}>{d} gün</option>)}
+          </select>
+        </label>
+      </div>
+
+      {msg && <p className="muted">{msg}</p>}
+      <div className="modal-actions">
+        <button className="ghost" onClick={onClose}>Vazgeç</button>
+        <button onClick={save} disabled={busy}>{busy ? 'Kaydediliyor...' : '✅ Hesabı Oluştur'}</button>
+      </div>
+    </>
+  )
+}
 
 const BRANCHES = ['genel', 'restoratif', 'endodonti', 'periodontoloji', 'pedodonti', 'ortodonti', 'protez', 'ağız-cerrahi']
 const BRANCH_TR = { genel: 'Genel Diş', restoratif: 'Restoratif', endodonti: 'Endodonti', periodontoloji: 'Periodontoloji', pedodonti: 'Pedodonti', ortodonti: 'Ortodonti', protez: 'Protez', 'ağız-cerrahi': 'Ağız ve Çene Cerrahisi' }
@@ -56,7 +180,7 @@ const emptyForm = () => ({
   name: '', email: '', pass: '', role: 'hasta', tc_no: '', birth_date: '', gender: '',
   phone: '', address: '', city: '', district: '', blood: '', insurance: '', school: '',
   occupation: '', near_name: '', near_phone: '', near_relation: '', childEmail: '',
-  reminder_days: 5, branch: 'genel'
+  reminder_days: 5, branch: 'genel', username: ''
 })
 
 export function DoctorList() {
@@ -72,6 +196,7 @@ export function DoctorList() {
   const [refMsg, setRefMsg] = useState('')
   const [form, setForm] = useState(emptyForm())
   const [approveDate, setApproveDate] = useState({})
+  const [showNew, setShowNew] = useState(false)
   const me = getSession()
 
   const reload = () => {
@@ -103,7 +228,7 @@ export function DoctorList() {
     Object.keys(extra).forEach((k) => { if (!extra[k]) delete extra[k] })
     const r = await createUserByDoctor({
       name: form.name, email: form.email, pass: form.pass, role: form.role,
-      childEmail: form.childEmail, extra
+      childEmail: form.childEmail, username: form.username, extra
     })
     if (r.error) return setMsg(r.error)
     setMsg(`✅ ${form.name} hesabı açıldı. Giriş: ${form.email} / ${form.pass}`)
@@ -119,17 +244,39 @@ export function DoctorList() {
 
   return (
     <div>
-      <h1>🧑‍⚕️ Hekim Paneli</h1>
-      <p className="muted">Hoş geldiniz {me?.name}</p>
+      <div className="panel-hero">
+        <div>
+          <h1><Stethoscope size={24} /> Hekim Paneli</h1>
+          <p className="muted">Hoş geldiniz <b>{me?.name}</b></p>
+        </div>
+        <span className="spacer" />
+        <button className="btn-new" onClick={() => setShowNew(true)}><Plus size={16} /> Yeni Hasta Ekle</button>
+      </div>
 
-      <div className="tabs">
-        {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? 'tab active' : 'tab'} onClick={() => setTab(t.id)}>
-            {t.label}
-            {t.id === 'randevu' && pending.length > 0 && <span className="tab-count">{pending.length}</span>}
-            {t.id === 'istek' && requests.length > 0 && <span className="tab-count">{requests.length}</span>}
-            {t.id === 'foto' && photos.length > 0 && <span className="tab-count">{photos.length}</span>}
-          </button>
+      <div className="kpi-row">
+        <button className="kpi kpi-btn" onClick={() => setTab('hastalar')}><b>{patients.length}</b><span>Kayıtlı Hasta</span></button>
+        <button className="kpi kpi-btn" onClick={() => setTab('randevu')}><b className={pending.length ? 'alert-num' : ''}>{pending.length}</b><span>Bekleyen Randevu Talebi</span></button>
+        <button className="kpi kpi-btn" onClick={() => setTab('takvim')}><b>{approved.length}</b><span>Onaylı Randevu</span></button>
+        <button className="kpi kpi-btn" onClick={() => setTab('triyaj')}><b>{triage.length}</b><span>Triyaj Kaydı</span></button>
+        <button className="kpi kpi-btn" onClick={() => setTab('istek')}><b className={requests.length ? 'alert-num' : ''}>{requests.length}</b><span>Kayıt İsteği</span></button>
+      </div>
+
+      <div className="group-tabs">
+        {GROUPS.map((g) => (
+          <div className="tab-group" key={g.label}>
+            <span className="group-label">{g.label}</span>
+            <div className="group-items">
+              {g.items.map((id) => {
+                const t = TABS.find((x) => x.id === id)
+                const badge = id === 'randevu' ? pending.length : id === 'istek' ? requests.length : id === 'foto' ? photos.length : 0
+                return (
+                  <button key={id} className={tab === id ? 'tab active' : 'tab'} onClick={() => setTab(id)}>
+                    <t.Icon size={15} /> {t.label}{badge > 0 && <span className="tab-count">{badge}</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         ))}
       </div>
 
@@ -154,14 +301,16 @@ export function DoctorList() {
       {tab === 'hastalar' && (
         <div>
           <div className="card toolbar">
-            <input placeholder="🔍 Ad, TC, telefon ile ara..." value={q} onChange={(e) => setQ(e.target.value)} style={{ minWidth: 260 }} />
+            <input placeholder="Ad, TC veya telefon ile ara..." value={q} onChange={(e) => setQ(e.target.value)} style={{ minWidth: 260 }} />
             <span className="badge">{patients.length} hasta</span>
+            <span className="spacer" />
+            <button onClick={() => setShowNew(true)}><Plus size={16} /> Yeni Hasta Ekle</button>
           </div>
           {patients.length === 0 && <div className="card"><p className="muted">Kayıtlı hasta yok. "Yeni Hasta" sekmesinden ekleyin.</p></div>}
           {patients.map((p) => (
             <div className="card patient-row" key={p.id}>
               <div>
-                <strong>🦷 {p.name}</strong> <span className="muted">({p.email})</span>
+                <strong>{p.name}</strong> <span className="muted">({p.email})</span>
                 <p className="muted">
                   {p.tc_no ? `TC: ${p.tc_no} · ` : ''}{p.gender || ''} {p.birth_date ? `· ${p.birth_date}` : ''}{p.phone ? ` · ${p.phone}` : ''}
                 </p>
@@ -175,61 +324,11 @@ export function DoctorList() {
         </div>
       )}
 
-      {/* ---------------- YENİ HASTA ---------------- */}
-      {tab === 'yeni' && (
-        <div className="card">
-          <h3>➕ Yeni Hasta / Ebeveyn Kaydı</h3>
-          <p className="muted">Hesap otomatik açılır. Hasta, verdiğiniz e-posta ve şifreyle giriş yapar.</p>
-          <div className="grid form-grid">
-            <label>Ad Soyad *<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
-            <label>E-posta (giriş) *<input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
-            <label>Geçici şifre *<input value={form.pass} onChange={(e) => setForm({ ...form, pass: e.target.value })} /></label>
-            <label>Rol
-              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                <option value="hasta">Hasta</option>
-                <option value="ebeveyn">Ebeveyn</option>
-              </select>
-            </label>
-            {form.role === 'ebeveyn' && (
-              <label>Çocuğun e-postası<input value={form.childEmail} onChange={(e) => setForm({ ...form, childEmail: e.target.value })} /></label>
-            )}
-          </div>
-          <h4>Kimlik Bilgileri</h4>
-          <div className="grid form-grid">
-            <label>TC Kimlik No<input value={form.tc_no} maxLength={11} onChange={(e) => setForm({ ...form, tc_no: e.target.value })} /></label>
-            <label>Doğum Tarihi<input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} /></label>
-            <label>Cinsiyet
-              <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
-                <option value="">Seç</option><option value="Kadın">Kadın</option><option value="Erkek">Erkek</option>
-              </select>
-            </label>
-            <label>Kan Grubu
-              <select value={form.blood} onChange={(e) => setForm({ ...form, blood: e.target.value })}>
-                <option value="">Seç</option>{['A0','A Rh+','A Rh-','B0','B Rh+','B Rh-','AB0','AB Rh+','AB Rh-','O0','O Rh+','O Rh-'].map((b) => <option key={b}>{b}</option>)}
-              </select>
-            </label>
-            <label>Telefon<input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
-            <label>Adres<input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
-            <label>İl<input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></label>
-            <label>İlçe<input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} /></label>
-          </div>
-          <h4>Sosyal ve Yakın Bilgileri</h4>
-          <div className="grid form-grid">
-            <label>Okul<input value={form.school} onChange={(e) => setForm({ ...form, school: e.target.value })} /></label>
-            <label>Meslek<input value={form.occupation} onChange={(e) => setForm({ ...form, occupation: e.target.value })} /></label>
-            <label>Sağlık Sigortası<input value={form.insurance} onChange={(e) => setForm({ ...form, insurance: e.target.value })} /></label>
-            <label>Yakın Adı<input value={form.near_name} onChange={(e) => setForm({ ...form, near_name: e.target.value })} /></label>
-            <label>Yakın Telefonu<input value={form.near_phone} onChange={(e) => setForm({ ...form, near_phone: e.target.value })} /></label>
-            <label>Yakınlık Derecesi<input value={form.near_relation} onChange={(e) => setForm({ ...form, near_relation: e.target.value })} /></label>
-            <label>Hatırlatma (gün önce)
-              <select value={form.reminder_days} onChange={(e) => setForm({ ...form, reminder_days: e.target.value })}>
-                {[1, 2, 3, 5, 7, 10, 14].map((d) => <option key={d} value={d}>{d} gün</option>)}
-              </select>
-            </label>
-          </div>
-          <button onClick={saveNewPatient}>Hesabı Oluştur</button>
-          {msg && <p className="muted">{msg}</p>}
-        </div>
+
+      {showNew && (
+        <Modal title="Yeni Hasta Kaydı" sub="Hesap otomatik açılır, UID gerekmez." onClose={() => setShowNew(false)}>
+          <NewPatientForm onClose={() => setShowNew(false)} onDone={() => { reload() }} />
+        </Modal>
       )}
 
       {/* ---------------- TAKVİM ---------------- */}

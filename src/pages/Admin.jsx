@@ -7,7 +7,7 @@ const BRANCHES = ['genel', 'restoratif', 'endodonti', 'periodontoloji', 'pedodon
 const BRANCH_TR = { genel: 'Genel Diş', restoratif: 'Restoratif', endodonti: 'Endodonti', periodontoloji: 'Periodontoloji', pedodonti: 'Pedodonti', ortodonti: 'Ortodonti', protez: 'Protez', 'ağız-cerrahi': 'Ağız ve Çene Cerrahisi' }
 const ROLE_TR = { admin: 'Süper Admin', hekim: 'Hekim', hasta: 'Hasta', ebeveyn: 'Ebeveyn' }
 
-const empty = { name: '', email: '', pass: '', role: 'hekim', branch: 'genel', tc_no: '', phone: '' }
+const empty = { name: '', email: '', pass: '', role: 'hekim', branch: 'genel', tc_no: '', phone: '', username: '' }
 
 export function AdminPanel() {
   const nav = useNavigate()
@@ -37,7 +37,7 @@ export function AdminPanel() {
     if (form.phone) extra.phone = form.phone
     const r = await createUserByDoctor({
       name: form.name, email: form.email, pass: form.pass,
-      role: form.role, branch: form.branch, extra
+      role: form.role, branch: form.branch, username: form.username, extra
     })
     if (r.error) return setMsg(r.error)
     setMsg(`✅ ${form.name} (${ROLE_TR[form.role]}) hesabı açıldı.`)
@@ -48,6 +48,12 @@ export function AdminPanel() {
   const changeRole = async (u, role) => {
     const r = await updateUserByAdmin(u.id, { role })
     setMsg(r.error || `${u.name} → ${ROLE_TR[role]} olarak güncellendi.`)
+    reload()
+  }
+
+  const saveMeta = async (u, patch) => {
+    const r = await updateUserByAdmin(u.id, patch)
+    setMsg(r.error || `${u.name} güncellendi.`)
     reload()
   }
 
@@ -93,6 +99,7 @@ export function AdminPanel() {
             <label>Ad Soyad *<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
             <label>E-posta *<input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
             <label>Şifre *<input value={form.pass} onChange={(e) => setForm({ ...form, pass: e.target.value })} /></label>
+            <label>Kullanıcı Adı<input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="örn: resulyel" /></label>
             <label>Rol
               <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
                 <option value="hekim">Hekim</option>
@@ -136,7 +143,7 @@ export function AdminPanel() {
           <h3>🔐 Kullanıcı Yetkilerini Düzenle</h3>
           <p className="muted">Rol değişikliği anında geçerlidir. Veriler silinmez.</p>
           <table className="table">
-            <thead><tr><th>Kullanıcı</th><th>Mevcut Rol</th><th>Yeni Rol</th></tr></thead>
+            <thead><tr><th>Kullanıcı</th><th>Mevcut Rol</th><th>Yeni Rol</th><th>Kullanıcı Adı</th><th>Branş</th></tr></thead>
             <tbody>
               {users.map((u) => (
                 <tr key={u.id}>
@@ -145,6 +152,18 @@ export function AdminPanel() {
                   <td>
                     <select defaultValue={u.role} onChange={(e) => changeRole(u, e.target.value)}>
                       {['admin', 'hekim', 'hasta', 'ebeveyn'].map((r) => <option key={r} value={r}>{ROLE_TR[r]}</option>)}
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      defaultValue={u.username || ''}
+                      onBlur={(e) => e.target.value !== (u.username || '') && saveMeta(u, { username: e.target.value })}
+                      placeholder="kullanıcı adı"
+                    />
+                  </td>
+                  <td>
+                    <select defaultValue={u.branch || 'genel'} onChange={(e) => saveMeta(u, { branch: e.target.value })}>
+                      {BRANCHES.map((b) => <option key={b} value={b}>{BRANCH_TR[b]}</option>)}
                     </select>
                   </td>
                 </tr>
