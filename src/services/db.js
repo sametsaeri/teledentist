@@ -117,13 +117,33 @@ export async function listReferrals() {
   }
   return []
 }
-
 export async function referPatient({ patientId, toDoctor, branch, note, fromDoctor }) {
   if (hasSupabase) {
     const { error } = await supabase.from('referrals').insert({ patient_id: patientId, from_doctor: fromDoctor || null, to_doctor: toDoctor, branch: branch || 'genel', note: note || '' })
     return { error: error?.message }
   }
   return { error: 'Supabase bağlı değil.' }
+}
+
+// Kayıt istekleri: hasta ister, hekim onaylar
+export async function listRequests() {
+  if (hasSupabase) {
+    const { data } = await supabase.from('kayit_istekleri').select('*').order('created_at', { ascending: false })
+    if (data) return data
+  }
+  return []
+}
+
+export async function approveRequest(req, createdBy) {
+  if (!hasSupabase) return { error: 'Supabase bağlı değil.' }
+  const { error } = await supabase.from('profiles').upsert({ id: req.user_id, role: req.role, email: req.email.toLowerCase(), name: req.name, created_by: createdBy || null })
+  if (error) return { error: error.message }
+  if (req.role === 'ebeveyn' && req.child_email) {
+    const { data: child } = await supabase.from('profiles').select('id').eq('email', req.child_email.toLowerCase()).single()
+    if (child) await supabase.from('parent_child').upsert({ parent_id: req.user_id, child_id: child.id }, { onConflict: 'parent_id,child_id' })
+  }
+  await supabase.from('kayit_istekleri').delete().eq('id', req.id)
+  return { ok: true }
 }
 
 // Hekim panelinden profil tamamlama (Auth kullanıcısı panelden açıldıktan sonra)
@@ -136,4 +156,131 @@ export async function createProfile({ uid, role, email, name, childId, createdBy
     return { ok: true }
   }
   return { error: 'Supabase bağlı değil.' }
+}
+
+export async function updatePatient(pid, patch) {
+  if (hasSupabase) {
+    const { error } = await supabase.from('profiles').update(patch).eq('id', pid)
+    return { error: error?.message }
+  }
+  const { save: s, load: l } = { save, load }
+  s('td_users', l('td_users', []).map((u) => u.id === pid ? { ...u, ...patch } : u))
+  return { ok: true }
+}
+
+export async function listAllProfiles() {
+  if (hasSupabase) {
+    const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
+    if (data) return data
+  }
+  return allUsers()
+}
+
+// ---------- Randevu / Takvim / Bildirim ----------
+
+export async function listAppointments() {
+  if (hasSupabase) {
+    const { data } = await supabase.from('appointments').select('*').order('appt_date', { ascending: true })
+    if (data) return data
+  }
+  return load(keys.appointments, [])
+}
+
+export async function insertAppointment({ name, contact, dept, complaint, apptDate }) {
+  if (hasSupabase) {
+    const { error } = await supabase.from('appointments').insert({
+      name, contact, dept: dept || 'genel-dis', complaint,
+      appt_date: apptDate || null, status: 'yeni'
+    })
+    return { error: error?.message }
+  }
+  const list = load(keys.appointments, [])
+  list.push({ id: Date.now(), name, contact, dept: dept || 'genel-dis', complaint, appt_date: apptDate || null, status: 'yeni', created_at: new Date().toISOString() })
+  save(keys.appointments, list)
+  return {}
+}
+
+export async function approveAppointment(id, doctorId, dateStr) {
+  if (hasSupabase) {
+    const { error } = await supabase.from('appointments')
+      .update({ status: 'onaylı', doctor_id: doctorId || null, appt_date: dateStr || null })
+      .eq('id', id)
+    return { error: error?.message }
+  }
+  const list = load(keys.appointments, []).map((a) => a.id === id ? { ...a, status: 'onaylı', doctor_id: doctorId, appt_date: dateStr || a.appt_date } : a)
+  save(keys.appointments, list)
+  return {}
+}
+
+export async function completeAppointment(id) {
+  if (hasSupabase) {
+    const { error } = await supabase.from('appointments').update({ status: 'tamamlandı' }).eq('id', id)
+    return { error: error?.message }
+  }
+  const list = load(keys.appointments, []).map((a) => a.id === id ? { ...a, status: 'tamamlandı' } : a)
+  save(keys.appointments, list)
+  return {}
+}
+
+export async function updateReminderDays(pid, days) {
+  if (hasSupabase) {
+    const { error } = await supabase.from('profiles').update({ reminder_days: Number(days) }).eq('id', pid)
+    return { error: error?.message }
+  }
+  const users = load('td_users', []).map((u) => u.id === pid ? { ...u, reminderDays: Number(days) } : u)
+  save('td_users', users)
+  return {}
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null
+  const d = new Date(dateStr)
+  if (isNaN(d)) return null
+  const now = new Date()
+  return Math.ceil((d - now) / 86400000)
+}
+
+// Hekim köşe bildirimleri: yaklaşan randevular + kontrolü gelen hastalar
+export async function listNotifications() {
+  const appts = await listAppointments()
+  const pats = await listPatients()
+  const out = []
+  const today = new Date().toISOString().slice(0, 10)
+
+  appts.forEach((a) => {
+    if (a.status !== 'onaylı' || !a.appt_date) return
+    const left = daysUntil(a.appt_date)
+    if (left === null) return
+    const p = pats.find((x) => (x.name || '').toLowerCase() === (a.name || '').toLowerCase())
+    const days = Number(p?.reminder_days ?? p?.reminderDays ?? 5)
+    if (left < 0) return
+    if (left <= days) {
+      out.push({
+        id: 'a' + a.id, type: 'randevu', days: left,
+        title: `${a.name}`,
+        text: `${left === 0 ? 'Bugün' : left + ' gün sonra'} randevusu var (${a.appt_date.slice(0, 10)}). Hasta ile iletişime geçin.`,
+        patientId: p?.id || null
+      })
+    }
+  })
+
+  pats.forEach((p) => {
+    const lv = p.last_visit || p.lastVisit
+    if (!lv) return
+    const days = Number(p.reminder_days ?? p.reminderDays ?? 5)
+    const visit = new Date(lv)
+    visit.setMonth(visit.getMonth() + 3) // 3 aylık bakım kontrolü
+    const left = Math.ceil((visit - new Date()) / 86400000)
+    if (left >= 0 && left <= days) {
+      out.push({
+        id: 'k' + p.id, type: 'kontrol', days: left,
+        title: `${p.name}`,
+        text: `${left === 0 ? 'Bugün' : left + ' gün sonra'} 3 aylık kontrol/bakım zamanı. Arayıp bilgilendirin.`,
+        patientId: p.id
+      })
+    }
+  })
+
+  out.sort((a, b) => a.days - b.days)
+  return { items: out, today }
 }

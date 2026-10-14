@@ -2,57 +2,57 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { Reveal } from '../components/Reveal.jsx'
-import { load, save, keys } from '../services/store.js'
-import { login, allUsers } from '../services/auth.js'
-import { suggestRecall } from '../ai/recall.js'
+import { login, registerRequest } from '../services/auth.js'
+import { insertAppointment } from '../services/db.js'
 
 export function Home() {
   const { t } = useTranslation()
   return (
     <div>
       <div className="hero">
-        <h1>Diş Kliniğiniz Cebinizde</h1>
-        <p>Teledentist ile muayene öncesi triyaj, röntgen ve fotoğrafla ön değerlendirme, tedavi takibi tek panelde. Yalnızca diş hekimliği.</p>
+        <div className="hero-badge">🦷 KTÜ Diş Hekimliği Fakültesi</div>
+        <h1>{t('home_title')}</h1>
+        <p>{t('home_desc')}</p>
         <div className="hero-actions">
-          <Link to="/e-randevu"><span className="btn btn-primary">Hemen Randevu Al</span></Link>
-          <Link to="/teledentistry"><span className="btn btn-ghost">{t('home_cta2')}</span></Link>
+          <Link to="/e-randevu"><span className="btn btn-primary">📆 {t('home_cta1')}</span></Link>
+          <Link to="/teledentistry"><span className="btn btn-ghost">🔬 {t('home_cta2')}</span></Link>
         </div>
         <div className="stat-row">
-          <div className="stat"><b>4</b>Diş bölümü</div>
-          <div className="stat"><b>32</b>Diş takibi (FDI)</div>
-          <div className="stat"><b>3/6/12</b>Ay kontrol önerisi</div>
+          <div className="stat"><b>{t('stat1_n')}</b>{t('stat1_l')}</div>
+          <div className="stat"><b>{t('stat2_n')}</b>{t('stat2_l')}</div>
+          <div className="stat"><b>{t('stat3_n')}</b>{t('stat3_l')}</div>
         </div>
       </div>
 
       <Reveal>
         <div className="card">
-          <h2>Hekimlerimizin Amacı</h2>
-          <p>Yüz yüze muayenenin yerini almak değil, onu hızlandırmak. Şikayetinizi önden alıyoruz, röntgen ve fotoğraflarınızı inceliyoruz, kliniğe hazır bir tedavi planıyla geliyorsunuz. Kırsalda yaşayan, hareket kısıtlılığı olan ve özel bakım gereksinimi olan hastalar için erişimi kolaylaştırıyoruz.</p>
+          <h2>🎯 {t('aim_title')}</h2>
+          <p>{t('aim_desc')}</p>
         </div>
       </Reveal>
 
       <Reveal>
         <div className="card">
-          <h2>Takip Nasıl İşler?</h2>
+          <h2>🔄 {t('steps_title')}</h2>
           <div className="grid">
-            <div><h3>1. Randevu</h3><p className="muted">Bölümünü seç, şikayetini yaz, 15 dakika önce klinikte ol.</p></div>
-            <div><h3>2. Ön Değerlendirme</h3><p className="muted">Triyaj anketi + fotoğraf yükle, hekim önden incelesin.</p></div>
-            <div><h3>3. Tedavi</h3><p className="muted">Klinikte muayene ve tedavi, diş haritana işlenir.</p></div>
-            <div><h3>4. Kontrol</h3><p className="muted">Riskine göre 3/6/12 ay sonra hatırlatma alırsın.</p></div>
+            <div className="step"><b>{t('step1_t')}</b><p className="muted">{t('step1_d')}</p></div>
+            <div className="step"><b>{t('step2_t')}</b><p className="muted">{t('step2_d')}</p></div>
+            <div className="step"><b>{t('step3_t')}</b><p className="muted">{t('step3_d')}</p></div>
+            <div className="step"><b>{t('step4_t')}</b><p className="muted">{t('step4_d')}</p></div>
           </div>
         </div>
       </Reveal>
 
       <Reveal>
         <div className="card">
-          <h2>Bölümlerimiz</h2>
+          <h2>🏥 {t('dept_title')}</h2>
           <div className="grid">
-            <div><h3>Restoratif (Dolgu)</h3><p className="muted">Çürük ve kırık dişler.</p></div>
-            <div><h3>Endodonti (Kanal)</h3><p className="muted">Kanal tedavileri.</p></div>
-            <div><h3>Periodontoloji</h3><p className="muted">Diş eti ve diş taşı.</p></div>
-            <div><h3>Pedodonti</h3><p className="muted">Çocuk diş sağlığı.</p></div>
+            <div className="dept-mini"><b>🦷 {t('dept_rest')}</b><p className="muted">{t('dept_rest_d')}</p></div>
+            <div className="dept-mini"><b>🩻 {t('dept_endo')}</b><p className="muted">{t('dept_endo_d')}</p></div>
+            <div className="dept-mini"><b>🫧 {t('dept_perio')}</b><p className="muted">{t('dept_perio_d')}</p></div>
+            <div className="dept-mini"><b>🧒 {t('dept_pedo')}</b><p className="muted">{t('dept_pedo_d')}</p></div>
           </div>
-          <p><Link to="/e-randevu"><button>Bölüm Seç ve Randevu Al</button></Link></p>
+          <p><Link to="/e-randevu"><button>📆 {t('dept_cta')}</button></Link></p>
         </div>
       </Reveal>
     </div>
@@ -60,24 +60,16 @@ export function Home() {
 }
 
 export function About() {
-  const sections = [
-    { t: 'Teledentistry Nedir?', d: 'Uzaktan diş hekimliği hizmetlerinin bilgi ve iletişim teknolojileri aracılığıyla sunulması.' },
-    { t: 'Kullanım Alanları', d: 'Tarama (Triage), ilk değerlendirme, danışmanlık, tanı ve tedavi planlaması, takip ve kontrol, ağız-diş sağlığı eğitimi, hekimler arası konsültasyon.' },
-    { t: 'Erişilebilirlik Avantajları', d: 'Kırsal bölgelerde yaşayan bireyler, hareket kısıtlılığı olan hastalar, özel bakım gereksinimi olan bireyler.' },
-    { t: 'Klinik Süreçlere Katkısı', d: 'Hasta-hekim-bakıcı iletişiminin güçlenmesi, klinik karar süreçlerinin hızlanması, hibrit model (yüz yüze + uzaktan) önerisi.' },
-    { t: 'Hasta Perspektifi', d: 'Yüz yüze iletişim eksikliği, şikayetleri ifade etme zorluğu, hizmete erişimde güçlük. Triyaj anketi ve fotoğrafla ön değerlendirme bu yüzden var.' },
-    { t: 'Hukuki ve Etik Sorunlar', d: 'Hasta gizliliği, veri güvenliği, hukuki standart eksikliği. KVKK onamı zorunludur.' },
-    { t: 'Araştırma Alanları', d: 'Dental anksiyete etkisi, evde ağız hijyeni eğitimi, plak indeksi etkileri, kırsal bölgelerde memnuniyet. Sitemizdeki anketler bu veriyi üretir.' },
-    { t: 'Sonuç', d: 'Teledentistry, erişilebilirliği artıran güçlü bir tamamlayıcı sağlık hizmetidir.' }
-  ]
+  const { t } = useTranslation()
+  const sections = [1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({ t: t(`about_s${i}_t`), d: t(`about_s${i}_d`) }))
   return (
     <div>
       <div className="info-hero">
-        <h1>Teledentistry Kullanım Amaçları ve Etki Alanları</h1>
-        <p>Aşağı kaydırdıkça her bölüm animasyonla açılır. Yalnızca diş hekimliği kapsamı.</p>
+        <h1>{t('about_hero')}</h1>
+        <p>{t('about_hero_d')}</p>
       </div>
       {sections.map((s, i) => (
-        <Reveal key={s.t} delay={(i % 2) * 80}>
+        <Reveal key={i} delay={(i % 2) * 80}>
           <div className="card info-section">
             <div className="info-num">{i + 1}</div>
             <div><h3>{s.t}</h3><p>{s.d}</p></div>
@@ -86,9 +78,9 @@ export function About() {
       ))}
       <Reveal>
         <div className="card toolbar">
-          <Link to="/triyaj"><button>Triyajı Dene</button></Link>
-          <Link to="/egitim"><button className="ghost">Eğitime Git</button></Link>
-          <Link to="/e-randevu"><button className="ghost">E-Randevu</button></Link>
+          <Link to="/triyaj"><button>🩺 {t('about_try')}</button></Link>
+          <Link to="/egitim"><button className="ghost">🎓 {t('about_edu')}</button></Link>
+          <Link to="/e-randevu"><button className="ghost">📆 {t('about_erd')}</button></Link>
         </div>
       </Reveal>
     </div>
@@ -96,102 +88,177 @@ export function About() {
 }
 
 export function Appointment() {
+  const { t } = useTranslation()
   const params = new URLSearchParams(window.location.search)
-  const initialDept = params.get('dept') || ''
   const [name, setName] = useState('')
   const [contact, setContact] = useState('')
-  const [dept, setDept] = useState(initialDept)
+  const [dept, setDept] = useState(params.get('dept') || '')
   const [complaint, setComplaint] = useState('')
+  const [apptDate, setApptDate] = useState('')
   const [kvkk, setKvkk] = useState(false)
   const [done, setDone] = useState(false)
+  const [err, setErr] = useState('')
 
-  const submit = () => {
-    if (!name || !contact || !complaint) return alert('Ad, iletişim ve şikayet zorunlu.')
-    if (!kvkk) return alert('KVKK onayı gerekli.')
-    const list = load(keys.appointments, [])
-    list.push({ id: Date.now(), name, contact, dept: dept || 'genel-dis', complaint, date: new Date().toISOString().slice(0, 16), status: 'yeni' })
-    save(keys.appointments, list)
+  const submit = async () => {
+    setErr('')
+    if (!name || !contact || !complaint) return setErr('Ad, iletişim ve şikayet zorunlu.')
+    if (!kvkk) return setErr('KVKK onayı gerekli.')
+    const r = await insertAppointment({ name, contact, dept, complaint, apptDate })
+    if (r.error) return setErr(r.error)
     setDone(true)
   }
 
-  if (done) return <div className="card"><h1>Talebiniz alındı</h1><p>Hekim panelinde görüntülenecek. Yeni talep için sayfayı yenileyin.</p><Link to="/hekim"><button className="ghost">Hekim Paneline Bak</button></Link></div>
+  if (done) return (
+    <div className="card">
+      <h1>✅ {t('appt_sent_t')}</h1>
+      <p>{t('appt_sent_d')}</p>
+    </div>
+  )
 
   return (
     <div>
-      <h1>Diş Randevusu / İletişim</h1>
+      <h1>📝 {t('appt_title')}</h1>
       <div className="card">
-        <label>Bölüm: <select value={dept} onChange={(e) => setDept(e.target.value)}>
-          <option value="">Seçin (genel diş)</option>
-          <option value="restoratif">Restoratif (Dolgu)</option>
-          <option value="endodonti">Endodonti (Kanal)</option>
-          <option value="periodontoloji">Periodontoloji (Diş Eti)</option>
-          <option value="pedodonti">Pedodonti (Çocuk)</option>
-        </select></label><br /><br />
-        <input placeholder="Ad Soyad" value={name} onChange={(e) => setName(e.target.value)} /><br /><br />
-        <input placeholder="Telefon / E-posta" value={contact} onChange={(e) => setContact(e.target.value)} /><br /><br />
-        <textarea placeholder="Diş şikayetiniz (örn: 16 nolu azı diş ağrısı)" rows="4" cols="40" value={complaint} onChange={(e) => setComplaint(e.target.value)} /><br /><br />
-        <label><input type="checkbox" checked={kvkk} onChange={(e) => setKvkk(e.target.checked)} /> KVKK metnini okudum, verilerimin işlenmesini kabul ediyorum.</label><br /><br />
-        <button onClick={submit}>Gönder</button>
-        <p className="muted">Talebiniz hekim paneline iletilir.</p>
-        <p><Link to="/e-randevu"><button className="ghost">← Bölüm Seçimine Dön</button></Link></p>
+        <label>{t('appt_dept')}
+          <select value={dept} onChange={(e) => setDept(e.target.value)}>
+            <option value="">{t('appt_pick')}</option>
+            <option value="restoratif">Restoratif (Dolgu)</option>
+            <option value="endodonti">Endodonti (Kanal)</option>
+            <option value="periodontoloji">Periodontoloji (Diş Eti)</option>
+            <option value="pedodonti">Pedodonti (Çocuk)</option>
+          </select>
+        </label><br /><br />
+        <input placeholder={t('appt_name')} value={name} onChange={(e) => setName(e.target.value)} /><br /><br />
+        <input placeholder={t('appt_contact')} value={contact} onChange={(e) => setContact(e.target.value)} /><br /><br />
+        <input placeholder="Tercih edilen randevu tarihi" type="date" value={apptDate} onChange={(e) => setApptDate(e.target.value)} /><br /><br />
+        <textarea placeholder={t('appt_complaint')} rows="4" cols="40" value={complaint} onChange={(e) => setComplaint(e.target.value)} /><br /><br />
+        <label><input type="checkbox" checked={kvkk} onChange={(e) => setKvkk(e.target.checked)} /> {t('appt_kvkk')}</label><br /><br />
+        <button onClick={submit}>{t('appt_send')}</button>
+        {err && <p className="auth-err">{err}</p>}
+        <p className="muted">{t('appt_note')}</p>
+        <p><Link to="/e-randevu"><button className="ghost">{t('appt_back')}</button></Link></p>
       </div>
     </div>
   )
 }
 
-export function Login() {
+// ----------------- Giriş ekranları -----------------
+
+function AuthShell({ title, sub, children, footer, tone }) {
+  const { t, i18n } = useTranslation()
+  return (
+    <div className={`auth-wrap ${tone || ''}`}>
+      <div className="auth-card">
+        <div className="auth-logo">🦷</div>
+        <h1>{title}</h1>
+        <p className="muted">{sub}</p>
+        {children}
+        <div className="auth-foot">{footer}</div>
+        <div className="auth-lang">
+          <button className={i18n.language === 'tr' ? 'lang-on' : 'ghost'} onClick={() => i18n.changeLanguage('tr')}>TR</button>
+          <button className={i18n.language === 'en' ? 'lang-on' : 'ghost'} onClick={() => i18n.changeLanguage('en')}>EN</button>
+        </div>
+        <p className="muted small">© KTÜ Diş Hekimliği — TeleDentist</p>
+      </div>
+    </div>
+  )
+}
+
+function LoginForm({ roles, to, register }) {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [pass, setPass] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const nav = useNavigate()
   const doLogin = async () => {
-    setBusy(true)
-    setErr('')
-    const r = await login(email, pass)
+    setBusy(true); setErr('')
+    const r = await login(email, pass, roles)
     setBusy(false)
     if (r.error) return setErr(r.error)
-    const u = r.user
-    if (u.role === 'admin') nav('/admin')
-    else if (u.role === 'hekim') nav('/hekim')
-    else nav('/hastam')
+    nav(to)
   }
   return (
-    <div className="auth-wrap">
-      <div className="auth-card">
-        <img src="/ktu-logo.png" alt="KTÜ" className="ktu-logo-lg" />
-        <h1>TeleDentist Giriş</h1>
-        <p className="muted">KTÜ Diş Hekimliği Fakültesi | Hasta, hekim ve yönetici girişi</p>
-        <input placeholder="e-posta" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /><br /><br />
-        <input placeholder="şifre" type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="current-password" /><br /><br />
-        {err && <p className="auth-err">{err}</p>}
-        <button onClick={doLogin} disabled={busy} style={{ width: '100%' }}>{busy ? 'Giriş yapılıyor...' : 'Giriş Yap'}</button>
-        <p className="muted">Hesabınız yoksa hekiminize veya klinik yönetimine başvurun. Kayıtlar yalnızca hekim/admin tarafından açılır.</p>
-        <p><Link to="/">← Siteye Dön</Link></p>
-      </div>
-    </div>
+    <>
+      <input placeholder={t('login_email')} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+      <input placeholder={t('login_pass')} type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="current-password" />
+      {err && <p className="auth-err">⚠️ {err}</p>}
+      <button className="btn-full" onClick={doLogin} disabled={busy}>{busy ? t('login_busy') : t('login_go')}</button>
+      {register && <p className="muted"><Link to="/kayit">{t('login_no_account')}</Link></p>}
+    </>
   )
 }
 
-export function Dashboard() {
-  const pats = allUsers().filter((u) => u.role === 'hasta')
+export function PatientLogin() {
+  const { t } = useTranslation()
   return (
-    <div>
-      <h1>Panelim</h1>
-      <div className="grid">
-        {pats.map((p) => {
-          const r = suggestRecall({ lastVisit: p.lastVisit, treatmentType: p.treatmentType, plaqueIndex: p.plaqueIndex, anxietyScore: p.anxietyScore })
-          return (
-            <div className="card" key={p.id}>
-              <h3>{p.name}</h3>
-              <p className="muted">Plak: {p.plaqueIndex} | Anksiyete: {p.anxietyScore}</p>
-              <p><span className="badge">AI recall: {r.nextVisit} ({r.months} ay)</span></p>
-              <p className="muted">{r.reason}</p>
-              <Link to={`/hekim/hasta/${p.id}`}><button className="ghost">Detay</button></Link>
-            </div>
-          )
-        })}
-      </div>
-    </div>
+    <AuthShell
+      tone="tone-patient"
+      title={`👤 ${t('login_patient_t')}`}
+      sub={t('login_patient_s')}
+      footer={<Link to="/hekim-girisi">👨‍⚕️ {t('login_doctor_btn')}</Link>}
+    >
+      <LoginForm roles={['hasta', 'ebeveyn']} to="/hastam" register />
+    </AuthShell>
+  )
+}
+
+export function DoctorLogin() {
+  const { t } = useTranslation()
+  return (
+    <AuthShell
+      tone="tone-doctor"
+      title={`👨‍⚕️ ${t('login_doctor_t')}`}
+      sub={t('login_doctor_s')}
+      footer={<Link to="/danisan-girisi">👤 {t('login_patient_btn')}</Link>}
+    >
+      <LoginForm roles={['hekim']} to="/hekim" />
+    </AuthShell>
+  )
+}
+
+export function AdminLogin() {
+  const { t } = useTranslation()
+  return (
+    <AuthShell
+      tone="tone-admin"
+      title="🛡️ Süper Admin"
+      sub="Bu sayfa yalnızca sistem yöneticisi içindir."
+      footer={<Link to="/hekim-girisi">👨‍⚕️ {t('login_doctor_btn')}</Link>}
+    >
+      <LoginForm roles={['admin']} to="/admin/panel" />
+    </AuthShell>
+  )
+}
+
+export function RegisterRequest() {
+  const { t } = useTranslation()
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [pass, setPass] = useState('')
+  const [role, setRole] = useState('hasta')
+  const [childEmail, setChildEmail] = useState('')
+  const [msg, setMsg] = useState('')
+  const [err, setErr] = useState('')
+  const submit = async () => {
+    setErr(''); setMsg('')
+    const r = await registerRequest({ name, email, pass, role, childEmail })
+    if (r.error) return setErr(r.error)
+    setMsg(t('reg_ok'))
+  }
+  return (
+    <AuthShell title={`📝 ${t('reg_t')}`} sub={t('reg_s')} footer={<Link to="/danisan-girisi">← {t('reg_back')}</Link>}>
+      <input placeholder={t('reg_name')} value={name} onChange={(e) => setName(e.target.value)} />
+      <input placeholder={t('login_email')} value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input placeholder={t('login_pass')} type="password" value={pass} onChange={(e) => setPass(e.target.value)} />
+      <select value={role} onChange={(e) => setRole(e.target.value)}>
+        <option value="hasta">{t('reg_role_h')}</option>
+        <option value="ebeveyn">{t('reg_role_p')}</option>
+      </select>
+      {role === 'ebeveyn' && <input placeholder={t('reg_child')} value={childEmail} onChange={(e) => setChildEmail(e.target.value)} />}
+      {err && <p className="auth-err">⚠️ {err}</p>}
+      {msg && <p className="auth-ok">✅ {msg}</p>}
+      <button className="btn-full" onClick={submit}>{t('reg_send')}</button>
+    </AuthShell>
   )
 }

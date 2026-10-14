@@ -5,58 +5,51 @@ export function Layout({ children }) {
   const { t, i18n } = useTranslation()
   return (
     <div className="layout">
+      {/* Üst şerit: logo + KTÜ anasayfa + dil */}
       <div className="topbar">
-        <span className="topbar-left"><span className="rosette">★</span> Araştırma Üniversitesi</span>
+        <span className="brand topbrand">
+          <span className="brand-mark">🦷</span>
+          <span>TeleDentist</span>
+        </span>
         <span className="spacer" />
-        <a href="https://www.ktu.edu.tr" target="_blank" rel="noreferrer">KTÜ Anasayfa</a>
-        <Link to="/randevu">İletişim</Link>
+        <a className="ktu-btn" href="https://dentistry.ktu.edu.tr" target="_blank" rel="noreferrer">
+          🎓 {t('nav_ktu')}
+        </a>
         <span className="lang">
-          <button className="ghost" onClick={() => i18n.changeLanguage('tr')}>TR</button>
-          <button className="ghost" onClick={() => i18n.changeLanguage('en')}>EN</button>
+          <button className={i18n.language === 'tr' ? 'lang-on' : 'ghost'} onClick={() => i18n.changeLanguage('tr')}>TR</button>
+          <button className={i18n.language === 'en' ? 'lang-on' : 'ghost'} onClick={() => i18n.changeLanguage('en')}>EN</button>
         </span>
       </div>
-      <header className="faculty-header">
-        <div className="faculty-brand">
-          <img src="/ktu-logo.png" alt="KTÜ" className="ktu-logo-xl" />
-          <div>
-            <div className="faculty-name">KARADENİZ<br />TEKNİK ÜNİVERSİTESİ</div>
-            <div className="faculty-sub">Diş Hekimliği Fakültesi</div>
-          </div>
-          <div className="dhf-badge">DHF</div>
-        </div>
-        <nav className="faculty-nav">
-          <Link to="/e-randevu">E-RANDEVU</Link>
-          <Link to="/egitim">EĞİTİM</Link>
-          <Link to="/sss">SSS</Link>
-          <Link to="/randevu">İLETİŞİM</Link>
-        </nav>
-      </header>
+
+      {/* Ana menü */}
       <nav className="nav appnav">
-        <span className="brand"><span className="brand-mark">TD</span> {t('brand')}</span>
+        <Link to="/" className="brand-link"><span className="brand-mark">🦷</span> <b>{t('brand')}</b></Link>
         <Link to="/">{t('nav_home')}</Link>
         <div className="dropdown">
-          <span className="drop-btn">Randevu</span>
+          <span className="drop-btn">📅 {t('nav_randevu')}</span>
           <div className="dropdown-menu">
-            <Link to="/e-randevu">E-Randevu</Link>
-            <Link to="/randevu">Randevu / İletişim</Link>
+            <Link to="/e-randevu">📆 {t('nav_erandevu')}</Link>
+            <Link to="/randevu">☎️ {t('nav_appointment')}</Link>
           </div>
         </div>
         <div className="dropdown">
-          <span className="drop-btn">Kaynaklar</span>
+          <span className="drop-btn">📚 {t('nav_resources')}</span>
           <div className="dropdown-menu">
-            <Link to="/teledentistry">{t('nav_about')}</Link>
-            <Link to="/egitim">Eğitim</Link>
-            <Link to="/sss">SSS</Link>
+            <Link to="/teledentistry">🔬 {t('nav_about')}</Link>
+            <Link to="/egitim">🎓 {t('nav_education')}</Link>
+            <Link to="/sss">❓ {t('nav_faq')}</Link>
           </div>
         </div>
         <span className="spacer" />
-        <Link to="/giris">{t('nav_login')}</Link>
+        <Link to="/danisan-girisi"><button className="btn-enter">👤 {t('nav_login_patient')}</button></Link>
       </nav>
+
       <main>{children}</main>
+
       <footer className="footer">
-        <div><img src="/ktu-logo.png" alt="KTÜ" className="ktu-logo-lg" /></div>
+        <div className="footer-brand"><span className="brand-mark">🦷</span> TeleDentist</div>
         <div>{t('footer_rights')}</div>
-        <div style={{ opacity: 0.8 }}>{t('footer_tubitak')}</div>
+        <div className="footer-note">{t('footer_tubitak')}</div>
       </footer>
     </div>
   )
