@@ -5,12 +5,13 @@ import { DoctorList, DoctorPatient, PatientPanel } from './pages/Portal.jsx'
 import { Triage, Hygiene, Anxiety, PhotoReview, Report } from './pages/Clinical.jsx'
 import { Satisfaction, Education, VideoVisit, Reminders, Campaigns, Consultation, Faq } from './pages/Extra.jsx'
 import { ERandevu } from './pages/ERandevu.jsx'
+import { AdminPanel } from './pages/Admin.jsx'
 import { currentUser } from './services/auth.js'
 
 function Require({ roles, children }) {
   const u = currentUser()
   if (!u) return <Navigate to="/giris" replace />
-  if (roles && !roles.includes(u.role)) return <div className="card"><h1>Yetkisiz</h1><p>Bu panel {roles.join('/')} rolüne özeldir.</p></div>
+  if (u.role !== 'admin' && roles && !roles.includes(u.role)) return <div className="card"><h1>Yetkisiz</h1><p>Bu panel {roles.join('/')} rolüne özeldir.</p></div>
   return children
 }
 
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/konsultasyon" element={<Consultation />} />
           <Route path="/sss" element={<Faq />} />
           <Route path="/e-randevu" element={<ERandevu />} />
+          <Route path="/admin" element={<Require roles={['admin']}><AdminPanel /></Require>} />
         </Routes>
       </Layout>
     </BrowserRouter>

@@ -11,6 +11,14 @@ export async function listPatients() {
   return allUsers().filter((u) => u.role === 'hasta' || u.role === 'ebeveyn')
 }
 
+export async function listDoctors() {
+  if (hasSupabase) {
+    const { data, error } = await supabase.from('profiles').select('*').eq('role', 'hekim').order('created_at', { ascending: false })
+    if (!error && data) return data
+  }
+  return allUsers().filter((u) => u.role === 'hekim')
+}
+
 export async function getPatient(id) {
   if (hasSupabase) {
     const { data } = await supabase.from('profiles').select('*').eq('id', id).single()

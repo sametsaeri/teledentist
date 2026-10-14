@@ -39,14 +39,21 @@ export function Layout({ children }) {
       <nav className="nav appnav">
         <span className="brand"><span className="brand-mark">TD</span> {t('brand')}</span>
         <Link to="/">{t('nav_home')}</Link>
-        <Link to="/teledentistry">{t('nav_about')}</Link>
         <Link to="/e-randevu">E-Randevu</Link>
+        <Link to="/hastam">Dişlerim</Link>
+        <Link to="/hekim">Hekim</Link>
+        <Link to="/triyaj">Triyaj</Link>
+        <Link to="/hijyen">Hijyen</Link>
+        <Link to="/on-degerlendirme">Foto</Link>
+        <Link to="/video">Video</Link>
         <Link to="/egitim">Eğitim</Link>
+        <Link to="/kampanya">Kampanya</Link>
         <Link to="/sss">SSS</Link>
         <span className="spacer" />
         {session ? (
           <span className="toolbar">
-            <Link to={session.role === 'hekim' ? '/hekim' : '/hastam'}>{session.name}</Link>
+            <Link to={session.role === 'hekim' ? '/hekim' : session.role === 'admin' ? '/admin' : '/hastam'}>{session.name}</Link>
+            {session.role === 'admin' && <Link to="/admin"><button className="ghost">Admin</button></Link>}
             <button className="ghost" onClick={out}>Çıkış</button>
           </span>
         ) : (
