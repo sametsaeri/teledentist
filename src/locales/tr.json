@@ -1,0 +1,14 @@
+{
+  "brand": "TeleDentist",
+  "nav_home": "Ana Sayfa",
+  "nav_about": "Teledentistry Nedir",
+  "nav_appointment": "Randevu / İletişim",
+  "nav_login": "Hasta / Ebeveyn Girişi",
+  "nav_dashboard": "Panelim",
+  "home_title": "Uzaktan Diş Hekimliği - Tamamlayıcı Sağlık Hizmeti",
+  "home_desc": "Tarama, triyaj, ilk değerlendirme, danışmanlık, tanı ve tedavi planlaması, takip ve ağız-diş sağlığı eğitimi için hibrit model (yüz yüze + uzaktan).",
+  "home_cta1": "Randevu Oluştur",
+  "home_cta2": "Teledentistry'yi Öğren",
+  "footer_rights": "© Karadeniz Teknik Üniversitesi © Diş Hekimliği Öğrencisi Resul Yel - Hakları Saklıdır",
+  "footer_tubitak": "Bu site KTÜ TÜBİTAK projesi ön hazırlığıdır. İleride T.C. Sağlık Bakanlığı sistemleri ile entegrasyon hedeflenmektedir."
+}

@@ -1,0 +1,14 @@
+{
+  "brand": "TeleDentist",
+  "nav_home": "Home",
+  "nav_about": "What is Teledentistry",
+  "nav_appointment": "Appointment / Contact",
+  "nav_login": "Patient / Parent Login",
+  "nav_dashboard": "My Panel",
+  "home_title": "Remote Dentistry - Complementary Health Service",
+  "home_desc": "Hybrid model (in-person + remote) for triage, first assessment, consultation, diagnosis and treatment planning, follow-up and oral health education.",
+  "home_cta1": "Book Appointment",
+  "home_cta2": "Learn Teledentistry",
+  "footer_rights": "© Karadeniz Technical University © Dentistry Student Resul Yel - All Rights Reserved",
+  "footer_tubitak": "This site is a KTU TUBITAK project pre-study. Future integration with Turkish Ministry of Health systems is planned."
+}
