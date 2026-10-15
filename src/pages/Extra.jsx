@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { load, save, keys, getSession } from '../services/store.js'
 import { reminderService, campaignService } from '../services/reminders.js'
+import { notesApi, listPatients } from '../services/db.js'
+import { X } from '../components/Icons.jsx'
 
 function who() { return getSession()?.id || '' }
 
@@ -140,26 +142,88 @@ export function Campaigns() {
   )
 }
 
-// Hekimler arası konsültasyon
+// Hekimler arası konsültasyon — klinik_notes tablosuna yazılır,
+// böylece diğer hekimler ve süper admin de görebilir.
 export function Consultation() {
+  const me = getSession()
+  const [list, setList] = useState([])
+  const [patients, setPatients] = useState([])
   const [text, setText] = useState('')
-  const [list, setList] = useState(load('td_consults', []))
-  const submit = () => {
-    if (!text) return
-    const all = load('td_consults', [])
-    all.push({ id: Date.now(), from: who(), text, date: new Date().toISOString().slice(0, 16) })
-    save('td_consults', all)
-    setList(all)
-    setText('')
+  const [pid, setPid] = useState('')
+  const [msg, setMsg] = useState('')
+
+  const reload = () => notesApi.list().then((r) => setList(r.filter((n) => n.kind === 'konsultasyon')))
+  useEffect(() => {
+    reload()
+    listPatients().then(setPatients)
+  }, [])
+
+  const submit = async () => {
+    setMsg('')
+    const p = patients.find((x) => x.id === pid)
+    if (!p) return setMsg('Konsültasyon için hasta seçin.')
+    if (!text.trim()) return setMsg('Konsültasyon metni yazın.')
+    const r = await notesApi.insert({
+      patient_id: p.id, patient_name: p.name,
+      doctor_id: me?.id || null, kind: 'konsultasyon', body: text
+    })
+    if (r.error) return setMsg(r.error)
+    setText(''); setPid('')
+    setMsg('Konsültasyon kaydedildi. Diğer hekimler görebilir.')
+    reload()
   }
+
+  const del = async (id) => {
+    await notesApi.remove(id)
+    setMsg('Konsültasyon silindi.')
+    reload()
+  }
+
   return (
     <div>
       <h1>Hekimler Arası Konsültasyon</h1>
+      <p className="muted">
+        Zor bir klinik kararında diğer hekimlerden görüş isteyin. Kayıtlar ortak veritabanında tutulur.
+      </p>
+
       <div className="card">
-        <textarea rows="3" cols="50" placeholder="Örn: 36 nolu kanal tedavili diş için kaplama önerisi?" value={text} onChange={(e) => setText(e.target.value)} /><br /><br />
-        <button onClick={submit}>Konsültasyon Notu Bırak</button>
+        <div className="grid form-grid">
+          <label>Hasta
+            <select value={pid} onChange={(e) => setPid(e.target.value)}>
+              <option value="">— seçin —</option>
+              {patients.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </label>
+        </div>
+        <label>Soru / Değerlendirme
+          <textarea rows="3" placeholder="Örn: 36 nolu kanal tedavili diş için kaplama önerisi?" value={text} onChange={(e) => setText(e.target.value)} />
+        </label>
+        <button onClick={submit}>Konsültasyon Kaydı Oluştur</button>
+        {msg && <p className="muted">{msg}</p>}
       </div>
-      {list.map((c) => <div className="card" key={c.id}><p>{c.text}</p><p className="muted">{c.from} - {c.date}</p></div>)}
+
+      <div className="card">
+        <h3>Konsültasyon Kayıtları ({list.length})</h3>
+        {list.length === 0 && (
+          <p className="muted">
+            Henüz konsültasyon kaydı yok. Hasta seçip sorunuzu yazın.
+          </p>
+        )}
+        {list.map((c) => (
+          <div className="appt-row" key={c.id}>
+            <div>
+              <span className="badge">konsultasyon</span>
+              <strong>{c.patient_name || '—'}</strong>
+              <p className="muted">{String(c.created_at || '').slice(0, 16)}</p>
+              <p>{c.body}</p>
+            </div>
+            <div className="toolbar">
+              {c.patient_id && <Link to={`/hekim/hasta/${c.patient_id}`}><button className="ghost">Hastayı Aç</button></Link>}
+              <button className="ghost tiny danger" onClick={() => del(c.id)}><X size={13} /> Sil</button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

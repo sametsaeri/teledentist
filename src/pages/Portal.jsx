@@ -85,19 +85,19 @@ function XrayBox({ pid, tooth }) {
 }
 
 const TABS = [
-  { id: 'ozet', label: 'Genel Bakış', Icon: Chart },
-  { id: 'gunluk', label: 'Günlük Akış', Icon: Clock },
-  { id: 'hastalar', label: 'Hastalar', Icon: Users },
-  { id: 'randevu', label: 'Randevu Talepleri', Icon: Send },
-  { id: 'takvim', label: 'Takvim', Icon: Calendar },
-  { id: 'triyaj', label: 'Triyaj & Sevk', Icon: Clipboard },
-  { id: 'foto', label: 'Hasta Fotoğrafları', Icon: Camera },
-  { id: 'envanter', label: 'Malzeme Envanteri', Icon: Box },
-  { id: 'laboratuvar', label: 'Laboratuvar', Icon: Flask },
-  { id: 'fiyat', label: 'Fiyatlandırma', Icon: Tag },
-  { id: 'hesap', label: 'Hesap & Bakiye', Icon: Receipt },
-  { id: 'gunluk-not', label: 'Klinik Günlük', Icon: Notebook },
-  { id: 'istek', label: 'Kayıt İstekleri', Icon: FileText }
+  { id: 'ozet', label: 'Genel Bakış', Icon: Chart, desc: 'Klinik performans özeti ve modüllere hızlı erişim.' },
+  { id: 'gunluk', label: 'Günlük Akış', Icon: Clock, desc: 'Bugünün randevuları, saat sırasıyla.' },
+  { id: 'hastalar', label: 'Hastalarım', Icon: Users, desc: 'Tüm hastalar; arama, sıralama ve hatırlatma takibi.' },
+  { id: 'gunluk-not', label: 'Klinik Günlük', Icon: Notebook, desc: 'Tarihli klinik notları, rapor ve konsültasyon kayıtları.' },
+  { id: 'randevu', label: 'Randevu Talepleri', Icon: Send, desc: 'Gelen talepleri onaylayın, çakışma kontrolü otomatiktir.' },
+  { id: 'takvim', label: 'Takvim', Icon: Calendar, desc: 'Onaylı randevuların aylık görünümü.' },
+  { id: 'triyaj', label: 'Triyaj ve Sevk', Icon: Clipboard, desc: 'Hasta triyaj kayıtları ve hekimler arası sevk.' },
+  { id: 'foto', label: 'Hasta Fotoğrafları', Icon: Camera, desc: 'Hastanın gönderdiği fotoğrafları değerlendirin ve yorumlayın.' },
+  { id: 'envanter', label: 'Malzeme Envanteri', Icon: Box, desc: 'Stok takibi, kritik seviye ve son kullanma uyarısı.' },
+  { id: 'laboratuvar', label: 'Laboratuvar', Icon: Flask, desc: 'Protez ve zirkonyum işlerinin teslim takibi.' },
+  { id: 'fiyat', label: 'Fiyatlandırma', Icon: Tag, desc: 'Tedavi ve işlem fiyat listesi.' },
+  { id: 'hesap', label: 'Hesap ve Bakiye', Icon: Receipt, desc: 'Tahakkuk, tahsilat ve hasta bakiyeleri.' },
+  { id: 'istek', label: 'Kayıt İstekleri', Icon: FileText, desc: 'Hasta kayıt taleplerini onaylayın.' }
 ]
 
 // Menüyü konulara göre gruplandır
@@ -236,14 +236,16 @@ const emptyForm = () => ({
 
 export function DoctorList() {
   const [loc, setLoc] = useSearchParams()
-  const [tab, setTabState] = useState(() => (loc.get('tab') || 'ozet'))
-  // Menüden gelen bağlantı sekmeyi değiştirir; sekme değişince adres güncellenir
+  // Sidebar'dan tıklandığında URL değişir; panel de buna göre sekmeyi değiştirmeli
+  const urlTab = loc.get('tab') || 'ozet'
+  const [tab, setTabState] = useState(urlTab)
   const setTab = (t) => {
     setTabState(t)
     const next = new URLSearchParams(loc)
     next.set('tab', t)
     setLoc(next, { replace: true })
   }
+  useEffect(() => { setTabState(urlTab) }, [urlTab])
   const [q, setQ] = useState('')
   const [all, setAll] = useState([])
   const [doctors, setDoctors] = useState([])
@@ -359,12 +361,14 @@ export function DoctorList() {
     save(keys.photoNotes, cur)
   }
 
+  const activeTab = TABS.find((t) => t.id === tab) || TABS[0]
+
   return (
     <div>
       <div className="panel-hero">
         <div>
-          <h1><Stethoscope size={24} /> Hekim Paneli</h1>
-          <p className="muted">Hoş geldiniz <b>{me?.name}</b></p>
+          <h1><activeTab.Icon size={22} /> {activeTab.label}</h1>
+          <p className="muted">{activeTab.desc}</p>
         </div>
         <span className="spacer" />
         <button className="btn-new" onClick={() => setShowNew(true)}><Plus size={16} /> Yeni Hasta Ekle</button>
@@ -376,25 +380,6 @@ export function DoctorList() {
         <button className="kpi kpi-btn" onClick={() => setTab('takvim')}><b>{approved.length}</b><span>Onaylı Randevu</span></button>
         <button className="kpi kpi-btn" onClick={() => setTab('triyaj')}><b>{triage.length}</b><span>Triyaj Kaydı</span></button>
         <button className="kpi kpi-btn" onClick={() => setTab('istek')}><b className={requests.length ? 'alert-num' : ''}>{requests.length}</b><span>Kayıt İsteği</span></button>
-      </div>
-
-      <div className="group-tabs">
-        {GROUPS.map((g) => (
-          <div className="tab-group" key={g.label}>
-            <span className="group-label">{g.label}</span>
-            <div className="group-items">
-              {g.items.map((id) => {
-                const t = TABS.find((x) => x.id === id)
-                const badge = id === 'randevu' ? pending.length : id === 'istek' ? requests.length : id === 'foto' ? photos.length : 0
-                return (
-                  <button key={id} className={tab === id ? 'tab active' : 'tab'} onClick={() => setTab(id)}>
-                    <t.Icon size={15} /> {t.label}{badge > 0 && <span className="tab-count">{badge}</span>}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ))}
       </div>
 
       {/* ---------------- GENEL BAKIŞ ---------------- */}
