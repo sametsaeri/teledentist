@@ -1,10 +1,12 @@
 // db/SUPABASE_SETUP.sql dosyasını Supabase'a TEK KOMUTLA uygular.
 //   npm run db:push
 //
+// Başka bir dosya göndermek için:
+//   node scripts/db-push.mjs db/demo_verisi.sql
+//
 // Gerekli ortam değişkenleri (.env.local veya .env — git'e girmez):
 //   SUPABASE_ACCESS_TOKEN = Supabase > Account Preferences > Personal Access Token
 //   SUPABASE_PROJECT_REF  = proje referansı (sgvibnunxsmzcjfoxfny)
-//   SUPABASE_DB_PASSWORD  = veritabanı şifresi (opsiyonel, --db ile kullanılır)
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -28,10 +30,11 @@ loadEnv()
 
 const TOKEN = process.env.SUPABASE_ACCESS_TOKEN
 const REF = process.env.SUPABASE_PROJECT_REF || 'sgvibnunxsmzcjfoxfny'
-const SQL_FILE = path.join(root, 'db', 'SUPABASE_SETUP.sql')
-
+const TARGET = process.argv[2] || 'db/SUPABASE_SETUP.sql'
+const SQL_FILE = path.resolve(root, TARGET)
 if (!fs.existsSync(SQL_FILE)) {
-  console.error('HATA: db/SUPABASE_SETUP.sql yok. Önce "npm run db:build" çalıştırın.')
+  console.error(`HATA: ${TARGET} bulunamadı.`)
+  if (TARGET.endsWith('SUPABASE_SETUP.sql')) console.error('Önce "npm run db:build" çalıştırın.')
   process.exit(1)
 }
 if (!TOKEN) {
