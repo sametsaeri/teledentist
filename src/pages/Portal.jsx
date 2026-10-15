@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { STATUS_TR } from '../data/teeth.js'
 import { ToothChart, ToothVisual } from '../components/ToothChart.jsx'
 import { toothEducation, recallForTooth } from '../ai/toothAi.js'
@@ -10,14 +10,18 @@ import {
   listPatients, getPatient, getTeeth, saveTooth, lastRecords, updatePatient, getChildren,
   insertTriage, insertHygiene, insertAnxiety, listDoctors, listReferrals, referPatient,
   listAppointments, approveAppointment, completeAppointment, listRequests, approveRequest,
-  uploadImage, loadImage, setAppointmentOnline, listPhotos, listTriage, setPhotoNote, signedPhotoUrl
+  uploadImage, loadImage, setAppointmentOnline, listPhotos, listTriage, setPhotoNote, signedPhotoUrl,
+  plansApi, materialsApi, labApi, invoicesApi, notesApi
 } from '../services/db.js'
 import { triageScore } from '../services/clinical.js'
 import {
   Logo, Chart, Users, Calendar, Send, Clipboard, Camera, FileText, Search, Plus, Check,
   CheckCircle, Clock, Stethoscope, User, Save, X, Alert, Tooth, Lock, Phone, Bell, Chat,
-  ChevronLeft, ChevronRight, Video
+  ChevronLeft, ChevronRight, Video, Box, Flask, Tag, Receipt, Notebook
 } from '../components/Icons.jsx'
+import {
+  DailyFlow, Inventory, LabTracker, Billing, ClinicJournal, ClinicStats
+} from './DoctorModules.jsx'
 
 function xrayKey(pid, tooth) { return `${pid}_${tooth}` }
 
@@ -82,19 +86,28 @@ function XrayBox({ pid, tooth }) {
 
 const TABS = [
   { id: 'ozet', label: 'Genel Bakış', Icon: Chart },
+  { id: 'gunluk', label: 'Günlük Akış', Icon: Clock },
   { id: 'hastalar', label: 'Hastalar', Icon: Users },
-  { id: 'takvim', label: 'Takvim', Icon: Calendar },
   { id: 'randevu', label: 'Randevu Talepleri', Icon: Send },
+  { id: 'takvim', label: 'Takvim', Icon: Calendar },
   { id: 'triyaj', label: 'Triyaj & Sevk', Icon: Clipboard },
-  { id: 'foto', label: 'Fotoğraflar', Icon: Camera },
+  { id: 'foto', label: 'Hasta Fotoğrafları', Icon: Camera },
+  { id: 'envanter', label: 'Malzeme Envanteri', Icon: Box },
+  { id: 'laboratuvar', label: 'Laboratuvar', Icon: Flask },
+  { id: 'fiyat', label: 'Fiyatlandırma', Icon: Tag },
+  { id: 'hesap', label: 'Hesap & Bakiye', Icon: Receipt },
+  { id: 'gunluk-not', label: 'Klinik Günlük', Icon: Notebook },
   { id: 'istek', label: 'Kayıt İstekleri', Icon: FileText }
 ]
 
 // Menüyü konulara göre gruplandır
 const GROUPS = [
-  { label: 'Klinik', items: ['ozet', 'hastalar'] },
-  { label: 'Planlama', items: ['takvim', 'randevu'] },
+  { label: 'Genel', items: ['ozet', 'gunluk'] },
+  { label: 'Klinik', items: ['hastalar', 'gunluk-not'] },
+  { label: 'Planlama', items: ['randevu', 'takvim'] },
   { label: 'Değerlendirme', items: ['triyaj', 'foto'] },
+  { label: 'İşletme', items: ['envanter', 'laboratuvar'] },
+  { label: 'Finans', items: ['fiyat', 'hesap'] },
   { label: 'Kayıtlar', items: ['istek'] }
 ]
 
@@ -222,7 +235,15 @@ const emptyForm = () => ({
 })
 
 export function DoctorList() {
-  const [tab, setTab] = useState('ozet')
+  const [loc, setLoc] = useSearchParams()
+  const [tab, setTabState] = useState(() => (loc.get('tab') || 'ozet'))
+  // Menüden gelen bağlantı sekmeyi değiştirir; sekme değişince adres güncellenir
+  const setTab = (t) => {
+    setTabState(t)
+    const next = new URLSearchParams(loc)
+    next.set('tab', t)
+    setLoc(next, { replace: true })
+  }
   const [q, setQ] = useState('')
   const [all, setAll] = useState([])
   const [doctors, setDoctors] = useState([])
@@ -239,7 +260,16 @@ export function DoctorList() {
   const [photos, setPhotos] = useState([])
   const [photoDraft, setPhotoDraft] = useState({})
   const [sortBy, setSortBy] = useState('ad')
+  const [clinic, setClinic] = useState({ plans: [], materials: [], lab: [], invoices: [], notes: [] })
   const me = getSession()
+
+  const loadClinic = async () => {
+    const [plans, materials, lab, invoices, notes] = await Promise.all([
+      plansApi.list(), materialsApi.list({ order: 'name', asc: true }), labApi.list(),
+      invoicesApi.list(), notesApi.list()
+    ])
+    setClinic({ plans, materials, lab, invoices, notes })
+  }
 
   const reload = () => {
     listPatients().then(setAll)
@@ -249,6 +279,7 @@ export function DoctorList() {
     listAppointments().then(setAppts)
     listTriage().then(setTriage)
     loadPhotos()
+    loadClinic()
   }
   useEffect(reload, [])
 
@@ -366,19 +397,45 @@ export function DoctorList() {
       {/* ---------------- GENEL BAKIŞ ---------------- */}
       {tab === 'ozet' && (
         <div>
-          <div className="kpi-row">
-            <div className="kpi"><b>{patients.length}</b><span>Kayıtlı Hasta</span></div>
-            <div className="kpi"><b>{doctors.length}</b><span>Hekim</span></div>
-            <div className="kpi warn"><b>{pending.length}</b><span>Bekleyen Randevu Talebi</span></div>
-            <div className="kpi"><b>{approved.length}</b><span>Onaylı Randevu</span></div>
-            <div className="kpi"><b>{triage.length}</b><span>Triyaj Kaydı</span></div>
-          </div>
+          <ClinicStats
+            patients={patients}
+            appts={appts}
+            plans={clinic.plans}
+            invoices={clinic.invoices}
+            materials={clinic.materials}
+            lab={clinic.lab}
+            photos={photos}
+          />
           <div className="card">
             <h3><Bell size={18} /> Yaklaşan Hatırlatmalar</h3>
             <ReminderList patients={all} />
           </div>
         </div>
       )}
+
+      {/* ---------------- GÜNLÜK AKIŞ ---------------- */}
+      {tab === 'gunluk' && (
+        <DailyFlow
+          appts={appts}
+          patients={all}
+          onComplete={async (id) => { const r = await completeAppointment(id); setMsg(r.error || 'Randevu tamamlandı.'); reload() }}
+        />
+      )}
+
+      {/* ---------------- ENVANTER ---------------- */}
+      {tab === 'envanter' && <Inventory />}
+
+      {/* ---------------- LABORATUVAR ---------------- */}
+      {tab === 'laboratuvar' && <LabTracker patients={all} />}
+
+      {/* ---------------- FİYATLANDIRMA ---------------- */}
+      {tab === 'fiyat' && <Billing patients={all} initial="fiyat" />}
+
+      {/* ---------------- HESAP / BAKİYE ---------------- */}
+      {tab === 'hesap' && <Billing patients={all} initial="hesap" />}
+
+      {/* ---------------- KLINIK GÜNLÜK ---------------- */}
+      {tab === 'gunluk-not' && <ClinicJournal patients={all} />}
 
       {/* ---------------- HASTALAR ---------------- */}
       {tab === 'hastalar' && (

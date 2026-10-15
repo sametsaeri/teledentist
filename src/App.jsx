@@ -82,15 +82,17 @@ export default function App() {
         <Route path="/admin/panel" element={<Panel roles={['admin']}><AdminPanel /></Panel>} />
         <Route path="/hesap" element={<Panel roles={['admin', 'hekim', 'hasta', 'ebeveyn']}><AccountSettings /></Panel>} />
 
-        {/* --- Ortak klinik araçları --- */}
-        <Route path="/triyaj" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><Triage /></Panel>} />
-        <Route path="/hijyen" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><Hygiene /></Panel>} />
-        <Route path="/anksiyete" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><Anxiety /></Panel>} />
-        <Route path="/on-degerlendirme" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><PhotoReview /></Panel>} />
-        <Route path="/video" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><VideoVisit /></Panel>} />
-        <Route path="/hatirlatma" element={<Panel roles={['hekim']}><Reminders /></Panel>} />
+        {/* --- Yalnızca hasta formları (hekim bunları doldurmaz) --- */}
+        <Route path="/triyaj" element={<Panel roles={['hasta', 'ebeveyn']}><Triage /></Panel>} />
+        <Route path="/hijyen" element={<Panel roles={['hasta', 'ebeveyn']}><Hygiene /></Panel>} />
+        <Route path="/anksiyete" element={<Panel roles={['hasta', 'ebeveyn']}><Anxiety /></Panel>} />
+        <Route path="/on-degerlendirme" element={<Panel roles={['hasta', 'ebeveyn']}><PhotoReview /></Panel>} />
         <Route path="/kampanya" element={<Panel roles={['hasta', 'ebeveyn']}><Campaigns /></Panel>} />
         <Route path="/memnuniyet" element={<Panel roles={['hasta', 'ebeveyn']}><Satisfaction /></Panel>} />
+
+        {/* --- Ortak --- */}
+        <Route path="/video" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><VideoVisit /></Panel>} />
+        <Route path="/hatirlatma" element={<Panel roles={['hekim']}><Reminders /></Panel>} />
 
         <Route path="*" element={<Public><Home /></Public>} />
       </Routes>

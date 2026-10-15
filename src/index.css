@@ -248,6 +248,76 @@ button.tiny { padding: 2px 6px; font-size: 10px; border-radius: 6px; }
 .status-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .status-dot.ok { background: #16a34a; }
 .status-dot.bad { background: #dc2626; }
+
+/* ============================================================
+   HEKİM PANELİ — MODÜL IZGARASI VE ANİMASYONLAR
+   ============================================================ */
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.module-card {
+  display: flex; flex-direction: column; gap: 6px;
+  background: linear-gradient(160deg, #ffffff 0%, #f2fafc 100%);
+  border: 1px solid rgba(2,132,199,.15);
+  border-radius: 18px;
+  padding: 16px 16px 14px;
+  color: #0b3d5f;
+  text-decoration: none;
+  box-shadow: 0 8px 18px rgba(11,61,95,.07);
+  opacity: 0;
+  transform: translateY(14px);
+  animation: modIn .5s cubic-bezier(.22,.9,.3,1) forwards;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.module-card b { font-size: 22px; line-height: 1.1; letter-spacing: -.4px; }
+.module-card span { font-size: 12.5px; color: #5b7a99; font-weight: 600; }
+.module-card svg { color: #0d9488; transition: transform .3s ease; }
+.module-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 38px rgba(11,61,95,.16);
+  border-color: rgba(20,184,166,.4);
+}
+.module-card:hover svg { transform: scale(1.14) rotate(-4deg); }
+@keyframes modIn { to { opacity: 1; transform: none; } }
+
+/* Panel başlığı */
+.panel-hero {
+  background: linear-gradient(120deg, rgba(13,148,136,.10), rgba(2,132,199,.08));
+  border: 1px solid rgba(2,132,199,.14);
+  border-radius: 20px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.panel-hero h1 { margin: 0; font-size: 24px; color: #0b3d5f; }
+
+/* Sekme grupları arası geçiş */
+.group-items .tab { transition: background .2s ease, color .2s ease, transform .2s ease; }
+.group-items .tab:hover { transform: translateY(-1px); }
+.group-items .tab.active { box-shadow: 0 6px 16px rgba(13,148,136,.22); }
+
+.time-chip {
+  display: inline-block;
+  background: #0d9488; color: #fff;
+  border-radius: 8px; padding: 2px 9px;
+  font-size: 12px; font-weight: 700; margin-right: 8px;
+}
+.badge.warn-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #fef3c7; color: #92400e; border-color: #fde68a;
+  margin-left: 6px;
+}
+.kpi.ok { background: #f0fdf4; border-color: #bbf7d0; }
+.kpi-row.compact { margin-bottom: 12px; }
+.edit-panel { background: #f8fbfe; border: 1px dashed var(--line); margin-top: 10px; }
+button.tiny.danger, .ghost.tiny.danger { color: #b91c1c; border-color: #fecaca; }
+button.tiny.danger:hover { background: #fef2f2; }
+
+@media (prefers-reduced-motion: reduce) {
+  .module-card { opacity: 1 !important; transform: none !important; animation: none !important; }
+}
 .row-actions button { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; }
 td.row-actions { white-space: nowrap; }
 .dept-mini { display: flex; flex-direction: column; gap: 4px; }

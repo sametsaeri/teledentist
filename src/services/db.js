@@ -6,7 +6,12 @@ import { allUsers } from './auth.js'
 export async function listPatients() {
   if (hasSupabase) {
     const { data, error } = await supabase.from('profiles').select('*').in('role', ['hasta', 'ebeveyn']).order('created_at', { ascending: false })
-    if (!error && data) return data
+    if (!error && data && data.length) return data
+    if (!error) {
+      const local = allUsers().filter((u) => u.role === 'hasta' || u.role === 'ebeveyn')
+      if (local.length) return local
+      return data || []
+    }
   }
   return allUsers().filter((u) => u.role === 'hasta' || u.role === 'ebeveyn')
 }
@@ -14,7 +19,12 @@ export async function listPatients() {
 export async function listDoctors() {
   if (hasSupabase) {
     const { data, error } = await supabase.from('profiles').select('*').eq('role', 'hekim').order('created_at', { ascending: false })
-    if (!error && data) return data
+    if (!error && data && data.length) return data
+    if (!error) {
+      const local = allUsers().filter((u) => u.role === 'hekim')
+      if (local.length) return local
+      return data || []
+    }
   }
   return allUsers().filter((u) => u.role === 'hekim')
 }
@@ -291,6 +301,99 @@ export async function getSetupStatus() {
   }
   return { data }
 }
+
+// ---------- Hasta Kayıtları (salt okunur izlem) ----------
+// Hastanın kendi panelinde girdiği verileri hekim panelinde gösterir.
+export async function listHygiene(pid) {
+  if (hasSupabase) {
+    const { data, error } = await supabase.from('hygiene').select('*').eq('patient_id', pid).order('hdate', { ascending: false })
+    if (!error && data && data.length) return data
+    if (!error) return []
+  }
+  return load(keys.hygiene, []).filter((h) => String(h.patientId) === String(pid)).slice().reverse()
+}
+
+export async function listAnxiety(pid) {
+  if (hasSupabase) {
+    const { data, error } = await supabase.from('anxiety').select('*').eq('patient_id', pid).order('adate', { ascending: false })
+    if (!error && data && data.length) return data
+    if (!error) return []
+  }
+  return load(keys.anxiety, []).filter((a) => String(a.patientId) === String(pid)).slice().reverse()
+}
+
+// ---------- Genel tablo katmanı (klinik modülleri) ----------
+// Supabase kuruluysa sunucuya yazar; tablo/kolon yoksa veya hata
+// dönerse TARAYICIYA kaydeder. Böylece SQL henüz çalıştırılmamış
+// olsa bile hiçbir modül ölü kalmaz.
+function store(table) {
+  const k = 'td_' + table
+  let localOnly = false // tablo sunucuda yoksa kalıcı olarak yere düş
+  const missing = (msg) => /does not exist|schema cache|not found|PGRST/i.test(String(msg || ''))
+
+  const localList = (where) => {
+    const all = load(k, [])
+    return where ? all.filter((r) => Object.entries(where).every(([c, v]) => String(r[c]) === String(v))) : all
+  }
+
+  return {
+    table,
+    async list({ order = 'created_at', asc = false, where } = {}) {
+      if (hasSupabase && !localOnly) {
+        try {
+          let q = supabase.from(table).select('*')
+          Object.entries(where || {}).forEach(([c, v]) => { q = q.eq(c, v) })
+          const { data, error } = await q.order(order, { ascending: asc })
+          if (!error) return data && data.length ? data : localList(where)
+          if (missing(error.message)) localOnly = true
+        } catch (e) {
+          if (missing(e.message)) localOnly = true
+        }
+      }
+      return localList(where)
+    },
+
+    async insert(row) {
+      if (hasSupabase && !localOnly) {
+        const { error } = await supabase.from(table).insert(row)
+        if (!error) return { ok: true }
+        if (missing(error.message)) localOnly = true
+      }
+      const all = localList()
+      all.push({ id: Date.now(), created_at: new Date().toISOString(), ...row })
+      save(k, all)
+      return { ok: true, local: true }
+    },
+
+    async update(id, patch) {
+      if (hasSupabase && !localOnly) {
+        const { error } = await supabase.from(table).update(patch).eq('id', id)
+        if (!error) return { ok: true }
+        if (missing(error.message)) localOnly = true
+      }
+      save(k, localList().map((r) => (String(r.id) === String(id) ? { ...r, ...patch } : r)))
+      return { ok: true, local: true }
+    },
+
+    async remove(id) {
+      if (hasSupabase && !localOnly) {
+        const { error } = await supabase.from(table).delete().eq('id', id)
+        if (!error) return { ok: true }
+        if (missing(error.message)) localOnly = true
+      }
+      save(k, localList().filter((r) => String(r.id) !== String(id)))
+      return { ok: true, local: true }
+    }
+  }
+}
+
+export const anamnesisApi = store('anamnesis')
+export const plansApi = store('treatment_plans')
+export const materialsApi = store('materials')
+export const labApi = store('lab_cases')
+export const pricesApi = store('price_items')
+export const invoicesApi = store('invoices')
+export const notesApi = store('clinical_notes')
 
 // ---------- Randevu / Takvim / Bildirim ----------
 

@@ -4,7 +4,8 @@ import { currentUser, logout } from '../services/auth.js'
 import { listNotifications } from '../services/db.js'
 import {
   Logo, Shield, Stethoscope, Users, Clipboard, Drop, Sparkle, Camera, Video, Chat,
-  Clock, User, LogOut, Globe, Bell, ChevronDown, Alert, Settings
+  Clock, User, LogOut, Globe, Bell, ChevronDown, Alert, Settings,
+  Package, Flask, Tag, Receipt
 } from './Icons.jsx'
 
 const MENUS = {
@@ -17,15 +18,21 @@ const MENUS = {
     ['/hesap', Settings, 'Hesap Ayarları']
   ],
   hekim: [
-    ['/hekim', Stethoscope, 'Hekim Paneli'],
-    ['/hastam', User, 'Hasta Paneli'],
-    ['/triyaj', Clipboard, 'Triyaj'],
-    ['/hijyen', Drop, 'Hijyen'],
-    ['/anksiyete', Sparkle, 'Anksiyete'],
-    ['/on-degerlendirme', Camera, 'Foto Değerlendirme'],
+    ['/hekim', Stethoscope, 'Genel Bakış'],
+    ['/hekim?tab=gunluk', Clock, 'Günlük Akış'],
+    ['/hekim?tab=hastalar', Users, 'Hastalarım'],
+    ['/hekim?tab=gunluk-not', Clipboard, 'Klinik Günlük'],
+    ['/hekim?tab=randevu', Clipboard, 'Randevu Talepleri'],
+    ['/hekim?tab=takvim', Clock, 'Takvim'],
+    ['/hekim?tab=triyaj', Sparkle, 'Triyaj ve Sevk'],
+    ['/hekim?tab=foto', Camera, 'Hasta Fotoğrafları'],
+    ['/hekim?tab=envanter', Package, 'Malzeme Envanteri'],
+    ['/hekim?tab=laboratuvar', Flask, 'Laboratuvar'],
+    ['/hekim?tab=fiyat', Tag, 'Fiyatlandırma'],
+    ['/hekim?tab=hesap', Receipt, 'Hesap ve Bakiye'],
     ['/video', Video, 'Online Görüşme'],
+    ['/hatirlatma', Bell, 'Hatırlatmalar'],
     ['/konsultasyon', Chat, 'Konsültasyon'],
-    ['/hatirlatma', Clock, 'Hatırlatmalar'],
     ['/hesap', Settings, 'Hesap Ayarları']
   ],
   hasta: [
@@ -96,11 +103,17 @@ export function PanelLayout({ children }) {
         </div>
         <span className={`role-badge ${u?.role}`}>{ROLE_TR[u?.role]}</span>
         <nav className="panel-menu">
-          {menu.map(([to, Icon, label]) => (
-            <Link key={to} to={to} className={loc.pathname === to ? 'active' : ''}>
-              <Icon size={17} /> {label}
-            </Link>
-          ))}
+          {menu.map(([to, Icon, label]) => {
+            const [base, search] = to.split('?')
+            const wantTab = search ? new URLSearchParams(search).get('tab') : 'ozet'
+            const gotTab = new URLSearchParams(loc.search).get('tab') || 'ozet'
+            const active = loc.pathname === base && wantTab === gotTab
+            return (
+              <Link key={to} to={to} className={active ? 'active' : ''}>
+                <Icon size={17} /> {label}
+              </Link>
+            )
+          })}
         </nav>
         <div className="panel-foot">
           <span className="panel-user"><User size={15} /> {u?.name}</span>

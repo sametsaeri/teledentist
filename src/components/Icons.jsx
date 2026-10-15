@@ -76,6 +76,14 @@ export const Pin = (p) => <S {...p}><path d="M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 
 export const Save = (p) => <S {...p}><path d="M5 4.5h11L20 8.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19V6a1.5 1.5 0 0 1 1-1.5z" /><path d="M8 4.5v5h7v-5M8 20.5V14h8v6.5" /></S>
 export const Lock = (p) => <S {...p}><rect x="4.5" y="10" width="15" height="11" rx="2.5" /><path d="M8 10V7.5a4 4 0 0 1 8 0V10" /></S>
 export const Key = (p) => <S {...p}><circle cx="8" cy="12" r="4" /><path d="M12 12h9M18.5 12v3.5M15.5 12v2.2" /></S>
+export const Box = (p) => <S {...p}><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z" /><path d="M3 7.5 12 12l9-4.5M12 12v9" /></S>
+export const Flask = (p) => <S {...p}><path d="M9.5 3v6.2L4.4 18a2 2 0 0 0 1.7 3h11.8a2 2 0 0 0 1.7-3l-5.1-8.8V3" /><path d="M8 3h8M6.6 14.5h10.8" /></S>
+export const Tag = (p) => <S {...p}><path d="M3 11.5V4h7.5l9.5 9.5-7.5 7.5z" /><circle cx="7" cy="8" r="1.4" /></S>
+export const Receipt = (p) => <S {...p}><path d="M5 3v18l2.2-1.6L9.4 21l2.2-1.6L13.8 21l2.2-1.6L18.2 21l1.3-1V3z" /><path d="M8.5 8.5h7M8.5 12.5h7M8.5 16h4" /></S>
+export const Notebook = (p) => <S {...p}><path d="M5 4a2 2 0 0 1 2-2h11v20H7a2 2 0 0 1-2-2z" /><path d="M9 2v20M12 7.5h3.5M12 11h3.5" /></S>
+export const TrendingUp = (p) => <S {...p}><path d="M3 17 9.5 10.5l4 4L21 7" /><path d="M15.5 7H21v5.5" /></S>
+export const Package = (p) => <S {...p}><path d="M3.5 7.5 12 3.5l8.5 4v9L12 20.5l-8.5-4z" /><path d="M3.5 7.5 12 11.5l8.5-4M12 11.5v9M7.8 5.2l8.5 4.2" /></S>
+export const Wrench = (p) => <S {...p}><path d="M15.2 3.4a5.2 5.2 0 0 0-6.4 6.4L3.6 15a2 2 0 0 0 2.8 2.8l5.2-5.2a5.2 5.2 0 0 0 6.4-6.4l-3 3-2.6-2.6z" /></S>
 export const Refresh = (p) => <S {...p}><path d="M20 11.5a8 8 0 1 1-2.5-5.8" /><path d="M20.2 3.5V9h-5.5" /></S>
 export const Grid = (p) => <S {...p}><rect x="3.5" y="3.5" width="7" height="7" rx="2" /><rect x="13.5" y="3.5" width="7" height="7" rx="2" /><rect x="3.5" y="13.5" width="7" height="7" rx="2" /><rect x="13.5" y="13.5" width="7" height="7" rx="2" /></S>
 export const Send = (p) => <S {...p}><path d="M21 3 10.5 13.5" /><path d="M21 3 14.5 21l-4-7.5L3 9.5z" /></S>
