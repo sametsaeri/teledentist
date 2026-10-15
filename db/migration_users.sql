@@ -90,6 +90,31 @@ BEGIN
     auth.uid(), 5, CURRENT_DATE, 1, 3, 'kontrol'
   );
 
+  -- Detaylı hasta bilgileri (p_extra). Kolonlar yoksa (migration_v2 çalışmamışsa)
+  -- hesap açma yine de başarılı olsun diye hata yutulur.
+  BEGIN
+    UPDATE profiles SET
+      tc_no         = coalesce(nullif(p_extra->>'tc_no',''), tc_no),
+      birth_date    = coalesce(nullif(p_extra->>'birth_date','')::date, birth_date),
+      gender        = coalesce(nullif(p_extra->>'gender',''), gender),
+      phone         = coalesce(nullif(p_extra->>'phone',''), phone),
+      address       = coalesce(nullif(p_extra->>'address',''), address),
+      city          = coalesce(nullif(p_extra->>'city',''), city),
+      district      = coalesce(nullif(p_extra->>'district',''), district),
+      blood         = coalesce(nullif(p_extra->>'blood',''), blood),
+      insurance     = coalesce(nullif(p_extra->>'insurance',''), insurance),
+      school        = coalesce(nullif(p_extra->>'school',''), school),
+      occupation    = coalesce(nullif(p_extra->>'occupation',''), occupation),
+      near_name     = coalesce(nullif(p_extra->>'near_name',''), near_name),
+      near_phone    = coalesce(nullif(p_extra->>'near_phone',''), near_phone),
+      near_relation = coalesce(nullif(p_extra->>'near_relation',''), near_relation),
+      reminder_days = coalesce((nullif(p_extra->>'reminder_days',''))::int, reminder_days),
+      last_visit    = coalesce(nullif(p_extra->>'last_visit','')::date, last_visit)
+    WHERE id = v_uid;
+  EXCEPTION WHEN others THEN
+    NULL; -- detay kolonları yoksa yoksay
+  END;
+
   RETURN jsonb_build_object('ok', true, 'uid', v_uid, 'email', lower(trim(p_email)));
 END;
 $$;

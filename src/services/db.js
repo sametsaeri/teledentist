@@ -158,6 +158,45 @@ export async function createProfile({ uid, role, email, name, childId, createdBy
   return { error: 'Supabase bağlı değil.' }
 }
 
+// ---------- Depolama (röntgen / fotoğraf) ----------
+
+function dataUrlToBlob(dataUrl) {
+  const [head, b64] = dataUrl.split(',')
+  const mime = (head.match(/:(.*?);/) || [])[1] || 'image/png'
+  const bin = atob(b64)
+  const arr = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i)
+  return new Blob([arr], { type: mime })
+}
+
+export async function uploadImage(bucket, patientId, label, dataUrl) {
+  if (!hasSupabase) return { error: 'Supabase bağlı değil, yerel kayıt kullanıldı.' }
+  const path = `${patientId}/${label}-${Date.now()}.png`
+  const { error } = await supabase.storage.from(bucket).upload(path, dataUrlToBlob(dataUrl), {
+    contentType: 'image/png', upsert: false
+  })
+  if (error) return { error: error.message }
+  return { ok: true, path }
+}
+
+// Önce storage, yoksa yerel kayıt (yedek)
+export async function loadImage(bucket, patientId, label) {
+  if (!hasSupabase) return null
+  try {
+    const { data: files, error } = await supabase.storage.from(bucket)
+      .list(patientId)
+    if (error || !files || !files.length) return null
+    const hit = files.filter((f) => f.name.startsWith(label + '-')).sort((a, b) => b.name.localeCompare(a.name))[0]
+    if (!hit) return null
+    const { data, error: e2 } = await supabase.storage.from(bucket)
+      .createSignedUrl(`${patientId}/${hit.name}`, 3600)
+    if (e2) return null
+    return data?.signedUrl || null
+  } catch {
+    return null
+  }
+}
+
 export async function updatePatient(pid, patch) {
   if (hasSupabase) {
     const { error } = await supabase.from('profiles').update(patch).eq('id', pid)
@@ -180,31 +219,52 @@ export async function listAllProfiles() {
 
 export async function listAppointments() {
   if (hasSupabase) {
-    const { data } = await supabase.from('appointments').select('*').order('appt_date', { ascending: true })
-    if (data) return data
+    // Sıralamayı tarayıcıda yapıyoruz: appt_date kolonu (migration_v2) yoksa da 400 almayalım
+    const { data, error } = await supabase.from('appointments').select('*')
+    if (!error && data) return data.slice().sort((a, b) => String(a.appt_date || '').localeCompare(String(b.appt_date || '')))
   }
   return load(keys.appointments, [])
 }
 
-export async function insertAppointment({ name, contact, dept, complaint, apptDate }) {
+export async function insertAppointment({ name, contact, dept, complaint, apptDate, online }) {
   if (hasSupabase) {
-    const { error } = await supabase.from('appointments').insert({
+    const row = {
       name, contact, dept: dept || 'genel-dis', complaint,
       appt_date: apptDate || null, status: 'yeni'
-    })
+    }
+    // is_online kolonu yoksa (migration_v2 çalışmamışsa) onsuz tekrar dene
+    let { error } = await supabase.from('appointments').insert({ ...row, is_online: !!online })
+    if (error && /is_online|appt_date/i.test(error.message || '')) {
+      const retry = await supabase.from('appointments').insert({ name, contact, dept: row.dept, complaint, status: 'yeni' })
+      error = retry.error
+    }
     return { error: error?.message }
   }
   const list = load(keys.appointments, [])
-  list.push({ id: Date.now(), name, contact, dept: dept || 'genel-dis', complaint, appt_date: apptDate || null, status: 'yeni', created_at: new Date().toISOString() })
+  list.push({ id: Date.now(), name, contact, dept: dept || 'genel-dis', complaint, appt_date: apptDate || null, status: 'yeni', is_online: !!online, created_at: new Date().toISOString() })
+  save(keys.appointments, list)
+  return {}
+}
+
+export async function setAppointmentOnline(id, online) {
+  if (hasSupabase) {
+    const { error } = await supabase.from('appointments').update({ is_online: !!online }).eq('id', id)
+    return { error: error?.message }
+  }
+  const list = load(keys.appointments, []).map((a) => a.id === id ? { ...a, is_online: !!online } : a)
   save(keys.appointments, list)
   return {}
 }
 
 export async function approveAppointment(id, doctorId, dateStr) {
   if (hasSupabase) {
-    const { error } = await supabase.from('appointments')
+    let { error } = await supabase.from('appointments')
       .update({ status: 'onaylı', doctor_id: doctorId || null, appt_date: dateStr || null })
       .eq('id', id)
+    if (error && /appt_date/i.test(error.message || '')) {
+      const retry = await supabase.from('appointments').update({ status: 'onaylı', doctor_id: doctorId || null }).eq('id', id)
+      error = retry.error
+    }
     return { error: error?.message }
   }
   const list = load(keys.appointments, []).map((a) => a.id === id ? { ...a, status: 'onaylı', doctor_id: doctorId, appt_date: dateStr || a.appt_date } : a)

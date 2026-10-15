@@ -4,9 +4,11 @@ import { PanelLayout } from './components/PanelLayout.jsx'
 import { Home, About, Appointment, PatientLogin, DoctorLogin, AdminLogin, RegisterRequest } from './pages/Pages.jsx'
 import { DoctorList, DoctorPatient, PatientPanel } from './pages/Portal.jsx'
 import { Triage, Hygiene, Anxiety, PhotoReview, Report } from './pages/Clinical.jsx'
-import { Satisfaction, Education, VideoVisit, Reminders, Campaigns, Consultation, Faq } from './pages/Extra.jsx'
+import { Satisfaction, Education, Reminders, Campaigns, Consultation, Faq } from './pages/Extra.jsx'
+import { VideoVisit } from './pages/VideoVisit.jsx'
 import { ERandevu } from './pages/ERandevu.jsx'
 import { AdminPanel } from './pages/Admin.jsx'
+import { AccountSettings } from './pages/Account.jsx'
 import { currentUser } from './services/auth.js'
 
 // Hangi rol hangi giriş ekranına gitsin
@@ -22,9 +24,9 @@ function Require({ roles, children }) {
   if (u.role !== 'admin' && roles && !roles.includes(u.role)) {
     return (
       <div className="card auth-card">
-        <h1>⛔ Yetkisiz</h1>
+        <h1>Yetkisiz</h1>
         <p className="muted">Bu bölüm {roles.join(' / ')} rolüne özeldir.</p>
-        <a className="btn btn-primary" href="/">← Siteye Dön</a>
+        <a className="btn btn-primary" href="/">Siteye Dön</a>
       </div>
     )
   }
@@ -78,6 +80,7 @@ export default function App() {
 
         {/* --- Süper admin paneli --- */}
         <Route path="/admin/panel" element={<Panel roles={['admin']}><AdminPanel /></Panel>} />
+        <Route path="/hesap" element={<Panel roles={['admin', 'hekim', 'hasta', 'ebeveyn']}><AccountSettings /></Panel>} />
 
         {/* --- Ortak klinik araçları --- */}
         <Route path="/triyaj" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><Triage /></Panel>} />

@@ -49,7 +49,7 @@ export function Home() {
 
       <Reveal>
         <div className="card">
-          <h2>🏥 {t('dept_title')}</h2>
+          <h2><Stethoscope size={22} /> {t('dept_title')}</h2>
           <div className="grid">
             <div className="dept-mini"><DeptRestorative size={20} /><b>{t('dept_rest')}</b><p className="muted">{t('dept_rest_d')}</p></div>
             <div className="dept-mini"><DeptEndo size={20} /><b>{t('dept_endo')}</b><p className="muted">{t('dept_endo_d')}</p></div>
@@ -99,6 +99,7 @@ export function Appointment() {
   const [dept, setDept] = useState(params.get('dept') || '')
   const [complaint, setComplaint] = useState('')
   const [apptDate, setApptDate] = useState('')
+  const [online, setOnline] = useState(false)
   const [kvkk, setKvkk] = useState(false)
   const [done, setDone] = useState(false)
   const [err, setErr] = useState('')
@@ -107,7 +108,7 @@ export function Appointment() {
     setErr('')
     if (!name || !contact || !complaint) return setErr('Ad, iletişim ve şikayet zorunlu.')
     if (!kvkk) return setErr('KVKK onayı gerekli.')
-    const r = await insertAppointment({ name, contact, dept, complaint, apptDate })
+    const r = await insertAppointment({ name, contact, dept, complaint, apptDate, online })
     if (r.error) return setErr(r.error)
     setDone(true)
   }
@@ -136,6 +137,7 @@ export function Appointment() {
         <input placeholder={t('appt_contact')} value={contact} onChange={(e) => setContact(e.target.value)} /><br /><br />
         <input placeholder="Tercih edilen randevu tarihi" type="date" value={apptDate} onChange={(e) => setApptDate(e.target.value)} /><br /><br />
         <textarea placeholder={t('appt_complaint')} rows="4" cols="40" value={complaint} onChange={(e) => setComplaint(e.target.value)} /><br /><br />
+        <label><input type="checkbox" checked={online} onChange={(e) => setOnline(e.target.checked)} /> Online (görüntülü) görüşme istiyorum — kırsal/uzak hastalar için</label><br /><br />
         <label><input type="checkbox" checked={kvkk} onChange={(e) => setKvkk(e.target.checked)} /> {t('appt_kvkk')}</label><br /><br />
         <button onClick={submit}>{t('appt_send')}</button>
         {err && <p className="auth-err">{err}</p>}

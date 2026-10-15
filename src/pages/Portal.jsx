@@ -9,35 +9,61 @@ import { createUserByDoctor } from '../services/auth.js'
 import {
   listPatients, getPatient, getTeeth, saveTooth, lastRecords, updatePatient, getChildren,
   insertTriage, insertHygiene, insertAnxiety, listDoctors, listReferrals, referPatient,
-  listAppointments, approveAppointment, completeAppointment, listRequests, approveRequest
+  listAppointments, approveAppointment, completeAppointment, listRequests, approveRequest,
+  uploadImage, loadImage, setAppointmentOnline
 } from '../services/db.js'
 import { triageScore } from '../services/clinical.js'
 import {
   Logo, Chart, Users, Calendar, Send, Clipboard, Camera, FileText, Search, Plus, Check,
-  CheckCircle, Clock, Stethoscope, User, Save, X, Alert, Camera as CameraIcon
+  CheckCircle, Clock, Stethoscope, User, Save, X, Alert, Tooth, Lock, Phone, Bell, Chat,
+  ChevronLeft, ChevronRight, Video
 } from '../components/Icons.jsx'
 
 function xrayKey(pid, tooth) { return `${pid}_${tooth}` }
 
 function XrayBox({ pid, tooth }) {
-  const all = load(keys.xrays, {})
-  const [img, setImg] = useState(all[xrayKey(pid, tooth)] || null)
+  const [img, setImg] = useState(load(keys.xrays, {})[xrayKey(pid, tooth)] || null)
+  const [busy, setBusy] = useState(false)
+  const [info, setInfo] = useState('')
+
+  // Sayfa açılınca depolamadan da çek
+  useEffect(() => {
+    loadImage('xrays', pid, `tooth${tooth}`).then((u) => { if (u) setImg(u) })
+  }, [pid, tooth])
+
   const onFile = (e) => {
     const f = e.target.files[0]
     if (!f) return
+    setBusy(true)
+    setInfo('')
     const reader = new FileReader()
-    reader.onload = () => {
-      const cur = load(keys.xrays, {})
-      cur[xrayKey(pid, tooth)] = reader.result
-      save(keys.xrays, cur)
-      setImg(reader.result)
+    reader.onload = async () => {
+      const dataUrl = reader.result
+      // 1) Buluta yükle
+      const up = await uploadImage('xrays', pid, `tooth${tooth}`, dataUrl)
+      if (up.ok) {
+        const url = await loadImage('xrays', pid, `tooth${tooth}`)
+        setImg(url || dataUrl)
+        setInfo('Sunucuya yüklendi')
+      } else {
+        // 2) Yedek: tarayıcıda sakla
+        const cur = load(keys.xrays, {})
+        cur[xrayKey(pid, tooth)] = dataUrl
+        save(keys.xrays, cur)
+        setImg(dataUrl)
+        setInfo('Yerel kaydedildi: ' + (up.error || ''))
+      }
+      setBusy(false)
     }
     reader.readAsDataURL(f)
   }
   return (
     <div>
       {img ? <img src={img} alt="röntgen" className="xray" /> : <p className="muted">Bu dişe ait yüklü röntgen yok.</p>}
-      <input type="file" accept="image/*" onChange={onFile} />
+      <br />
+      <input type="file" accept="image/*" onChange={onFile} disabled={busy} />
+      {busy && <p className="muted">Yükleniyor...</p>}
+      {info && <p className="muted">{info}</p>}
     </div>
   )
 }
@@ -69,7 +95,7 @@ function Modal({ title, sub, onClose, children }) {
             <h3>{title}</h3>
             {sub && <p className="muted">{sub}</p>}
           </div>
-          <button className="ghost" onClick={onClose}>✕</button>
+          <button className="ghost" onClick={onClose} aria-label="Kapat"><X size={18} /></button>
         </div>
         {children}
       </div>
@@ -102,13 +128,13 @@ function NewPatientForm({ onDone, onClose }) {
     })
     setBusy(false)
     if (r.error) return setMsg(r.error)
-    setMsg(`✅ ${form.name} hesabı açıldı.`)
+    setMsg(`${form.name} hesabı açıldı.`)
     onDone({ name: form.name, email: form.email, pass: form.pass })
   }
 
   return (
     <>
-      <h4 className="modal-sub">🔑 Giriş Bilgileri</h4>
+      <h4 className="modal-sub"><Lock size={15} /> Giriş Bilgileri</h4>
       <div className="grid form-grid">
         <label>Ad Soyad *<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
         <label>E-posta (giriş için) *<input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
@@ -125,7 +151,7 @@ function NewPatientForm({ onDone, onClose }) {
         )}
       </div>
 
-      <h4 className="modal-sub">🪪 Kimlik Bilgileri</h4>
+      <h4 className="modal-sub"><User size={15} /> Kimlik Bilgileri</h4>
       <div className="grid form-grid">
         <label>TC Kimlik No<input value={form.tc_no} maxLength={11} onChange={(e) => setForm({ ...form, tc_no: e.target.value })} /></label>
         <label>Doğum Tarihi<input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} /></label>
@@ -141,7 +167,7 @@ function NewPatientForm({ onDone, onClose }) {
         </label>
       </div>
 
-      <h4 className="modal-sub">📞 İletişim ve Adres</h4>
+      <h4 className="modal-sub"><Phone size={15} /> İletişim ve Adres</h4>
       <div className="grid form-grid">
         <label>Telefon<input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
         <label>Adres<input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
@@ -149,7 +175,7 @@ function NewPatientForm({ onDone, onClose }) {
         <label>İlçe<input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} /></label>
       </div>
 
-      <h4 className="modal-sub">👪 Yakın ve Sosyal Bilgiler</h4>
+      <h4 className="modal-sub"><Users size={15} /> Yakın ve Sosyal Bilgiler</h4>
       <div className="grid form-grid">
         <label>Yakın Adı<input value={form.near_name} onChange={(e) => setForm({ ...form, near_name: e.target.value })} /></label>
         <label>Yakın Telefonu<input value={form.near_phone} onChange={(e) => setForm({ ...form, near_phone: e.target.value })} /></label>
@@ -167,7 +193,7 @@ function NewPatientForm({ onDone, onClose }) {
       {msg && <p className="muted">{msg}</p>}
       <div className="modal-actions">
         <button className="ghost" onClick={onClose}>Vazgeç</button>
-        <button onClick={save} disabled={busy}>{busy ? 'Kaydediliyor...' : '✅ Hesabı Oluştur'}</button>
+        <button onClick={save} disabled={busy}>{busy ? 'Kaydediliyor...' : <><Check size={15} /> Hesabı Oluştur</>}</button>
       </div>
     </>
   )
@@ -208,7 +234,15 @@ export function DoctorList() {
   }
   useEffect(reload, [])
 
-  const patients = all.filter((u) => (u.role === 'hasta' || u.role === 'ebeveyn') && (u.name || '').toLowerCase().includes(q.toLowerCase()))
+  const ql = q.toLowerCase()
+  const patients = all.filter((u) => {
+    if (u.role !== 'hasta' && u.role !== 'ebeveyn') return false
+    if (!ql) return true
+    return (u.name || '').toLowerCase().includes(ql)
+      || (u.tc_no || '').includes(ql)
+      || (u.phone || '').includes(ql)
+      || (u.email || '').toLowerCase().includes(ql)
+  })
   const triage = load(keys.triage, []).slice().sort((a, b) => b.score - a.score)
   const photos = load(keys.photos, [])
   const photoNote = load(keys.photoNotes, {})
@@ -231,7 +265,7 @@ export function DoctorList() {
       childEmail: form.childEmail, username: form.username, extra
     })
     if (r.error) return setMsg(r.error)
-    setMsg(`✅ ${form.name} hesabı açıldı. Giriş: ${form.email} / ${form.pass}`)
+    setMsg(`${form.name} hesabı açıldı. Giriş: ${form.email} / ${form.pass}`)
     setForm(emptyForm())
     reload()
   }
@@ -291,7 +325,7 @@ export function DoctorList() {
             <div className="kpi"><b>{triage.length}</b><span>Triyaj Kaydı</span></div>
           </div>
           <div className="card">
-            <h3>⏰ Yaklaşan Hatırlatmalar</h3>
+            <h3><Bell size={18} /> Yaklaşan Hatırlatmalar</h3>
             <ReminderList patients={all} />
           </div>
         </div>
@@ -317,7 +351,7 @@ export function DoctorList() {
               </div>
               <div className="toolbar">
                 <Link to={`/hekim/hasta/${p.id}`}><button>Hastayı Aç</button></Link>
-                <Link to={`/rapor/${p.id}`}><button className="ghost">📄 Rapor</button></Link>
+                <Link to={`/rapor/${p.id}`}><button className="ghost"><FileText size={15} /> Rapor</button></Link>
               </div>
             </div>
           ))}
@@ -337,23 +371,27 @@ export function DoctorList() {
       {/* ---------------- RANDEVU TALEPLERİ ---------------- */}
       {tab === 'randevu' && (
         <div className="card">
-          <h3>📥 Gelen Randevu Talepleri ({pending.length})</h3>
+          <h3><Send size={18} /> Gelen Randevu Talepleri ({pending.length})</h3>
           {pending.length === 0 && <p className="muted">Bekleyen talep yok.</p>}
           {pending.map((a) => (
             <div key={a.id} className="appt-row">
               <div>
                 <strong>{a.name}</strong> <span className="muted">({a.contact})</span>
-                <p className="muted">🦷 {a.complaint}</p>
+                <p className="muted"><Tooth size={13} /> {a.complaint}</p>
                 <span className="badge">{BRANCH_TR[a.dept] || a.dept}</span>
+                {a.is_online && <span className="badge online">Online</span>}
               </div>
               <div className="toolbar">
                 <input type="date" value={approveDate[a.id] || ''} onChange={(e) => setApproveDate((s) => ({ ...s, [a.id]: e.target.value }))} />
+                <button className="ghost" title="Online görüşme" onClick={async () => { await setAppointmentOnline(a.id, !a.is_online); reload() }}>
+                  <Video size={15} /> {a.is_online ? 'Online ✓' : 'Online yap'}
+                </button>
                 <button onClick={async () => {
                   if (!approveDate[a.id]) return alert('Tarih seçin.')
                   const r = await approveAppointment(a.id, me?.id, approveDate[a.id])
                   setMsg(r.error || 'Randevu onaylandı ve takvime eklendi.')
                   reload()
-                }}>✅ Onayla</button>
+                }}><Check size={15} /> Onayla</button>
               </div>
             </div>
           ))}
@@ -365,7 +403,7 @@ export function DoctorList() {
       {tab === 'triyaj' && (
         <div>
           <div className="card">
-            <h3>🩺 Triyaj Kuyruğu ({triage.length})</h3>
+            <h3><Stethoscope size={18} /> Triyaj Kuyruğu ({triage.length})</h3>
             {triage.length === 0 && <p className="muted">Triyaj kaydı yok.</p>}
             {triage.map((t) => (
               <div key={t.id} className="appt-row">
@@ -391,7 +429,7 @@ export function DoctorList() {
             {refMsg && <p className="muted">{refMsg}</p>}
           </div>
           <div className="card">
-            <h3>🔀 Sevk Kayıtları ({refs.length})</h3>
+            <h3><Send size={18} /> Sevk Kayıtları ({refs.length})</h3>
             {refs.length === 0 && <p className="muted">Sevk kaydı yok.</p>}
             {refs.map((r) => (
               <p key={r.id}><strong>{r.patient_id}</strong> → Dt. {doctors.find((d) => d.id === r.to_doctor)?.name || r.to_doctor} <span className="muted">({BRANCH_TR[r.branch] || r.branch} · {r.status})</span></p>
@@ -403,14 +441,14 @@ export function DoctorList() {
       {/* ---------------- FOTOĞRAFLAR ---------------- */}
       {tab === 'foto' && (
         <div className="card">
-          <h3>📷 Fotoğrafla Ön Değerlendirme ({photos.length})</h3>
+          <h3><Camera size={18} /> Fotoğrafla Ön Değerlendirme ({photos.length})</h3>
           {photos.length === 0 && <p className="muted">Fotoğraf yok.</p>}
           {photos.map((p) => (
             <div key={p.id} className="photo-row">
               <img src={p.img} alt="ağız" className="xray" />
               <div>
                 <p className="muted">{p.patientId} - {p.date}</p>
-                <p className="muted">💬 {photoNote[p.id] || 'Yorum yok'}</p>
+                <p className="muted"><Chat size={13} /> {photoNote[p.id] || 'Yorum yok'}</p>
               </div>
             </div>
           ))}
@@ -420,7 +458,7 @@ export function DoctorList() {
       {/* ---------------- KAYIT İSTEKLERİ ---------------- */}
       {tab === 'istek' && (
         <div className="card">
-          <h3>📝 Gelen Kayıt İstekleri ({requests.length})</h3>
+          <h3><Clipboard size={18} /> Gelen Kayıt İstekleri ({requests.length})</h3>
           {requests.length === 0 && <p className="muted">Bekleyen kayıt isteği yok.</p>}
           {requests.map((r) => (
             <div key={r.id} className="appt-row">
@@ -432,7 +470,7 @@ export function DoctorList() {
                 const res = await approveRequest(r, me?.id)
                 setMsg(res.error || 'Kullanıcı onaylandı.')
                 reload()
-              }}>✅ Onayla</button>
+              }}><Check size={15} /> Onayla</button>
             </div>
           ))}
           {msg && <p className="muted">{msg}</p>}
@@ -458,7 +496,7 @@ function ReminderList({ patients }) {
   if (items.length === 0) return <p className="muted">Şu an hatırlatma gerektiren hasta yok.</p>
   return items.map((i) => (
     <div key={i.id} className="reminder-row">
-      <b className={i.left === 0 ? 'due-now' : ''}>{i.left === 0 ? '🔴 BUGÜN' : `⏳ ${i.left} gün kaldı`}</b>
+      <b className={i.left === 0 ? 'due-now' : ''}>{i.left === 0 ? <><Alert size={14} /> BUGÜN</> : <><Clock size={14} /> {i.left} gün kaldı</>}</b>
       <span>{i.name} · {i.days} gün önceden bildirim</span>
       <span className="muted">{i.phone || i.near || 'iletişim yok'}</span>
       <Link to={`/hekim/hasta/${i.id}`}><button className="ghost">Aç</button></Link>
@@ -484,9 +522,9 @@ function CalendarView({ appts, onComplete }) {
   return (
     <div className="card">
       <div className="cal-head">
-        <button className="ghost" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>◀</button>
+        <button className="ghost" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} aria-label="Önceki ay"><ChevronLeft size={16} /></button>
         <h3>{month.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}</h3>
-        <button className="ghost" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>▶</button>
+        <button className="ghost" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} aria-label="Sonraki ay"><ChevronRight size={16} /></button>
       </div>
       <div className="cal-grid">
         {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((d) => <div key={d} className="cal-head-cell">{d}</div>)}
@@ -500,7 +538,7 @@ function CalendarView({ appts, onComplete }) {
               {list.map((a) => (
                 <div key={a.id} className="cal-event">
                   <span>{a.appt_time || '09:00'} {a.name}</span>
-                  <button className="ghost tiny" onClick={() => onComplete(a.id)}>✔ Bitti</button>
+                  <button className="ghost tiny" onClick={() => onComplete(a.id)}><Check size={12} /> Bitti</button>
                 </div>
               ))}
             </div>
@@ -569,14 +607,14 @@ export function DoctorPatient() {
 
   return (
     <div>
-      <Link to="/hekim">← Hastalar</Link>
-      <h1>🦷 {patient.name}</h1>
+      <Link to="/hekim"><ChevronLeft size={14} /> Hastalar</Link>
+      <h1><Tooth size={24} /> {patient.name}</h1>
       <p className="muted">
         {patient.tc_no ? `TC: ${patient.tc_no} · ` : ''}{patient.gender || ''} {patient.birth_date || ''} · {patient.phone || 'telefon yok'}
       </p>
 
       <div className="card">
-        <h3>📋 Hasta Bilgileri</h3>
+        <h3><Clipboard size={18} /> Hasta Bilgileri</h3>
         <div className="grid form-grid">
           <label>Ad Soyad<input value={info.name || ''} onChange={(e) => setInfo({ ...info, name: e.target.value })} /></label>
           <label>TC<input value={info.tc_no || ''} onChange={(e) => setInfo({ ...info, tc_no: e.target.value })} /></label>
@@ -594,12 +632,12 @@ export function DoctorPatient() {
             </select>
           </label>
         </div>
-        <button onClick={saveInfo}>💾 Bilgileri Kaydet</button>
+        <button onClick={saveInfo}><Save size={15} /> Bilgileri Kaydet</button>
         {mMsg && <p className="muted">{mMsg}</p>}
       </div>
 
       <div className="card">
-        <h3>🦷 Diş Haritası (FDI)</h3>
+        <h3><Tooth size={18} /> Diş Haritası (FDI)</h3>
         <ToothChart teeth={teeth} selected={selected} onSelect={setSelected} />
       </div>
 
@@ -615,16 +653,16 @@ export function DoctorPatient() {
           </label>
           <input placeholder="Tedavi" value={treatment} onChange={(e) => setTreatment(e.target.value)} />
         </div><br />
-        <h4>📷 Röntgen</h4>
+        <h4><Camera size={15} /> Röntgen</h4>
         <XrayBox pid={id} tooth={selected} />
-        <h4>📝 Değerlendirme Notu</h4>
+        <h4><FileText size={15} /> Değerlendirme Notu</h4>
         <textarea rows="3" cols="50" value={note} onChange={(e) => setNote(e.target.value)} placeholder={`${selected} nolu diş için not...`} />
         <br /><br />
-        <button onClick={saveNote}>💾 Diş Kaydını Kaydet</button>
+        <button onClick={saveNote}><Save size={15} /> Diş Kaydını Kaydet</button>
       </div>
 
       <div className="card">
-        <h3>📏 Hasta Ölçümleri</h3>
+        <h3><Chart size={18} /> Hasta Ölçümleri</h3>
         <p className="muted">Son: Triyaj {rec.triage} | Hijyen {rec.hygiene} | Anksiyete {rec.anxiety}</p>
         <div className="toolbar">
           <label>Ağrı (0-10)<input type="number" min="0" max="10" value={mPain} onChange={(e) => setMPain(e.target.value)} style={{ width: 70 }} /></label>
@@ -635,7 +673,7 @@ export function DoctorPatient() {
       </div>
 
       <div className="card">
-        <h3>🔀 Başka Hekime Sevk</h3>
+        <h3><Send size={18} /> Başka Hekime Sevk</h3>
         <p className="muted">İnceleme sonrası ilgili branş hekimine yönlendirin.</p>
         <div className="toolbar">
           <select value={refDoc} onChange={(e) => setRefDoc(e.target.value)}>
@@ -652,9 +690,9 @@ export function DoctorPatient() {
       </div>
 
       <div className="card">
-        <h3>📄 Rapor / Onam</h3>
+        <h3><FileText size={18} /> Rapor / Onam</h3>
         <p className="muted">AI kontrol önerisi: {recall.nextVisit} ({recall.months} ay)</p>
-        <Link to={`/rapor/${id}`}><button>🖨️ Yazdırılabilir Rapor</button></Link>
+        <Link to={`/rapor/${id}`}><button><FileText size={15} /> Yazdırılabilir Rapor</button></Link>
       </div>
     </div>
   )
@@ -697,7 +735,7 @@ export function PatientPanel() {
 
   return (
     <div>
-      <h1>🦷 Dişlerim</h1>
+      <h1><Tooth size={24} /> Dişlerim</h1>
       {isParent && (
         <div className="card toolbar">
           <span>Çocuk seç:</span>
@@ -721,18 +759,18 @@ export function PatientPanel() {
       </div>
 
       <div className="card">
-        <h3>📆 Randevularım</h3>
+        <h3><Calendar size={18} /> Randevularım</h3>
         {myAppts.length === 0 && <p className="muted">Randevu kaydınız yok. <Link to="/randevu">Randevu oluşturun</Link>.</p>}
         {myAppts.map((a) => (
           <p key={a.id}>
-            📅 {a.appt_date || 'tarih bekleniyor'} · {a.appt_time || ''} · <span className="badge">{a.status}</span>
+            <Calendar size={13} /> {a.appt_date || 'tarih bekleniyor'} · {a.appt_time || ''} · <span className="badge">{a.status}</span>
             <span className="muted"> {a.complaint}</span>
           </p>
         ))}
       </div>
 
       <div className="card">
-        <h3>📝 İletişim Bilgilerim</h3>
+        <h3><FileText size={18} /> İletişim Bilgilerim</h3>
         <div className="grid form-grid">
           <label>Telefon<input value={info.phone || ''} onChange={(e) => setInfo({ ...info, phone: e.target.value })} /></label>
           <label>Şehir<input value={info.city || ''} onChange={(e) => setInfo({ ...info, city: e.target.value })} /></label>
@@ -740,7 +778,7 @@ export function PatientPanel() {
           <label>Yakın<input value={info.near_name || ''} onChange={(e) => setInfo({ ...info, near_name: e.target.value })} /></label>
           <label>Yakın Telefon<input value={info.near_phone || ''} onChange={(e) => setInfo({ ...info, near_phone: e.target.value })} /></label>
         </div>
-        <button onClick={saveInfo}>💾 Kaydet</button>
+        <button onClick={saveInfo}><Save size={15} /> Kaydet</button>
         {msg && <p className="muted">{msg}</p>}
       </div>
     </div>

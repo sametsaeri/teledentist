@@ -4,7 +4,7 @@ import { currentUser, logout } from '../services/auth.js'
 import { listNotifications } from '../services/db.js'
 import {
   Logo, Shield, Stethoscope, Users, Clipboard, Drop, Sparkle, Camera, Video, Chat,
-  Clock, User, LogOut, Globe, Bell, ChevronDown, Alert
+  Clock, User, LogOut, Globe, Bell, ChevronDown, Alert, Settings
 } from './Icons.jsx'
 
 const MENUS = {
@@ -13,7 +13,8 @@ const MENUS = {
     ['/hekim', Stethoscope, 'Hekim Paneli'],
     ['/hastam', User, 'Hasta Paneli'],
     ['/hatirlatma', Clock, 'Hatırlatmalar'],
-    ['/konsultasyon', Chat, 'Konsültasyon']
+    ['/konsultasyon', Chat, 'Konsültasyon'],
+    ['/hesap', Settings, 'Hesap Ayarları']
   ],
   hekim: [
     ['/hekim', Stethoscope, 'Hekim Paneli'],
@@ -24,7 +25,8 @@ const MENUS = {
     ['/on-degerlendirme', Camera, 'Foto Değerlendirme'],
     ['/video', Video, 'Online Görüşme'],
     ['/konsultasyon', Chat, 'Konsültasyon'],
-    ['/hatirlatma', Clock, 'Hatırlatmalar']
+    ['/hatirlatma', Clock, 'Hatırlatmalar'],
+    ['/hesap', Settings, 'Hesap Ayarları']
   ],
   hasta: [
     ['/hastam', Clipboard, 'Dişlerim'],
@@ -33,6 +35,7 @@ const MENUS = {
     ['/anksiyete', Sparkle, 'Anksiyete'],
     ['/on-degerlendirme', Camera, 'Foto'],
     ['/video', Video, 'Online Görüşme'],
+    ['/hesap', Settings, 'Hesap Ayarları'],
     ['/egitim', Sparkle, 'Eğitim'],
     ['/kampanya', Sparkle, 'Kampanya'],
     ['/memnuniyet', Sparkle, 'Memnuniyet']
