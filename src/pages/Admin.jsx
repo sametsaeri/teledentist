@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createUserByDoctor, updateUserByAdmin, setPasswordByAdmin, updateProfileByAdmin, logout } from '../services/auth.js'
-import { listAllProfiles, listAppointments, listReferrals, listRequests } from '../services/db.js'
+import { listAllProfiles, listAppointments, listReferrals, listRequests, getSetupStatus } from '../services/db.js'
 import { useNavigate } from 'react-router-dom'
 import { Shield, Chart, Users, Lock, Clipboard, LogOut, Stethoscope, UserPlus, Key, Refresh, X, CheckCircle, User, Phone, Save, Alert, Settings } from '../components/Icons.jsx'
 
@@ -37,6 +37,35 @@ function toEditForm(u) {
     treatment_type: u.treatment_type || 'kontrol',
     plaque_index: u.plaque_index ?? 1, anxiety_score: u.anxiety_score ?? 3
   }
+}
+
+function StatusGroup({ label, missing, total }) {
+  const n = (missing || []).length
+  return (
+    <p className="status-line">
+      <span className={`status-dot ${n === 0 ? 'ok' : 'bad'}`} />
+      <strong>{label}</strong>
+      <span className="muted">
+        {n === 0 ? ` — tamam (${total || 0})` : ` — eksik: ${missing.join(', ')}`}
+      </span>
+    </p>
+  )
+}
+
+function StatusList({ s }) {
+  return (
+    <div className="status-list">
+      <p className="status-line">
+        <span className={`status-dot ${s.ok ? 'ok' : 'bad'}`} />
+        <strong>{s.ok ? 'Kurulum tamam — tüm parçalar yerinde.' : 'Kurulum eksik.'}</strong>
+      </p>
+      <StatusGroup label="Veritabanı fonksiyonları" missing={s.missing_functions} total={s.functions?.length} />
+      <StatusGroup label="Tablolar" missing={s.missing_tables} total={s.tables?.length} />
+      <StatusGroup label="Profil alanları" missing={s.missing_profile_columns} total={s.profile_columns?.length} />
+      <StatusGroup label="Randevu alanları" missing={s.missing_appointment_columns} total={s.appointment_columns?.length} />
+      <StatusGroup label="Depolama kovaları" missing={s.missing_buckets} total={s.buckets?.length} />
+    </div>
+  )
 }
 
 function Modal({ title, sub, onClose, children }) {
@@ -219,6 +248,7 @@ export function AdminPanel() {
   const [msg, setMsg] = useState('')
   const [pwUser, setPwUser] = useState(null)
   const [editUser, setEditUser] = useState(null)
+  const [status, setStatus] = useState(null)
 
   const reload = () => {
     listAllProfiles().then(setUsers)
@@ -227,6 +257,10 @@ export function AdminPanel() {
     listRequests().then(setRequests)
   }
   useEffect(reload, [])
+
+  useEffect(() => {
+    getSetupStatus().then((r) => setStatus(r))
+  }, [])
 
   const doctors = users.filter((u) => u.role === 'hekim')
   const patients = users.filter((u) => u.role === 'hasta' || u.role === 'ebeveyn')
@@ -283,6 +317,28 @@ export function AdminPanel() {
             <div className="kpi"><b>{refs.length}</b><span>Sevk</span></div>
             <div className="kpi warn"><b>{requests.length}</b><span>Bekleyen İstek</span></div>
           </div>
+          <div className="card">
+            <div className="card-head">
+              <h3><Shield size={18} /> Sistem Durumu</h3>
+              <button className="ghost tiny" onClick={() => getSetupStatus().then(setStatus)}>
+                <Refresh size={13} /> Yenile
+              </button>
+            </div>
+            {!status && <p className="muted">Kontrol ediliyor...</p>}
+            {status?.error && <p className="auth-err"><Alert size={15} /> {status.error}</p>}
+            {status?.data && <StatusList s={status.data} />}
+            {status?.data && !status.data.ok && (
+              <div className="box warn" style={{ marginTop: 12 }}>
+                <p style={{ margin: 0 }}>
+                  <strong>Eksik kurulum var.</strong> Düzeltmek için proje klasöründe terminal açıp
+                  {' '}<code>npm run db:push</code>{' '}
+                  yazın. Token tanımlı değilse <code>db/SUPABASE_SETUP.sql</code> dosyasını
+                  Supabase SQL Editor'da çalıştırın.
+                </p>
+              </div>
+            )}
+          </div>
+
           <div className="card">
             <div className="card-head">
               <h3><Stethoscope size={18} /> Hekimler</h3>

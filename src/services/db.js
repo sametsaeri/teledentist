@@ -219,6 +219,16 @@ export async function listAllProfiles() {
   return allUsers()
 }
 
+// ---------- Kurulum durumu (admin paneli "Sistem Durumu" kartı) ----------
+export async function getSetupStatus() {
+  if (!hasSupabase) return { error: 'Supabase bağlantısı yok — yerel mod çalışıyor.' }
+  const { data, error } = await supabase.rpc('setup_status')
+  if (error) {
+    return { error: 'setup_status fonksiyonu bulunamadı — kurulum SQL\'i henüz çalıştırılmamış.' }
+  }
+  return { data }
+}
+
 // ---------- Randevu / Takvim / Bildirim ----------
 
 export async function listAppointments() {
