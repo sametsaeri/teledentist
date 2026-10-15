@@ -13,7 +13,7 @@ export function Layout({ children }) {
           <span>TeleDentist</span>
         </span>
         <span className="spacer" />
-        <a className="ktu-btn" href="https://dentistry.ktu.edu.tr" target="_blank" rel="noreferrer">
+        <a className="ktu-btn" href="https://www.ktu.edu.tr/dents" target="_blank" rel="noreferrer">
           <Cap size={15} /> {t('nav_ktu')}
         </a>
         <span className="lang">

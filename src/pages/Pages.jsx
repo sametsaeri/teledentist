@@ -6,59 +6,135 @@ import { login, registerRequest } from '../services/auth.js'
 import { insertAppointment } from '../services/db.js'
 import {
   Logo, User, Stethoscope, Shield, Calendar, Phone, Book, Help, Cap,
-  CheckCircle, Alert, Clipboard, FileText, DeptRestorative, DeptEndo, DeptPerio, DeptPedo
+  CheckCircle, Alert, Clipboard, FileText, Bell, Clock, Camera, Video,
+  DeptRestorative, DeptEndo, DeptPerio, DeptPedo
 } from '../components/Icons.jsx'
 
 export function Home() {
   const { t } = useTranslation()
+
+  // Başlık kelimeleri sırayla belirir
+  const titleWords = String(t('home_title')).split(' ')
+  const features = [
+    { Icon: Stethoscope, t: 'Online muayene', d: 'Kamera ve sesli görüşme ile uzak hasta desteği' },
+    { Icon: Calendar, t: 'Randevu ve takvim', d: 'Onaylanan randevu hekim takvimine düşer' },
+    { Icon: Bell, t: 'Akıllı hatırlatma', d: 'Hastanın seçtiği gün sayısı kadar önceden uyarı' },
+    { Icon: Shield, t: 'KVKK uyumlu', d: 'Rol bazlı erişim, veri silinmez, kayıt altında' }
+  ]
+  const photos = [
+    { src: '/img/clinic-smile.jpg', t: 'Klinik ortamında hasta ve hekim', s: 'Dijital ortamda da güvenli iletişim' },
+    { src: '/img/clinic-prep.jpg', t: 'Hazırlık ve hijyen', s: 'Her adım kayıt altında' },
+    { src: '/img/modern-dentistry.jpg', t: 'Modern diş hekimliği', s: 'Uzaktan değerlendirme desteği' },
+    { src: '/img/dental-team.jpg', t: 'Diş hekimliği ekibi', s: 'Kırsal kesimde göçer klinik modeli' }
+  ]
+
   return (
-    <div>
-      <div className="hero">
-        <div className="hero-badge"><Cap size={15} /> KTÜ Diş Hekimliği Fakültesi</div>
-        <h1>{t('home_title')}</h1>
-        <p>{t('home_desc')}</p>
-        <div className="hero-actions">
-          <Link to="/e-randevu"><span className="btn btn-primary"><Calendar size={17} /> {t('home_cta1')}</span></Link>
-          <Link to="/teledentistry"><span className="btn btn-ghost"><Book size={17} /> {t('home_cta2')}</span></Link>
+    <div className="landing">
+      <div className="landing-inner">
+        {/* ---------- GİRİŞ ---------- */}
+        <div className="landing-hero">
+          <div>
+            <div className="landing-badge"><Cap size={15} /> KTÜ Diş Hekimliği Fakültesi</div>
+            <h1 className="landing-title">
+              {titleWords.map((w, i) => (
+                <span className="word" key={i} style={{ animationDelay: `${i * 90}ms` }}>{w}&nbsp;</span>
+              ))}
+            </h1>
+            <p className="landing-sub">{t('home_desc')}</p>
+
+            <div className="landing-cta">
+              <Link to="/e-randevu"><span className="btn btn-primary"><Calendar size={17} /> {t('home_cta1')}</span></Link>
+              <Link to="/teledentistry"><span className="btn btn-ghost"><Book size={17} /> {t('home_cta2')}</span></Link>
+            </div>
+
+            <div className="stat-row">
+              <div className="stat"><b>{t('stat1_n')}</b>{t('stat1_l')}</div>
+              <div className="stat"><b>{t('stat2_n')}</b>{t('stat2_l')}</div>
+              <div className="stat"><b>{t('stat3_n')}</b>{t('stat3_l')}</div>
+            </div>
+
+            <span className="scroll-cue"><span className="dot" /> Kaydırarak keşfedin</span>
+          </div>
+
+          <div className="collage">
+            <div className="collage-main">
+              <img src="/img/clinic-smile.jpg" alt="Diş kliniğinde hasta ve hekim" width="1280" height="960" />
+            </div>
+            <div className="collage-card c1"><Video size={17} /> Görüntülü görüşme</div>
+            <div className="collage-card c2"><Shield size={17} /> Güvenli veri</div>
+            <div className="collage-card c3"><Clock size={17} /> 7/24 erişim</div>
+          </div>
         </div>
-        <div className="stat-row">
-          <div className="stat"><b>{t('stat1_n')}</b>{t('stat1_l')}</div>
-          <div className="stat"><b>{t('stat2_n')}</b>{t('stat2_l')}</div>
-          <div className="stat"><b>{t('stat3_n')}</b>{t('stat3_l')}</div>
+
+        {/* ---------- ÖNE ÇIKANLAR ---------- */}
+        <div className="feature-strip">
+          {features.map((f) => (
+            <div className="feature-chip" key={f.t}>
+              <f.Icon size={20} />
+              <div><b>{f.t}</b><span>{f.d}</span></div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <Reveal>
-        <div className="card">
-          <h2><CheckCircle size={20} /> {t('aim_title')}</h2>
-          <p>{t('aim_desc')}</p>
-        </div>
-      </Reveal>
-
-      <Reveal>
-        <div className="card">
-          <h2><Calendar size={20} /> {t('steps_title')}</h2>
-          <div className="grid">
-            <div className="step"><b>{t('step1_t')}</b><p className="muted">{t('step1_d')}</p></div>
-            <div className="step"><b>{t('step2_t')}</b><p className="muted">{t('step2_d')}</p></div>
-            <div className="step"><b>{t('step3_t')}</b><p className="muted">{t('step3_d')}</p></div>
-            <div className="step"><b>{t('step4_t')}</b><p className="muted">{t('step4_d')}</p></div>
+      {/* ---------- İÇERİK ---------- */}
+      <div className="landing-inner">
+        <Reveal>
+          <div className="card">
+            <h2><CheckCircle size={20} /> {t('aim_title')}</h2>
+            <p>{t('aim_desc')}</p>
           </div>
-        </div>
-      </Reveal>
+        </Reveal>
 
-      <Reveal>
-        <div className="card">
-          <h2><Stethoscope size={22} /> {t('dept_title')}</h2>
-          <div className="grid">
-            <div className="dept-mini"><DeptRestorative size={20} /><b>{t('dept_rest')}</b><p className="muted">{t('dept_rest_d')}</p></div>
-            <div className="dept-mini"><DeptEndo size={20} /><b>{t('dept_endo')}</b><p className="muted">{t('dept_endo_d')}</p></div>
-            <div className="dept-mini"><DeptPerio size={20} /><b>{t('dept_perio')}</b><p className="muted">{t('dept_perio_d')}</p></div>
-            <div className="dept-mini"><DeptPedo size={20} /><b>{t('dept_pedo')}</b><p className="muted">{t('dept_pedo_d')}</p></div>
+        <Reveal>
+          <div className="card">
+            <h2><Calendar size={20} /> {t('steps_title')}</h2>
+            <div className="grid">
+              <div className="step"><b>{t('step1_t')}</b><p className="muted">{t('step1_d')}</p></div>
+              <div className="step"><b>{t('step2_t')}</b><p className="muted">{t('step2_d')}</p></div>
+              <div className="step"><b>{t('step3_t')}</b><p className="muted">{t('step3_d')}</p></div>
+              <div className="step"><b>{t('step4_t')}</b><p className="muted">{t('step4_d')}</p></div>
+            </div>
           </div>
-          <p><Link to="/e-randevu"><button><Calendar size={16} /> {t('dept_cta')}</button></Link></p>
-        </div>
-      </Reveal>
+        </Reveal>
+
+        <Reveal>
+          <div className="card">
+            <h2><Stethoscope size={22} /> {t('dept_title')}</h2>
+            <div className="grid">
+              <div className="dept-mini"><DeptRestorative size={20} /><b>{t('dept_rest')}</b><p className="muted">{t('dept_rest_d')}</p></div>
+              <div className="dept-mini"><DeptEndo size={20} /><b>{t('dept_endo')}</b><p className="muted">{t('dept_endo_d')}</p></div>
+              <div className="dept-mini"><DeptPerio size={20} /><b>{t('dept_perio')}</b><p className="muted">{t('dept_perio_d')}</p></div>
+              <div className="dept-mini"><DeptPedo size={20} /><b>{t('dept_pedo')}</b><p className="muted">{t('dept_pedo_d')}</p></div>
+            </div>
+            <p><Link to="/e-randevu"><button><Calendar size={16} /> {t('dept_cta')}</button></Link></p>
+          </div>
+        </Reveal>
+
+        {/* ---------- FOTOĞRAFLAR ---------- */}
+        <Reveal>
+          <div className="card">
+            <h2><Camera size={20} /> Kliniğimizden</h2>
+            <div className="photo-grid">
+              {photos.map((p) => (
+                <figure className="photo-card" key={p.src}>
+                  <img src={p.src} alt={p.t} loading="lazy" width="1280" height="853" />
+                  <figcaption>{p.t}<small>{p.s}</small></figcaption>
+                </figure>
+              ))}
+            </div>
+
+            <details className="credits">
+              <summary>Görsel Kaynakları ve Lisanslar</summary>
+              <ul>
+                <li>Klinik ve ekip fotoğrafları: ABD Hava/Deniz Kuvvetleri — <b>Kamu Malı (Public Domain)</b></li>
+                <li>“Modern Dentistry in Practice”: Jameswasswa — <b>CC BY-SA 4.0</b></li>
+                <li>Tüm görseller Wikimedia Commons’tan alınmıştır; künyeler <code>public/img/CREDITS.txt</code> dosyasındadır.</li>
+              </ul>
+            </details>
+          </div>
+        </Reveal>
+      </div>
     </div>
   )
 }

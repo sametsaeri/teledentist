@@ -10,7 +10,8 @@
     "db:build": "node scripts/db-build.mjs",
     "db:push": "node scripts/db-build.mjs && node scripts/db-push.mjs",
     "db:demo": "node scripts/db-push.mjs db/demo_verisi.sql",
-    "db:all": "node scripts/db-build.mjs && node scripts/db-push.mjs && node scripts/db-push.mjs db/demo_verisi.sql"
+    "db:all": "node scripts/db-build.mjs && node scripts/db-push.mjs && node scripts/db-push.mjs db/demo_verisi.sql",
+    "audit": "node scripts/audit-buttons.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

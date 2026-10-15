@@ -5,7 +5,7 @@ import { load, save, keys, getSession } from '../services/store.js'
 import { triageScore, anxietyLevel, hygieneTip } from '../services/clinical.js'
 import { suggestRecall } from '../ai/recall.js'
 import { toothEducation } from '../ai/toothAi.js'
-import { getPatient, getTeeth } from '../services/db.js'
+import { getPatient, getTeeth, listPhotos, insertPhoto, setPhotoNote, uploadImage, signedPhotoUrl } from '../services/db.js'
 
 function pid() { return getSession()?.id || '' }
 
@@ -113,36 +113,73 @@ export function Anxiety() {
 
 // 4. Fotoğrafla ön değerlendirme
 export function PhotoReview() {
+  const me = getSession()
+  const [list, setList] = useState([])
   const [img, setImg] = useState(null)
-  const [list, setList] = useState(load(keys.photos, []).filter((p) => p.patientId === pid()))
-  const onFile = (e) => {
-    const f = e.target.files[0]
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const reload = () => { listPhotos(pid()).then(setList) }
+  useEffect(reload, [])
+
+  // Kayıt satırındaki dosya için imzalı bağlantı üret
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      const rows = await listPhotos(pid())
+      const withUrls = await Promise.all(rows.map(async (r) => ({
+        ...r,
+        url: r.path ? await signedPhotoUrl(r.path) : r.img || null
+      })))
+      if (alive) setList(withUrls)
+    })()
+    return () => { alive = false }
+  }, [])
+
+  const onFile = async (e) => {
+    const f = e.target.files?.[0]
     if (!f) return
+    setMsg(''); setBusy(true)
     const r = new FileReader()
-    r.onload = () => {
-      const rec = { id: Date.now(), patientId: pid(), img: r.result, date: new Date().toISOString().slice(0, 16), status: 'hekime iletildi' }
-      const all = load(keys.photos, [])
-      all.push(rec)
-      save(keys.photos, all)
-      setList(all.filter((p) => p.patientId === pid()))
-      setImg(r.result)
+    r.onload = async () => {
+      const dataUrl = r.result
+      setImg(dataUrl)
+      const up = await uploadImage('photos', pid(), 'foto', dataUrl)
+      if (up.error) {
+        setBusy(false)
+        return setMsg('Yükleme yapılamadı: ' + up.error)
+      }
+      const ins = await insertPhoto({ patientId: pid(), path: up.path, createdBy: me?.id })
+      setBusy(false)
+      if (ins.error) return setMsg(ins.error)
+      setMsg('Fotoğrafınız hekiminize iletildi.')
+      e.target.value = ''
+      reload()
     }
     r.readAsDataURL(f)
   }
-  const notes = load(keys.photoNotes, {})
+
   return (
     <div>
       <h1>Fotoğrafla Ön Değerlendirme</h1>
       <div className="card">
-        <p className="muted">Ağız içi fotoğraf yükleyin, hekim yorum yazar.</p>
-        <input type="file" accept="image/*" onChange={onFile} />
+        <p className="muted">Ağız içi fotoğraf yükleyin, hekiminiz yorumunu yazar.</p>
+        <input type="file" accept="image/*" capture="environment" onChange={onFile} disabled={busy} />
+        {busy && <p className="muted">Yükleniyor...</p>}
         {img && <div><br /><img src={img} alt="ağız" className="xray" /></div>}
+        {msg && <p className="muted">{msg}</p>}
       </div>
+      {list.length === 0 && <div className="card"><p className="muted">Henüz fotoğraf yüklemediniz.</p></div>}
       {list.map((p) => (
         <div className="card" key={p.id}>
-          <img src={p.img} alt="ağız" className="xray" />
-          <p className="muted">{p.date} - {p.status}</p>
-          <p><strong>Hekim yorumu:</strong> {notes[p.id] || 'Henüz yorum yok.'}</p>
+          {p.url
+            ? <img src={p.url} alt="ağız" className="xray" />
+            : <p className="muted">Görüntü yüklenemedi.</p>}
+          <p className="muted">
+            {p.created_at ? String(p.created_at).slice(0, 16) : p.date} ·{' '}
+            <span className="badge">{p.status === 'degerlendirildi' ? 'Değerlendirildi' : 'Hekim bekleniyor'}</span>
+          </p>
+          <p><strong>Hekim yorumu:</strong> {p.note || 'Henüz yorum yok.'}</p>
         </div>
       ))}
     </div>

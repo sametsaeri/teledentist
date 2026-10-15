@@ -286,3 +286,211 @@ button svg, .btn svg, .tab svg { vertical-align: -3px; }
   }
   .reveal { opacity: 1 !important; transform: none !important; }
 }
+
+/* ============================================================
+   ANASAYFA GİRİŞ / TANITIM BÖLÜMÜ
+   ============================================================ */
+.landing {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(1100px 520px at 12% -8%, rgba(20,184,166,.20), transparent 60%),
+    radial-gradient(900px 460px at 92% 8%, rgba(2,132,199,.18), transparent 62%),
+    linear-gradient(180deg, #f4fbfd 0%, #eef6fc 100%);
+}
+
+/* Yumuşak hareketli ışık halkaları */
+.landing::before,
+.landing::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: .45;
+  pointer-events: none;
+  animation: drift 22s ease-in-out infinite alternate;
+}
+.landing::before { width: 420px; height: 420px; top: -120px; left: -90px; background: rgba(20,184,166,.35); }
+.landing::after { width: 380px; height: 380px; bottom: -140px; right: -80px; background: rgba(56,189,248,.32); animation-delay: -8s; }
+
+@keyframes drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(38px, 26px, 0) scale(1.09); }
+  100% { transform: translate3d(-24px, 40px, 0) scale(.95); }
+}
+
+.landing-inner { position: relative; z-index: 1; }
+
+.landing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+  gap: 40px;
+  align-items: center;
+  padding: 46px 0 34px;
+}
+@media (max-width: 900px) { .landing-hero { grid-template-columns: 1fr; gap: 26px; } }
+
+.landing-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,.82);
+  border: 1px solid rgba(20,184,166,.35);
+  color: #0f766e;
+  padding: 7px 14px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700; letter-spacing: .2px;
+  box-shadow: 0 6px 18px rgba(15,118,110,.10);
+  backdrop-filter: blur(6px);
+}
+
+.landing-title {
+  margin: 16px 0 10px;
+  font-size: clamp(30px, 4.6vw, 52px);
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: -.6px;
+  color: #0b3d5f;
+}
+.landing-title .grad {
+  background: linear-gradient(100deg, #0d9488, #0284c7 55%, #6366f1);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.landing-sub { color: #3d6b8c; font-size: 16.5px; line-height: 1.62; max-width: 56ch; }
+
+/* Tip yazarken gelen başlık */
+.landing-title .word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(14px);
+  animation: wordIn .62s cubic-bezier(.22,.9,.3,1) forwards;
+}
+@keyframes wordIn { to { opacity: 1; transform: none; } }
+
+.landing-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+.landing-cta .btn { padding: 12px 22px; font-size: 15px; border-radius: 14px; }
+
+/* --- Görsel kolaj --- */
+.collage { position: relative; }
+.collage-main {
+  position: relative;
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: 0 26px 60px rgba(11,61,95,.24);
+  border: 5px solid #fff;
+  transform: perspective(1200px) rotateY(-5deg) rotateX(2deg);
+  animation: floaty 7s ease-in-out infinite;
+}
+.collage-main img { width: 100%; height: 100%; object-fit: cover; display: block; aspect-ratio: 4 / 3; }
+.collage-main::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(6,32,52,.55) 100%);
+}
+
+@keyframes floaty {
+  0%, 100% { transform: perspective(1200px) rotateY(-5deg) rotateX(2deg) translateY(0); }
+  50%      { transform: perspective(1200px) rotateY(-3deg) rotateX(1deg) translateY(-12px); }
+}
+
+.collage-card {
+  position: absolute;
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,.94);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(13,148,136,.22);
+  border-radius: 16px;
+  padding: 11px 15px;
+  box-shadow: 0 16px 34px rgba(11,61,95,.18);
+  font-size: 13px; font-weight: 700; color: #0b3d5f;
+  animation: floaty 6.2s ease-in-out infinite;
+}
+.collage-card svg { color: #0d9488; }
+.collage-card.c1 { left: -22px; top: 16%; }
+.collage-card.c2 { right: -18px; bottom: 14%; animation-delay: -2.6s; }
+.collage-card.c3 { right: 4%; top: -16px; animation-delay: -4.2s; }
+@media (max-width: 900px) {
+  .collage-card.c1 { left: 8px; }
+  .collage-card.c2 { right: 8px; }
+}
+
+/* Yukarı kaydırma ipucu */
+.scroll-cue {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 26px; color: #5b7a99; font-size: 12.5px; font-weight: 600;
+  letter-spacing: .3px;
+}
+.scroll-cue .dot {
+  width: 22px; height: 34px; border: 2px solid #9fb8cd; border-radius: 14px;
+  position: relative;
+}
+.scroll-cue .dot::after {
+  content: ''; position: absolute; left: 50%; top: 6px;
+  width: 3px; height: 7px; border-radius: 3px; background: #0d9488;
+  transform: translateX(-50%);
+  animation: wheel 1.7s ease-in-out infinite;
+}
+@keyframes wheel {
+  0% { opacity: 0; transform: translate(-50%, 0); }
+  35% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, 12px); }
+}
+
+/* --- Öne çıkan özellik şeridi --- */
+.feature-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin: 6px 0 34px;
+}
+.feature-chip {
+  display: flex; align-items: flex-start; gap: 11px;
+  background: rgba(255,255,255,.86);
+  border: 1px solid rgba(2,132,199,.16);
+  border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 20px rgba(11,61,95,.07);
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.feature-chip:hover { transform: translateY(-4px); box-shadow: 0 16px 32px rgba(11,61,95,.14); }
+.feature-chip svg { color: #0d9488; flex-shrink: 0; margin-top: 2px; }
+.feature-chip b { display: block; font-size: 13.5px; color: #0b3d5f; }
+.feature-chip span { font-size: 12.5px; color: #5b7a99; line-height: 1.45; }
+
+/* --- Fotoğraf galerisi --- */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+.photo-card {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(2,132,199,.14);
+  box-shadow: 0 12px 28px rgba(11,61,95,.12);
+  transition: transform .3s ease, box-shadow .3s ease;
+}
+.photo-card:hover { transform: translateY(-6px); box-shadow: 0 22px 44px rgba(11,61,95,.2); }
+.photo-card img { width: 100%; height: 100%; object-fit: cover; display: block; aspect-ratio: 3 / 2; }
+.photo-card figcaption {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 26px 16px 13px;
+  background: linear-gradient(180deg, rgba(6,32,52,0) 0%, rgba(6,32,52,.86) 78%);
+  color: #eaf6fb;
+  font-size: 13px; font-weight: 600; line-height: 1.4;
+}
+.photo-card figcaption small { display: block; font-weight: 500; opacity: .82; font-size: 11.5px; }
+
+/* Görsel künyeleri */
+.credits { margin-top: 26px; }
+.credits summary {
+  cursor: pointer; font-weight: 700; color: #33587a; font-size: 13.5px;
+  padding: 9px 0;
+}
+.credits ul { margin: 6px 0 0; padding-left: 20px; color: #5b7a99; font-size: 12.5px; line-height: 1.7; }
+.credits a { color: #0284c7; }
+
+@media (max-width: 640px) {
+  .collage-card.c3 { display: none; }
+  .landing-title { font-size: 28px; }
+}

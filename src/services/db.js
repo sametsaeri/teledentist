@@ -110,6 +110,69 @@ export async function insertAnxiety(pid, total) {
   return {}
 }
 
+// Triyaj kayıtlarını oku (hekim paneli). Sunucu yoksa yerel kayıt.
+export async function listTriage(pid) {
+  if (hasSupabase) {
+    let q = supabase.from('triage').select('*').order('created_at', { ascending: false }).limit(100)
+    if (pid) q = q.eq('patient_id', pid)
+    const { data, error } = await q
+    if (!error && data && data.length) return data
+    if (!error) return []
+  }
+  const all = load(keys.triage, [])
+  const list = pid ? all.filter((t) => t.patientId === pid) : all
+  return list.slice().sort((a, b) => (b.score || 0) - (a.score || 0))
+}
+
+// ---------- Ağız fotoğrafları ----------
+// Dosya Storage'a, kayıt photos tablosuna yazılır. Böylece hekim
+// başka bir cihazdan da hastanın fotoğraflarını görür.
+export async function listPhotos(pid) {
+  if (hasSupabase) {
+    let q = supabase.from('photos').select('*').order('created_at', { ascending: false }).limit(100)
+    if (pid) q = q.eq('patient_id', pid)
+    const { data, error } = await q
+    if (!error && data) return data
+  }
+  // Yedek: tarayıcıdaki eski kayıtlar
+  return load(keys.photos, []).filter((p) => !pid || p.patientId === pid)
+}
+
+export async function insertPhoto({ patientId, path, label = 'foto', createdBy, note = '' }) {
+  if (hasSupabase) {
+    const { error } = await supabase.from('photos').insert({
+      patient_id: patientId, path, label, note, status: 'bekliyor', created_by: createdBy || null
+    })
+    return { error: error?.message }
+  }
+  const list = load(keys.photos, [])
+  list.push({ id: Date.now(), patientId, img: null, path, label, note, date: new Date().toISOString().slice(0, 16), status: 'bekliyor' })
+  save(keys.photos, list)
+  return {}
+}
+
+// Kayıttaki tam dosya yolu için geçici (1 saat) imzalı bağlantı
+export async function signedPhotoUrl(path) {
+  if (!hasSupabase || !path) return null
+  try {
+    const { data, error } = await supabase.storage.from('photos').createSignedUrl(path, 3600)
+    return error ? null : data?.signedUrl || null
+  } catch {
+    return null
+  }
+}
+
+export async function setPhotoNote(id, note, status = 'degerlendirildi') {  if (hasSupabase) {
+    const { error } = await supabase.from('photos').update({ note, status }).eq('id', id)
+    return { error: error?.message }
+  }
+  save(keys.photos, load(keys.photos, []).map((p) => (p.id === id ? { ...p, note } : p)))
+  const notes = load(keys.photoNotes, {})
+  notes[id] = note
+  save(keys.photoNotes, notes)
+  return {}
+}
+
 export async function listReferrals() {
   if (hasSupabase) {
     const { data } = await supabase.from('referrals').select('*').order('created_at', { ascending: false }).limit(50)

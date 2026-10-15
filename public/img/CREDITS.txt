@@ -1,0 +1,36 @@
+TELEDENTIST — GÖRSEL KAYNAKLARI VE LİSANSLAR
+=============================================
+Tüm görseller Wikimedia Commons'tan alınmıştır.
+Telif bedeli yoktur; her biri ya kamu malıdır (Public Domain) ya da
+Creative Commons lisanslıdır. CC BY-SA görseli kullanıldığı için
+sitenin "Görsel Kaynakları" bölümünde sanatçı ve lisans adı geçer.
+
+1) clinic-smile.jpg
+   Konu   : Diş kliniğinde hasta ve diş hekimi, gülümseyen an
+   Yazar  : Airman 1st Class Clayton Cupit
+   Lisans : Kamu Malı (Public Domain) — ABD Hava Kuvvetleri
+   Kaynak : https://commons.wikimedia.org/wiki/File:Dental_clinic_keeps_JB_Charleston_-_Air_Base_smiling_140416-F-EV310-036.jpg
+
+2) clinic-prep.jpg
+   Konu   : Diş asistanının hastayı hazırlaması, modern klinik
+   Yazar  : Sgt. Marcy Sanchez
+   Lisans : Kamu Malı (Public Domain) — ABD Deniz Kuvvetleri
+   Kaynak : https://commons.wikimedia.org/wiki/File:Lakita_Jackson,_a_dental_assistant,_prepares_a_patient_for_an_operation_at_the_dental_clinic_on_Marine_Corps_Recruit_Depot_Parris_Island,_S.C_130124-M-EK666-003.jpg
+
+3) dental-team.jpg
+   Konu   : Diş hekimliği ekibi ve çocuk hastalar
+   Yazar  : U.S. Air Force photo by Staff Sgt. Dakota Carter
+   Lisans : Kamu Malı (Public Domain)
+   Kaynak : https://commons.wikimedia.org/wiki/File:LAMAT_2026_dental_team_brightens_young_smiles_(9549692).jpg
+
+4) modern-dentistry.jpg
+   Konu   : Modern diş hekimliği uygulaması
+   Yazar  : Jameswasswa
+   Lisans : CC BY-SA 4.0 (atıf zorunludur)
+   Kaynak : https://commons.wikimedia.org/wiki/File:Modern_Dentistry_in_Practice.jpg
+
+NOT
+---
+Görseller web sitesine optimize edilmiş (1280 piksel) biçimde kopyalanmıştır.
+Yeni görsel eklerken aynı yöntemi kullanın: Wikimedia Commons API'sinden
+lisans alanını doğrulayıp public/img/ altına kaydedin ve buraya künye ekleyin.

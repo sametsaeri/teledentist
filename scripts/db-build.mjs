@@ -17,9 +17,10 @@ const FILES = [
   ['migration_users.sql',     '5) Kullanıcı adıyla giriş + kayıt kapalıyken hesap açma'],
   ['migration_admin_manage.sql', '6) Süper admin: şifre atama + tüm kullanıcı verisini düzenleme'],
   ['migration_storage.sql',   '7) Röntgen ve fotoğraf depolama (Supabase Storage)'],
-  ['setup_status.sql',        '8) Kurulum durumu fonksiyonu (uygulama bunu okur)'],
-  ['fix_admin.sql',           '9) Süper admin hesabını admin yapar'],
-  ['fix_demo_doctor.sql',     '10) Eski demo hekim kayıtlarını temizler']
+  ['migration_photos.sql',     '8) Ağız fotoğrafları tablosu (Storage kayıtları)'],
+  ['setup_status.sql',        '9) Kurulum durumu fonksiyonu (uygulama bunu okur)'],
+  ['fix_admin.sql',           '10) Süper admin hesabını admin yapar'],
+  ['fix_demo_doctor.sql',     '11) Eski demo hekim kayıtlarını temizler']
 ]
 
 const banner = `-- ${'='.repeat(64)}
@@ -51,7 +52,7 @@ if (missing.length) {
 const parts = [banner]
 FILES.forEach(([file, title], i) => {
   const body = fs.readFileSync(path.join(db, file), 'utf8')
-  parts.push(`\n-- ${'='.repeat(64)}\n-- BÖLÜM ${i + 1}/10: ${title}\n-- Kaynak: db/${file}\n-- ${'='.repeat(64)}\n\n${body.trim()}\n`)
+  parts.push(`\n-- ${'='.repeat(64)}\n-- BÖLÜM ${i + 1}/${FILES.length}: ${title}\n-- Kaynak: db/${file}\n-- ${'='.repeat(64)}\n\n${body.trim()}\n`)
 })
 
 fs.writeFileSync(OUT, parts.join(''), 'utf8')

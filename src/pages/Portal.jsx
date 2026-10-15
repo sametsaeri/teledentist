@@ -10,7 +10,7 @@ import {
   listPatients, getPatient, getTeeth, saveTooth, lastRecords, updatePatient, getChildren,
   insertTriage, insertHygiene, insertAnxiety, listDoctors, listReferrals, referPatient,
   listAppointments, approveAppointment, completeAppointment, listRequests, approveRequest,
-  uploadImage, loadImage, setAppointmentOnline
+  uploadImage, loadImage, setAppointmentOnline, listPhotos, listTriage, setPhotoNote, signedPhotoUrl
 } from '../services/db.js'
 import { triageScore } from '../services/clinical.js'
 import {
@@ -20,6 +20,18 @@ import {
 } from '../components/Icons.jsx'
 
 function xrayKey(pid, tooth) { return `${pid}_${tooth}` }
+
+// Sonraki kontrol tarihi (son muayeneden 3 ay sonra) ve kalan gün.
+// Hatırlatma, kalan gün <= hastanın seçtiği hatırlatma günü olduğunda tetiklenir.
+export function reminderInfo(p) {
+  const days = Number(p.reminder_days ?? p.reminderDays ?? 5)
+  const lv = p.last_visit || p.lastVisit
+  if (!lv) return { left: days, days, date: null, missing: true }
+  const v = new Date(lv)
+  v.setMonth(v.getMonth() + 3)
+  const left = Math.ceil((v - new Date()) / 86400000)
+  return { left, days, date: v.toISOString().slice(0, 10), missing: false }
+}
 
 function XrayBox({ pid, tooth }) {
   const [img, setImg] = useState(load(keys.xrays, {})[xrayKey(pid, tooth)] || null)
@@ -223,6 +235,10 @@ export function DoctorList() {
   const [form, setForm] = useState(emptyForm())
   const [approveDate, setApproveDate] = useState({})
   const [showNew, setShowNew] = useState(false)
+  const [triage, setTriage] = useState([])
+  const [photos, setPhotos] = useState([])
+  const [photoDraft, setPhotoDraft] = useState({})
+  const [sortBy, setSortBy] = useState('ad')
   const me = getSession()
 
   const reload = () => {
@@ -231,8 +247,31 @@ export function DoctorList() {
     listReferrals().then(setRefs)
     listRequests().then(setRequests)
     listAppointments().then(setAppts)
+    listTriage().then(setTriage)
+    loadPhotos()
   }
   useEffect(reload, [])
+
+  // Fotoğraflar sunucudan; her biri için geçici imzalı bağlantı üretilir
+  const loadPhotos = async () => {
+    const rows = await listPhotos()
+    const withUrls = await Promise.all(rows.map(async (r) => ({
+      ...r,
+      url: r.path ? await signedPhotoUrl(r.path) : r.img || null
+    })))
+    setPhotos(withUrls)
+  }
+  useEffect(() => { loadPhotos() }, [])
+
+  // Ham UUID yerine okunabilir ad göster
+  const pname = (pid) => {
+    const u = all.find((x) => x.id === pid) || doctors.find((x) => x.id === pid)
+    return u?.name || '—'
+  }
+  const pxray = (pid) => {
+    const u = all.find((x) => x.id === pid)
+    return u ? `${u.name} · ${u.phone || 'telefon yok'} · TC ${u.tc_no || '—'}` : 'Bilinmeyen hasta'
+  }
 
   const ql = q.toLowerCase()
   const patients = all.filter((u) => {
@@ -243,11 +282,21 @@ export function DoctorList() {
       || (u.phone || '').includes(ql)
       || (u.email || '').toLowerCase().includes(ql)
   })
-  const triage = load(keys.triage, []).slice().sort((a, b) => b.score - a.score)
-  const photos = load(keys.photos, [])
-  const photoNote = load(keys.photoNotes, {})
+  const triageSorted = triage.slice().sort((a, b) => (b.score || 0) - (a.score || 0))
   const pending = appts.filter((a) => a.status === 'yeni')
   const approved = appts.filter((a) => a.status === 'onaylı' && a.appt_date)
+
+  // Hasta listesi sıralaması
+  const patientsSorted = patients.slice().sort((a, b) => {
+    if (sortBy === 'tarih') return String(b.last_visit || '').localeCompare(String(a.last_visit || ''))
+    if (sortBy === 'randevu') return String(a.reminder_days ?? 99) - String(b.reminder_days ?? 99)
+    return (a.name || '').localeCompare(b.name || '', 'tr')
+  })
+
+  // Aynı hekime aynı güne ikinci randevu verilmesini engelle
+  const hasConflict = (dateStr, selfId) =>
+    appts.some((x) => x.id !== selfId && x.appt_date === dateStr
+      && (x.status === 'onaylı' || x.status === 'yeni'))
 
   const saveNewPatient = async () => {
     setMsg('')
@@ -335,26 +384,48 @@ export function DoctorList() {
       {tab === 'hastalar' && (
         <div>
           <div className="card toolbar">
-            <input placeholder="Ad, TC veya telefon ile ara..." value={q} onChange={(e) => setQ(e.target.value)} style={{ minWidth: 260 }} />
+            <input placeholder="Ad, TC veya telefon ile ara..." value={q} onChange={(e) => setQ(e.target.value)} style={{ minWidth: 240 }} />
             <span className="badge">{patients.length} hasta</span>
             <span className="spacer" />
+            <label className="inline-label">Sırala:
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                <option value="ad">Ada göre</option>
+                <option value="tarih">Son muayeneye göre</option>
+                <option value="randevu">Hatırlatma gününe göre</option>
+              </select>
+            </label>
             <button onClick={() => setShowNew(true)}><Plus size={16} /> Yeni Hasta Ekle</button>
           </div>
-          {patients.length === 0 && <div className="card"><p className="muted">Kayıtlı hasta yok. "Yeni Hasta" sekmesinden ekleyin.</p></div>}
-          {patients.map((p) => (
-            <div className="card patient-row" key={p.id}>
-              <div>
-                <strong>{p.name}</strong> <span className="muted">({p.email})</span>
-                <p className="muted">
-                  {p.tc_no ? `TC: ${p.tc_no} · ` : ''}{p.gender || ''} {p.birth_date ? `· ${p.birth_date}` : ''}{p.phone ? ` · ${p.phone}` : ''}
-                </p>
+          {patients.length === 0 && <div className="card"><p className="muted">Kayıtlı hasta yok. "Yeni Hasta Ekle" ile başlayın.</p></div>}
+          {patientsSorted.map((p) => {
+            const info = reminderInfo(p)
+            return (
+              <div className="card patient-row" key={p.id}>
+                <div>
+                  <strong>{p.name}</strong> <span className="muted">({p.email})</span>
+                  <p className="muted">
+                    {p.tc_no ? `TC: ${p.tc_no} · ` : ''}{p.gender || ''} {p.birth_date ? `· ${p.birth_date}` : ''}{p.phone ? ` · ${p.phone}` : ''}
+                  </p>
+                  <p className="muted">
+                    <Clock size={13} /> Son muayene: {p.last_visit || '—'} ·{' '}
+                    {info.left < 0
+                      ? <span className="due-now">{Math.abs(info.left)} gün gecikti</span>
+                      : info.left === 0
+                        ? <span className="due-now"><Alert size={13} /> Kontrol bugün</span>
+                        : <span><Bell size={13} /> {info.left} gün sonra hatırlatma</span>}
+                  </p>
+                </div>
+                <div className="toolbar">
+                  <Link to={`/hekim/hasta/${p.id}`}><button>Hastayı Aç</button></Link>
+                  <Link to={`/rapor/${p.id}`}><button className="ghost"><FileText size={15} /> Rapor</button></Link>
+                  <Link to={`/hekim/hasta/${p.id}#randevu`}>
+                    <button className="ghost"><Calendar size={15} /> Randevu Ver</button>
+                  </Link>
+                  <Link to="/video"><button className="ghost"><Video size={15} /> Online Görüşme</button></Link>
+                </div>
               </div>
-              <div className="toolbar">
-                <Link to={`/hekim/hasta/${p.id}`}><button>Hastayı Aç</button></Link>
-                <Link to={`/rapor/${p.id}`}><button className="ghost"><FileText size={15} /> Rapor</button></Link>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -387,8 +458,10 @@ export function DoctorList() {
                   <Video size={15} /> {a.is_online ? 'Online ✓' : 'Online yap'}
                 </button>
                 <button onClick={async () => {
-                  if (!approveDate[a.id]) return alert('Tarih seçin.')
-                  const r = await approveAppointment(a.id, me?.id, approveDate[a.id])
+                  const d = approveDate[a.id]
+                  if (!d) return setMsg('Önce randevu tarihi seçin.')
+                  if (hasConflict(d, a.id)) return setMsg(`${d} tarihine zaten bir randevu var. Farklı bir gün seçin.`)
+                  const r = await approveAppointment(a.id, me?.id, d)
                   setMsg(r.error || 'Randevu onaylandı ve takvime eklendi.')
                   reload()
                 }}><Check size={15} /> Onayla</button>
@@ -403,13 +476,13 @@ export function DoctorList() {
       {tab === 'triyaj' && (
         <div>
           <div className="card">
-            <h3><Stethoscope size={18} /> Triyaj Kuyruğu ({triage.length})</h3>
-            {triage.length === 0 && <p className="muted">Triyaj kaydı yok.</p>}
-            {triage.map((t) => (
+            <h3><Stethoscope size={18} /> Triyaj Kuyruğu ({triageSorted.length})</h3>
+            {triageSorted.length === 0 && <p className="muted">Triyaj kaydı yok.</p>}
+            {triageSorted.map((t) => (
               <div key={t.id} className="appt-row">
                 <div>
                   <span className="badge">{t.score} - {t.level}</span>
-                  <p><strong>{t.patientId}</strong> · diş {t.tooth} · ağrı {t.pain} <span className="muted">[{t.date}]</span></p>
+                  <p><strong>{pname(t.patient_id || t.patientId)}</strong> · diş {t.tooth} · ağrı {t.pain} <span className="muted">[{String(t.created_at || t.date || '').slice(0, 10)}]</span></p>
                 </div>
                 <div className="toolbar">
                   <select value={refTo[t.id] || ''} onChange={(e) => setRefTo((s) => ({ ...s, [t.id]: e.target.value }))}>
@@ -418,9 +491,9 @@ export function DoctorList() {
                   </select>
                   <button className="ghost" onClick={async () => {
                     const doc = doctors.find((d) => d.id === (refTo[t.id] || ''))
-                    if (!doc) return alert('Hekim seçin.')
-                    const r = await referPatient({ patientId: t.patientId, toDoctor: doc.id, branch: doc.branch || 'genel', note: `${t.tooth} nolu diş, ağrı ${t.pain}`, fromDoctor: me?.id })
-                    setRefMsg(r.error || `${t.patientId} → Dt. ${doc.name} hekimine sevk edildi.`)
+                    if (!doc) return setRefMsg('Önce sevk edilecek hekimi seçin.')
+                    const r = await referPatient({ patientId: t.patient_id || t.patientId, toDoctor: doc.id, branch: doc.branch || 'genel', note: `${t.tooth} nolu diş, ağrı ${t.pain}`, fromDoctor: me?.id })
+                    setRefMsg(r.error || `${pname(t.patient_id || t.patientId)} → Dt. ${doc.name} hekimine sevk edildi.`)
                     reload()
                   }}>Sevk Et</button>
                 </div>
@@ -432,7 +505,10 @@ export function DoctorList() {
             <h3><Send size={18} /> Sevk Kayıtları ({refs.length})</h3>
             {refs.length === 0 && <p className="muted">Sevk kaydı yok.</p>}
             {refs.map((r) => (
-              <p key={r.id}><strong>{r.patient_id}</strong> → Dt. {doctors.find((d) => d.id === r.to_doctor)?.name || r.to_doctor} <span className="muted">({BRANCH_TR[r.branch] || r.branch} · {r.status})</span></p>
+              <p key={r.id}>
+                <strong>{pname(r.patient_id)}</strong> → Dt. {doctors.find((d) => d.id === r.to_doctor)?.name || '—'}{' '}
+                <span className="muted">({BRANCH_TR[r.branch] || r.branch} · {r.status})</span>
+              </p>
             ))}
           </div>
         </div>
@@ -442,16 +518,39 @@ export function DoctorList() {
       {tab === 'foto' && (
         <div className="card">
           <h3><Camera size={18} /> Fotoğrafla Ön Değerlendirme ({photos.length})</h3>
-          {photos.length === 0 && <p className="muted">Fotoğraf yok.</p>}
+          {photos.length === 0 && <p className="muted">Hasta fotoğrafı yok.</p>}
           {photos.map((p) => (
             <div key={p.id} className="photo-row">
-              <img src={p.img} alt="ağız" className="xray" />
+              {p.url ? <img src={p.url} alt="ağız" className="xray" /> : <p className="muted">Görüntü yüklenemedi.</p>}
               <div>
-                <p className="muted">{p.patientId} - {p.date}</p>
-                <p className="muted"><Chat size={13} /> {photoNote[p.id] || 'Yorum yok'}</p>
+                <p className="muted">
+                  <strong>{pname(p.patient_id || p.patientId)}</strong> · {String(p.created_at || p.date || '').slice(0, 16)} ·{' '}
+                  <span className="badge">{p.status === 'degerlendirildi' ? 'Değerlendirildi' : 'Bekliyor'}</span>
+                </p>
+                <textarea
+                  rows="2"
+                  placeholder="Hekim yorumunuz..."
+                  value={photoDraft[p.id] ?? p.note ?? ''}
+                  onChange={(e) => setPhotoDraft((s) => ({ ...s, [p.id]: e.target.value }))}
+                />
+                <div className="toolbar">
+                  <button onClick={async () => {
+                    const r = await setPhotoNote(p.id, photoDraft[p.id] ?? p.note ?? '')
+                    setMsg(r.error || 'Yorum kaydedildi ve hasta bilgilendirildi.')
+                    reload()
+                  }}><Check size={15} /> Yorumu Kaydet</button>
+                  {p.patient_id ? (
+                    <Link to={`/hekim/hasta/${p.patient_id}`}>
+                      <button className="ghost">Hastayı Aç</button>
+                    </Link>
+                  ) : (
+                    <span className="muted">Hasta bağlantısı yok</span>
+                  )}
+                </div>
               </div>
             </div>
           ))}
+          {msg && <p className="muted">{msg}</p>}
         </div>
       )}
 
@@ -484,11 +583,8 @@ function ReminderList({ patients }) {
   const items = useMemo(() => {
     const out = []
     patients.forEach((p) => {
-      const days = Number(p.reminder_days ?? p.reminderDays ?? 5)
-      const lv = p.last_visit || p.lastVisit
-      if (!lv) return
-      const v = new Date(lv); v.setMonth(v.getMonth() + 3)
-      const left = Math.ceil((v - new Date()) / 86400000)
+      const { left, days, missing } = reminderInfo(p)
+      if (missing) return
       if (left >= 0 && left <= days) out.push({ id: p.id, name: p.name, left, days, phone: p.phone, near: p.near_name, nearPhone: p.near_phone })
     })
     return out.sort((a, b) => a.left - b.left)

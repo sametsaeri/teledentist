@@ -3,6 +3,12 @@ import { Link } from 'react-router-dom'
 import { DEPARTMENTS } from '../data/departments.js'
 import { listDoctors } from '../services/db.js'
 
+const BRANCH_TR = {
+  genel: 'Genel Diş', restoratif: 'Restoratif', endodonti: 'Endodonti',
+  periodontoloji: 'Periodontoloji', pedodonti: 'Pedodonti', ortodonti: 'Ortodonti',
+  protez: 'Protez', 'ağız-cerrahi': 'Ağız ve Çene Cerrahisi'
+}
+
 function ToothIcon({ color }) {
   return (
     <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
@@ -59,12 +65,24 @@ export function ERandevu() {
           <h3>Klinik Bilgileri</h3>
           <p className="muted">KTÜ Diş Hekimliği Fakültesi Kliniği</p>
           <p>Hafta içi 08:30 - 17:30 | Randevulu hasta kabulü</p>
-          <p className="muted">Adres ve telefon bilgisini klinik yönetiminden alıp buraya yazacağız.</p>
+          <p>Adres: KTÜ Kampüsü, 61061 Ortahisar / Trabzon</p>
+          <a href="https://www.ktu.edu.tr/dents" target="_blank" rel="noreferrer">
+            <button className="ghost">Fakülte iletişim ve adres bilgisi</button>
+          </a>
         </div>
         <div className="card">
           <h3>Hekimlerimiz ({doctors.length})</h3>
-          {doctors.length === 0 && <p className="muted">Hekim listesi yakında burada.</p>}
-          {doctors.map((d) => <p key={d.id}><strong>{d.name}</strong> {d.branch && d.branch !== 'genel' ? <span className="muted">({d.branch})</span> : null}</p>)}
+          {doctors.length === 0 && (
+            <p className="muted">
+              Henüz hekim kaydı eklenmemiş. Hekimler süper admin tarafından tanımlanır.
+            </p>
+          )}
+          {doctors.map((d) => (
+            <p key={d.id}>
+              <strong>Dt. {d.name}</strong>{' '}
+              {d.branch && d.branch !== 'genel' ? <span className="muted">({BRANCH_TR[d.branch] || d.branch})</span> : null}
+            </p>
+          ))}
         </div>
       </div>
     </div>
