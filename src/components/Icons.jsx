@@ -76,6 +76,8 @@ export const Pin = (p) => <S {...p}><path d="M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 
 export const Save = (p) => <S {...p}><path d="M5 4.5h11L20 8.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19V6a1.5 1.5 0 0 1 1-1.5z" /><path d="M8 4.5v5h7v-5M8 20.5V14h8v6.5" /></S>
 export const Lock = (p) => <S {...p}><rect x="4.5" y="10" width="15" height="11" rx="2.5" /><path d="M8 10V7.5a4 4 0 0 1 8 0V10" /></S>
 export const Key = (p) => <S {...p}><circle cx="8" cy="12" r="4" /><path d="M12 12h9M18.5 12v3.5M15.5 12v2.2" /></S>
+export const Heart = (p) => <S {...p}><path d="M12 20s-7-4.4-7-9.3A4 4 0 0 1 12 8a4 4 0 0 1 7 2.7c0 4.9-7 9.3-7 9.3z" /></S>
+export const MapPin = (p) => <S {...p}><path d="M12 21s6.5-6 6.5-11a6.5 6.5 0 1 0-13 0c0 5 6.5 11 6.5 11z" /><circle cx="12" cy="10" r="2.4" /></S>
 export const Box = (p) => <S {...p}><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z" /><path d="M3 7.5 12 12l9-4.5M12 12v9" /></S>
 export const Flask = (p) => <S {...p}><path d="M9.5 3v6.2L4.4 18a2 2 0 0 0 1.7 3h11.8a2 2 0 0 0 1.7-3l-5.1-8.8V3" /><path d="M8 3h8M6.6 14.5h10.8" /></S>
 export const Tag = (p) => <S {...p}><path d="M3 11.5V4h7.5l9.5 9.5-7.5 7.5z" /><circle cx="7" cy="8" r="1.4" /></S>

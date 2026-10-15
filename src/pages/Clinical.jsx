@@ -5,7 +5,10 @@ import { load, save, keys, getSession } from '../services/store.js'
 import { triageScore, anxietyLevel, hygieneTip } from '../services/clinical.js'
 import { suggestRecall } from '../ai/recall.js'
 import { toothEducation } from '../ai/toothAi.js'
-import { getPatient, getTeeth, listPhotos, insertPhoto, setPhotoNote, uploadImage, signedPhotoUrl } from '../services/db.js'
+import {
+  getPatient, getTeeth, listPhotos, insertPhoto, setPhotoNote, uploadImage, signedPhotoUrl,
+  insertTriage, insertHygiene, insertAnxiety, listHygiene
+} from '../services/db.js'
 
 function pid() { return getSession()?.id || '' }
 
@@ -18,12 +21,14 @@ export function Triage() {
   const [fever, setFever] = useState(false)
   const [tooth, setTooth] = useState('16')
   const [done, setDone] = useState(null)
-  const submit = () => {
+  const submit = async () => {
     const r = triageScore({ pain, swelling, trauma, bleeding, fever })
     const rec = { id: Date.now(), patientId: pid(), tooth, pain, swelling, trauma, bleeding, fever, ...r, date: new Date().toISOString().slice(0, 16) }
     const list = load(keys.triage, [])
     list.push(rec)
     save(keys.triage, list)
+    // Hekimin görebilmesi için sunucuya da yaz
+    await insertTriage(pid(), { tooth: String(tooth), pain: Number(pain), swelling, trauma, bleeding, fever, score: r.score, level: r.level })
     setDone(r)
   }
   return (
@@ -48,12 +53,16 @@ export function Hygiene() {
   const [plaque, setPlaque] = useState(1.5)
   const [brush, setBrush] = useState(2)
   const [done, setDone] = useState(false)
-  const history = load(keys.hygiene, []).filter((h) => h.patientId === pid())
-  const submit = () => {
+  const [history, setHistory] = useState([])
+  const reload = () => { listHygiene(pid()).then(setHistory) }
+  useEffect(reload, [])
+  const submit = async () => {
     const list = load(keys.hygiene, [])
     list.push({ id: Date.now(), patientId: pid(), plaque: Number(plaque), brush: Number(brush), date: new Date().toISOString().slice(0, 10) })
     save(keys.hygiene, list)
+    await insertHygiene(pid(), { plaque: Number(plaque), brush: Number(brush) })
     setDone(true)
+    reload()
   }
   return (
     <div>
@@ -86,11 +95,12 @@ const ANX_Q = ['Diş randevusu yarın olsa nasıl hissedersiniz?', 'Bekleme salo
 export function Anxiety() {
   const [ans, setAns] = useState([3, 3, 3, 3, 3])
   const [done, setDone] = useState(null)
-  const submit = () => {
+  const submit = async () => {
     const total = ans.reduce((a, b) => a + Number(b), 0)
     const list = load(keys.anxiety, [])
     list.push({ id: Date.now(), patientId: pid(), total, date: new Date().toISOString().slice(0, 10) })
     save(keys.anxiety, list)
+    await insertAnxiety(pid(), total)
     setDone(total)
   }
   return (

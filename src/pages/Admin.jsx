@@ -6,7 +6,7 @@ import { Shield, Chart, Users, Lock, Clipboard, LogOut, Stethoscope, UserPlus, K
 
 const BRANCHES = ['genel', 'restoratif', 'endodonti', 'periodontoloji', 'pedodonti', 'ortodonti', 'protez', 'ağız-cerrahi']
 const BRANCH_TR = { genel: 'Genel Diş', restoratif: 'Restoratif', endodonti: 'Endodonti', periodontoloji: 'Periodontoloji', pedodonti: 'Pedodonti', ortodonti: 'Ortodonti', protez: 'Protez', 'ağız-cerrahi': 'Ağız ve Çene Cerrahisi' }
-const ROLE_TR = { admin: 'Süper Admin', hekim: 'Hekim', hasta: 'Hasta', ebeveyn: 'Ebeveyn' }
+const ROLE_TR = { admin: 'Süper Admin', hekim: 'Hekim', hasta: 'Hasta', ebeveyn: 'Ebeveyn', sekreter: 'Sekreter', teknisyen: 'Diş Teknisyeni' }
 
 const empty = { name: '', email: '', pass: '', role: 'hekim', branch: 'genel', tc_no: '', phone: '', username: '' }
 
@@ -14,7 +14,7 @@ const GENDERS = ['', 'Kadın', 'Erkek']
 const BLOODS = ['', 'A0', 'A Rh+', 'A Rh-', 'B0', 'B Rh+', 'B Rh-', 'AB0', 'AB Rh+', 'AB Rh-', 'O0', 'O Rh+', 'O Rh-']
 const RELATIONS = ['', 'Anne', 'Baba', 'Eş', 'Kardeş', 'Akraba', 'Veli', 'Diğer']
 const TREATMENTS = ['kontrol', 'temizlik', 'dolgu', 'kanal tedavisi', 'protez', 'ortodonti', 'cerrahi', 'pedodonti']
-const ROLES = ['admin', 'hekim', 'hasta', 'ebeveyn']
+const ROLES = ['admin', 'hekim', 'hasta', 'ebeveyn', 'sekreter', 'teknisyen']
 const REMINDERS = [1, 2, 3, 5, 7, 10, 14, 30, 60, 90, 180, 365]
 
 function randomPass() {
@@ -387,6 +387,8 @@ export function AdminPanel() {
             <label>Rol
               <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
                 <option value="hekim">Hekim</option>
+                <option value="sekreter">Sekreter</option>
+                <option value="teknisyen">Diş Teknisyeni</option>
                 <option value="hasta">Hasta</option>
                 <option value="ebeveyn">Ebeveyn</option>
               </select>

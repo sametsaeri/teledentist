@@ -72,15 +72,22 @@ const MENUS = {
   admin: [
     ['/admin/panel', Shield, 'Süper Admin'],
     ['/hekim', Stethoscope, 'Hekim Paneli'],
-    ['/hastam', User, 'Hasta Paneli'],
     ['/hatirlatma', Clock, 'Hatırlatmalar'],
     ['/konsultasyon', Chat, 'Konsültasyon'],
     ['/hesap', Settings, 'Hesap Ayarları']
   ],
   hekim: [],
+  sekreter: [
+    ['/sekreter', Calendar, 'Sekreter Paneli'],
+    ['/hatirlatma', Clock, 'Hatırlatmalar'],
+    ['/hesap', Settings, 'Hesap Ayarları']
+  ],
+  teknisyen: [
+    ['/sekreter', Stethoscope, 'Teknisyen Paneli'],
+    ['/hesap', Settings, 'Hesap Ayarları']
+  ],
   hasta: [
-    ['/hastam', Clipboard, 'Dişlerim'],
-    ['/triyaj', Clipboard, 'Triyaj'],
+    ['/hastam', Clipboard, 'Dişlerim'],    ['/triyaj', Clipboard, 'Triyaj'],
     ['/hijyen', Drop, 'Hijyen'],
     ['/anksiyete', Sparkle, 'Anksiyete'],
     ['/on-degerlendirme', Camera, 'Foto'],
@@ -93,7 +100,7 @@ const MENUS = {
 }
 MENUS.ebeveyn = MENUS.hasta
 
-const ROLE_TR = { hekim: 'Hekim', hasta: 'Hasta', ebeveyn: 'Ebeveyn', admin: 'Süper Admin' }
+const ROLE_TR = { hekim: 'Hekim', hasta: 'Hasta', ebeveyn: 'Ebeveyn', admin: 'Süper Admin', sekreter: 'Sekreter', teknisyen: 'Diş Teknisyeni' }
 
 function BellBox() {
   const [items, setItems] = useState([])
@@ -137,7 +144,7 @@ export function PanelLayout({ children }) {
   const groups = MENU_GROUPS[u?.role] || null
   const flat = MENUS[u?.role] || MENUS.hasta
   const out = async () => { await logout(); nav('/') }
-  const isStaff = u?.role === 'hekim' || u?.role === 'admin'
+  const isStaff = ['hekim', 'admin', 'sekreter', 'teknisyen'].includes(u?.role)
 
   // Canlı rozet sayıları (randevu talebi, kayıt isteği)
   const [counts, setCounts] = useState({ randevu: 0, istek: 0 })
@@ -168,10 +175,10 @@ export function PanelLayout({ children }) {
       return s && typeof s === 'object' ? s : {}
     } catch { return {} }
   })
-  // Etkin sayfanın grubu her zaman açık kalır; diğerleri kullanıcının tercihine bağlı
+  // Aynı anda yalnızca BİR grup açık kalır; etkin sayfanın grubu asla kapalı değil
   const isOpen = (label) => (label === activeGroup ? true : open[label] === true)
   const toggle = (label) => {
-    const next = { ...open, [label]: !isOpen(label) }
+    const next = { [label]: !isOpen(label) }
     setOpen(next)
     try { localStorage.setItem('td_menu_open', JSON.stringify(next)) } catch { /* yoksay */ }
   }

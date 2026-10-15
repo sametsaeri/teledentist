@@ -317,6 +317,22 @@ export function AdminLogin() {
   )
 }
 
+// Sekreter / diş teknisyeni girişi
+export function StaffLogin() {
+  const { t } = useTranslation()
+  return (
+    <AuthShell
+      tone="tone-doctor"
+      icon={Stethoscope}
+      title="Sekreter / Diş Teknisyeni Girişi"
+      sub="Randevu ve hasta işlemleri için personel girişi."
+      footer={<Link to="/hekim-girisi"><Stethoscope size={16} /> {t('login_doctor_btn')}</Link>}
+    >
+      <LoginForm roles={['sekreter', 'teknisyen']} to="/sekreter" />
+    </AuthShell>
+  )
+}
+
 export function RegisterRequest() {
   const { t } = useTranslation()
   const [name, setName] = useState('')

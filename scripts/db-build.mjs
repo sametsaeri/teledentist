@@ -19,9 +19,11 @@ const FILES = [
   ['migration_storage.sql',   '7) Röntgen ve fotoğraf depolama (Supabase Storage)'],
   ['migration_photos.sql',     '8) Ağız fotoğrafları tablosu (Storage kayıtları)'],
   ['migration_clinic.sql',     '9) Klinik modülleri: anamnez, tedavi planı, envanter, laboratuvar, fiyat, tahakkuk'],
-  ['setup_status.sql',        '10) Kurulum durumu fonksiyonu (uygulama bunu okur)'],
-  ['fix_admin.sql',           '11) Süper admin hesabını admin yapar'],
-  ['fix_demo_doctor.sql',     '12) Eski demo hekim kayıtlarını temizler']
+  ['migration_events.sql',     '10) Hekim kişisel takvimi (etkinlik ve görevler)'],
+  ['migration_staff.sql',      '11) Sekreter ve diş teknisyeni rolleri + yardımcı tablolar'],
+  ['setup_status.sql',        '12) Kurulum durumu fonksiyonu (uygulama bunu okur)'],
+  ['fix_admin.sql',           '13) Süper admin hesabını admin yapar'],
+  ['fix_demo_doctor.sql',     '14) Eski demo hekim kayıtlarını temizler']
 ]
 
 const banner = `-- ${'='.repeat(64)}

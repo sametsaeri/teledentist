@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getSession } from '../services/store.js'
 import {
-  anamnesisApi, plansApi, materialsApi, labApi, pricesApi, invoicesApi, notesApi, listPatients
+  anamnesisApi, plansApi, materialsApi, labApi, pricesApi, invoicesApi, notesApi, eventsApi, listPatients
 } from '../services/db.js'
 import {
   Alert, Plus, Check, X, Clock, Clipboard, User, Box, Flask, Tag,
-  Receipt, Notebook, Tooth, Camera, TrendingUp, Package, Wrench, Calendar
+  Receipt, Notebook, Tooth, Camera, TrendingUp, Package, Wrench, Calendar, Save
 } from '../components/Icons.jsx'
 
 /* ------------------------------------------------------------------ */
@@ -23,6 +23,133 @@ function RowActions({ onEdit, onDelete, onSave, editing, msg }) {
       {onDelete && <button className="ghost tiny danger" onClick={onDelete}><X size={13} /> Sil</button>}
       {msg && <span className="muted"> {msg}</span>}
     </span>
+  )
+}
+
+const KIND_TR = { gorev: 'Görev', etkinlik: 'Etkinlik', toplanti: 'Toplantı', izin: 'İzin', egitim: 'Eğitim' }
+
+/* ================================================================== */
+/* 7) HEKİM KİŞİSEL TAKVİMİ (etkinlik / görev)                         */
+/* ================================================================== */
+export function DoctorSchedule() {
+  const me = getSession()
+  const [rows, setRows] = useState([])
+  const [msg, setMsg] = useState('')
+  const [edit, setEdit] = useState(null)
+  const [form, setForm] = useState({
+    title: '', kind: 'gorev', event_date: new Date().toISOString().slice(0, 10),
+    event_time: '09:00', duration_min: 30, note: ''
+  })
+
+  const load = () => eventsApi.list({ order: 'event_date', asc: true }).then(setRows)
+  useEffect(load, [])
+
+  const mine = rows.filter((r) => !me?.id || !r.doctor_id || r.doctor_id === me.id)
+
+  const add = async () => {
+    setMsg('')
+    if (!form.title.trim()) return setMsg('Etkinlik başlığı zorunlu.')
+    if (!form.event_date) return setMsg('Tarih seçin.')
+    const r = await eventsApi.insert({ ...form, doctor_id: me?.id || null })
+    setMsg(r.error || `${form.title} takvime eklendi.`)
+    setForm({ ...form, title: '', note: '' })
+    load()
+  }
+
+  const toggle = async (row) => {
+    const r = await eventsApi.update(row.id, { done: !row.done })
+    setMsg(r.error || (row.done ? 'Görev tekrar açıldı.' : 'Görev tamamlandı.'))
+    load()
+  }
+
+  const save = async () => {
+    const r = await eventsApi.update(edit.id, { ...edit, duration_min: Number(edit.duration_min) || 30 })
+    setMsg(r.error || 'Etkinlik güncellendi.')
+    setEdit(null)
+    load()
+  }
+
+  const del = async (id) => {
+    const r = await eventsApi.remove(id)
+    setMsg(r.error || 'Etkinlik silindi.')
+    load()
+  }
+
+  const today = new Date().toISOString().slice(0, 10)
+  const todayList = mine.filter((r) => r.event_date === today)
+  const upcoming = mine.filter((r) => r.event_date > today).slice(0, 8)
+  const past = mine.filter((r) => r.event_date < today).slice(0, 5)
+  const openTasks = mine.filter((r) => !r.done).length
+
+  const row = (r) => (
+    <div className={`appt-row ${r.done ? 'done-row' : ''}`} key={r.id}>
+      <div>
+        <span className="badge">{KIND_TR[r.kind] || r.kind}</span>
+        <span className="time-chip">{r.event_time || '—'}</span>
+        <strong>{r.title}</strong>
+        <p className="muted">{r.event_date} · {r.duration_min} dk{r.note ? ` · ${r.note}` : ''}</p>
+      </div>
+      <span className="row-actions">
+        <button className="ghost tiny" onClick={() => toggle(r)}>
+          <Check size={13} /> {r.done ? 'Geri al' : 'Tamamlandı'}
+        </button>
+        <button className="ghost tiny" onClick={() => setEdit({ ...r })}><Wrench size={13} /> Düzenle</button>
+        <button className="ghost tiny danger" onClick={() => del(r.id)}><X size={13} /> Sil</button>
+      </span>
+    </div>
+  )
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h3><Calendar size={18} /> Kişisel Takvimim</h3>
+        <span className="badge">{openTasks} açık görev</span>
+      </div>
+      <p className="muted">
+        Randevulardan bağımsız kendi etkinlik ve görevlerinizi yazabilirsiniz. Bu liste yalnızca size özeldir.
+      </p>
+
+      <div className="grid form-grid">
+        <label>Başlık *<input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="örn: Muhalebe toplantısı" /></label>
+        <label>Tür
+          <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
+            {Object.entries(KIND_TR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </label>
+        <label>Tarih<input type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} /></label>
+        <label>Saat<input type="time" value={form.event_time} onChange={(e) => setForm({ ...form, event_time: e.target.value })} /></label>
+        <label>Süre (dk)<input type="number" min="5" step="5" value={form.duration_min} onChange={(e) => setForm({ ...form, duration_min: e.target.value })} /></label>
+        <label>Not<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+      </div>
+      <button onClick={add}><Plus size={15} /> Takvime Ekle</button>
+
+      <h4 className="modal-sub">Bugün ({today})</h4>
+      {todayList.length === 0 && <p className="muted">Bugün için kişisel etkinliğiniz yok.</p>}
+      {todayList.map(row)}
+
+      {upcoming.length > 0 && <><h4 className="modal-sub">Yaklaşanlar</h4>{upcoming.map(row)}</>}
+      {past.length > 0 && <><h4 className="modal-sub">Geçmiş</h4>{past.map(row)}</>}
+
+      {edit && (
+        <div className="card edit-panel">
+          <h4>Düzenle: {edit.title}</h4>
+          <div className="grid form-grid">
+            <label>Başlık<input value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} /></label>
+            <label>Tür
+              <select value={edit.kind} onChange={(e) => setEdit({ ...edit, kind: e.target.value })}>
+                {Object.entries(KIND_TR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </label>
+            <label>Tarih<input type="date" value={edit.event_date || ''} onChange={(e) => setEdit({ ...edit, event_date: e.target.value })} /></label>
+            <label>Saat<input type="time" value={edit.event_time || ''} onChange={(e) => setEdit({ ...edit, event_time: e.target.value })} /></label>
+            <label>Süre (dk)<input type="number" value={edit.duration_min} onChange={(e) => setEdit({ ...edit, duration_min: e.target.value })} /></label>
+            <label>Not<input value={edit.note || ''} onChange={(e) => setEdit({ ...edit, note: e.target.value })} /></label>
+          </div>
+          <button onClick={save}><Save size={15} /> Değişiklikleri Kaydet</button>
+        </div>
+      )}
+      {msg && <p className="muted">{msg}</p>}
+    </div>
   )
 }
 

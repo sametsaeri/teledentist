@@ -1,20 +1,23 @@
 import { BrowserRouter, Routes, Route, useParams, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout.jsx'
 import { PanelLayout } from './components/PanelLayout.jsx'
-import { Home, About, Appointment, PatientLogin, DoctorLogin, AdminLogin, RegisterRequest } from './pages/Pages.jsx'
-import { DoctorList, DoctorPatient, PatientPanel } from './pages/Portal.jsx'
+import { Home, About, Appointment, PatientLogin, DoctorLogin, AdminLogin, StaffLogin, RegisterRequest } from './pages/Pages.jsx'
+import { DoctorList, DoctorPatient } from './pages/Portal.jsx'
+import { PatientPanel } from './pages/PatientPanel.jsx'
 import { Triage, Hygiene, Anxiety, PhotoReview, Report } from './pages/Clinical.jsx'
 import { Satisfaction, Education, Reminders, Campaigns, Consultation, Faq } from './pages/Extra.jsx'
 import { VideoVisit } from './pages/VideoVisit.jsx'
 import { ERandevu } from './pages/ERandevu.jsx'
 import { AdminPanel } from './pages/Admin.jsx'
 import { AccountSettings } from './pages/Account.jsx'
+import { StaffPanel } from './pages/StaffPanel.jsx'
 import { currentUser } from './services/auth.js'
 
 // Hangi rol hangi giriş ekranına gitsin
 function loginFor(roles) {
   if (roles?.includes('admin')) return '/admin'
   if (roles?.includes('hekim')) return '/hekim-girisi'
+  if (roles?.includes('sekreter') || roles?.includes('teknisyen')) return '/personel-girisi'
   return '/danisan-girisi'
 }
 
@@ -66,6 +69,7 @@ export default function App() {
         <Route path="/danisan-girisi" element={<PatientLogin />} />
         <Route path="/hekim-girisi" element={<DoctorLogin />} />
         <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/personel-girisi" element={<StaffLogin />} />
         <Route path="/kayit" element={<RegisterRequest />} />
         <Route path="/giris" element={<Navigate to="/danisan-girisi" replace />} />
 
@@ -80,7 +84,8 @@ export default function App() {
 
         {/* --- Süper admin paneli --- */}
         <Route path="/admin/panel" element={<Panel roles={['admin']}><AdminPanel /></Panel>} />
-        <Route path="/hesap" element={<Panel roles={['admin', 'hekim', 'hasta', 'ebeveyn']}><AccountSettings /></Panel>} />
+        <Route path="/sekreter" element={<Panel roles={['sekreter', 'teknisyen']}><StaffPanel /></Panel>} />
+        <Route path="/hesap" element={<Panel roles={['admin', 'hekim', 'hasta', 'ebeveyn', 'sekreter', 'teknisyen']}><AccountSettings /></Panel>} />
 
         {/* --- Yalnızca hasta formları (hekim bunları doldurmaz) --- */}
         <Route path="/triyaj" element={<Panel roles={['hasta', 'ebeveyn']}><Triage /></Panel>} />
@@ -92,7 +97,7 @@ export default function App() {
 
         {/* --- Ortak --- */}
         <Route path="/video" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><VideoVisit /></Panel>} />
-        <Route path="/hatirlatma" element={<Panel roles={['hekim']}><Reminders /></Panel>} />
+        <Route path="/hatirlatma" element={<Panel roles={['hekim', 'sekreter']}><Reminders /></Panel>} />
 
         <Route path="*" element={<Public><Home /></Public>} />
       </Routes>

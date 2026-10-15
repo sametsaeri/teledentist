@@ -61,7 +61,7 @@ BEGIN
   IF p_user_id IS NULL THEN RAISE EXCEPTION 'Kullanici secilmedi'; END IF;
   IF p_patch IS NULL THEN RAISE EXCEPTION 'Veri gonderilmedi'; END IF;
 
-  IF jsonb_exists(p_patch, 'role') AND p_patch->>'role' NOT IN ('admin','hekim','hasta','ebeveyn') THEN
+  IF jsonb_exists(p_patch, 'role') AND p_patch->>'role' NOT IN ('admin','hekim','hasta','ebeveyn','sekreter','teknisyen') THEN
     RAISE EXCEPTION 'Gecersiz rol';
   END IF;
 

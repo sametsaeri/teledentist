@@ -42,7 +42,7 @@ BEGIN
   IF NOT (public.is_hekim() OR public.is_admin()) THEN
     RAISE EXCEPTION 'Yetkisiz işlem';
   END IF;
-  IF p_role IS NULL OR p_role NOT IN ('hekim','hasta','ebeveyn') THEN
+  IF p_role IS NULL OR p_role NOT IN ('hekim','hasta','ebeveyn','sekreter','teknisyen') THEN
     RAISE EXCEPTION 'Geçersiz rol';
   END IF;
   IF p_role = 'hekim' AND NOT public.is_admin() THEN

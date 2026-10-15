@@ -15,7 +15,8 @@ DECLARE
                                   'admin_set_password','admin_update_profile'];
   v_required_tbl  text[] := ARRAY['profiles','teeth','triage','hygiene','anxiety',
                                   'appointments','notifications','clinical_notes',
-                                  'kayit_istekleri','referrals','parent_child','photos'];
+                                  'kayit_istekleri','referrals','parent_child','photos','doctor_events',
+                                  'intake_records','prep_notes'];
   v_required_cols text[] := ARRAY['username','branch','tc_no','birth_date','gender','phone',
                                   'address','city','district','blood','insurance','school',
                                   'occupation','near_name','near_phone','near_relation',

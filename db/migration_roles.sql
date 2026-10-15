@@ -2,7 +2,7 @@
 -- Supabase SQL Editor'de db/supabase.sql'den SONRA çalıştırın.
 
 ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
-ALTER TABLE profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('admin','hekim','hasta','ebeveyn'));
+ALTER TABLE profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('admin','hekim','hasta','ebeveyn','sekreter','teknisyen'));
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS branch TEXT DEFAULT 'genel';
 
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS doctor_id UUID REFERENCES profiles(id);

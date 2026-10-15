@@ -9,8 +9,7 @@ export function allUsers() {
   return load(USERS_KEY, [])
 }
 
-export async function login(email, pass, allowedRoles) {
-  email = String(email || '').trim()
+export async function login(email, pass, allowedRoles) {  email = String(email || '').trim()
   if (!email) return { error: 'Kullanıcı adı veya e-posta girin.' }
   if (hasSupabase) {
     // Kullanıcı adı ile giriş: adı e-postaya çevir
@@ -61,7 +60,7 @@ export async function createUserByDoctor({ name, email, pass, role, childEmail, 
   if (!me || (me.role !== 'hekim' && me.role !== 'admin')) return { error: 'Yetkisiz işlem.' }
   email = String(email || '').trim().toLowerCase()
   if (!name || !email || !pass) return { error: 'Ad, e-posta ve şifre zorunlu.' }
-  if (!['hasta', 'ebeveyn', 'hekim'].includes(role)) return { error: 'Rol seçin.' }
+  if (!['hasta', 'ebeveyn', 'hekim', 'sekreter', 'teknisyen'].includes(role)) return { error: 'Rol seçin.' }
   if (role === 'hekim' && me.role !== 'admin') return { error: 'Hekim hesabını yalnızca süper admin açabilir.' }
   if (pass.length < 6) return { error: 'Şifre en az 6 karakter olmalı.' }
   if (hasSupabase) {

@@ -18,7 +18,7 @@
 
 
 -- ================================================================
--- BÖLÜM 1/10: 1) Temel şema (profil, diş, triyaj, hijyen, anksiyete, randevu)
+-- BÖLÜM 1/14: 1) Temel şema (profil, diş, triyaj, hijyen, anksiyete, randevu)
 -- Kaynak: db/supabase.sql
 -- ================================================================
 
@@ -116,7 +116,7 @@ INSERT INTO storage.buckets (id, name, public) VALUES ('xrays','xrays', false) O
 INSERT INTO storage.buckets (id, name, public) VALUES ('photos','photos', false) ON CONFLICT (id) DO NOTHING;
 
 -- ================================================================
--- BÖLÜM 2/10: 2) Roller (admin/hekim), branş, sevk tablosu
+-- BÖLÜM 2/14: 2) Roller (admin/hekim), branş, sevk tablosu
 -- Kaynak: db/migration_roles.sql
 -- ================================================================
 
@@ -124,7 +124,7 @@ INSERT INTO storage.buckets (id, name, public) VALUES ('photos','photos', false)
 -- Supabase SQL Editor'de db/supabase.sql'den SONRA çalıştırın.
 
 ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
-ALTER TABLE profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('admin','hekim','hasta','ebeveyn'));
+ALTER TABLE profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('admin','hekim','hasta','ebeveyn','sekreter','teknisyen'));
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS branch TEXT DEFAULT 'genel';
 
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS doctor_id UUID REFERENCES profiles(id);
@@ -156,7 +156,7 @@ DROP POLICY IF EXISTS "hekim_update" ON profiles;
 CREATE POLICY "hekim_update" ON profiles FOR UPDATE USING (is_hekim() OR is_admin());
 
 -- ================================================================
--- BÖLÜM 3/10: 3) Kayıt istekleri tablosu
+-- BÖLÜM 3/14: 3) Kayıt istekleri tablosu
 -- Kaynak: db/migration_signup.sql
 -- ================================================================
 
@@ -180,7 +180,7 @@ DROP POLICY IF EXISTS "istek_hekim" ON kayit_istekleri;
 CREATE POLICY "istek_hekim" ON kayit_istekleri FOR ALL USING (is_hekim() OR is_admin());
 
 -- ================================================================
--- BÖLÜM 4/10: 4) Detaylı hasta bilgileri, randevu tarihi/online, bildirim, konsültasyon
+-- BÖLÜM 4/14: 4) Detaylı hasta bilgileri, randevu tarihi/online, bildirim, konsültasyon
 -- Kaynak: db/migration_v2.sql
 -- ================================================================
 
@@ -267,7 +267,7 @@ UPDATE profiles SET role = 'admin', name = 'Dt. Resul Yel'
 WHERE email = 'tcsametsari@gmail.com' AND role <> 'admin';
 
 -- ================================================================
--- BÖLÜM 5/10: 5) Kullanıcı adıyla giriş + kayıt kapalıyken hesap açma
+-- BÖLÜM 5/14: 5) Kullanıcı adıyla giriş + kayıt kapalıyken hesap açma
 -- Kaynak: db/migration_users.sql
 -- ================================================================
 
@@ -315,7 +315,7 @@ BEGIN
   IF NOT (public.is_hekim() OR public.is_admin()) THEN
     RAISE EXCEPTION 'Yetkisiz işlem';
   END IF;
-  IF p_role IS NULL OR p_role NOT IN ('hekim','hasta','ebeveyn') THEN
+  IF p_role IS NULL OR p_role NOT IN ('hekim','hasta','ebeveyn','sekreter','teknisyen') THEN
     RAISE EXCEPTION 'Geçersiz rol';
   END IF;
   IF p_role = 'hekim' AND NOT public.is_admin() THEN
@@ -428,7 +428,7 @@ WHERE lower(email) = 'tcsametsari@gmail.com';
 SELECT id, email, username, name, role, branch FROM profiles ORDER BY created_at DESC;
 
 -- ================================================================
--- BÖLÜM 6/10: 6) Süper admin: şifre atama + tüm kullanıcı verisini düzenleme
+-- BÖLÜM 6/14: 6) Süper admin: şifre atama + tüm kullanıcı verisini düzenleme
 -- Kaynak: db/migration_admin_manage.sql
 -- ================================================================
 
@@ -495,7 +495,7 @@ BEGIN
   IF p_user_id IS NULL THEN RAISE EXCEPTION 'Kullanici secilmedi'; END IF;
   IF p_patch IS NULL THEN RAISE EXCEPTION 'Veri gonderilmedi'; END IF;
 
-  IF jsonb_exists(p_patch, 'role') AND p_patch->>'role' NOT IN ('admin','hekim','hasta','ebeveyn') THEN
+  IF jsonb_exists(p_patch, 'role') AND p_patch->>'role' NOT IN ('admin','hekim','hasta','ebeveyn','sekreter','teknisyen') THEN
     RAISE EXCEPTION 'Gecersiz rol';
   END IF;
 
@@ -573,7 +573,7 @@ WHERE n.nspname = 'public'
 ORDER BY p.proname;
 
 -- ================================================================
--- BÖLÜM 7/10: 7) Röntgen ve fotoğraf depolama (Supabase Storage)
+-- BÖLÜM 7/14: 7) Röntgen ve fotoğraf depolama (Supabase Storage)
 -- Kaynak: db/migration_storage.sql
 -- ================================================================
 
@@ -635,7 +635,313 @@ CREATE POLICY "photos_delete" ON storage.objects FOR DELETE
   USING ( bucket_id = 'photos' AND (public.is_hekim() OR public.is_admin()) );
 
 -- ================================================================
--- BÖLÜM 8/10: 8) Kurulum durumu fonksiyonu (uygulama bunu okur)
+-- BÖLÜM 8/14: 8) Ağız fotoğrafları tablosu (Storage kayıtları)
+-- Kaynak: db/migration_photos.sql
+-- ================================================================
+
+-- ============================================================
+-- TeleDentist — AĞIZ FOTOĞRAFLARI TABLOSU
+-- Sorun: fotoğraflar tarayıcıda saklanıyordu, hekim başka cihazda
+--        göremiyordu. Artık dosya Storage'a, kayıt bu tabloya yazılır.
+-- Dosya yolu: photos/<hasta_id>/foto-<zaman>.png
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS photos (
+  id BIGSERIAL PRIMARY KEY,
+  patient_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  label TEXT DEFAULT 'foto',
+  path TEXT NOT NULL,
+  note TEXT DEFAULT '',
+  status TEXT DEFAULT 'bekliyor',   -- bekliyor | degerlendirildi
+  created_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS photos_patient_idx ON photos (patient_id, created_at DESC);
+
+ALTER TABLE photos ENABLE ROW LEVEL SECURITY;
+
+-- Hasta kendi fotoğrafını yükler ve kendi fotoğraflarını görür
+DROP POLICY IF EXISTS "photos_insert" ON photos;
+CREATE POLICY "photos_insert" ON photos FOR INSERT
+  WITH CHECK (patient_id = auth.uid() OR is_hekim() OR is_admin());
+
+DROP POLICY IF EXISTS "photos_read" ON photos;
+CREATE POLICY "photos_read" ON photos FOR SELECT
+  USING (patient_id = auth.uid() OR is_hekim() OR is_admin());
+
+-- Hekim yorum yazar / durum günceller
+DROP POLICY IF EXISTS "photos_update" ON photos;
+CREATE POLICY "photos_update" ON photos FOR UPDATE
+  USING (is_hekim() OR is_admin() OR patient_id = auth.uid())
+  WITH CHECK (is_hekim() OR is_admin() OR patient_id = auth.uid());
+
+DROP POLICY IF EXISTS "photos_delete" ON photos;
+CREATE POLICY "photos_delete" ON photos FOR DELETE
+  USING (is_hekim() OR is_admin());
+
+-- ================================================================
+-- BÖLÜM 9/14: 9) Klinik modülleri: anamnez, tedavi planı, envanter, laboratuvar, fiyat, tahakkuk
+-- Kaynak: db/migration_clinic.sql
+-- ================================================================
+
+-- ============================================================
+-- TeleDentist — KLINIK MODÜLLERİ
+--   1) anamnesis        : alerji, hastalık, ilaç kayıtları
+--   2) treatment_plans  : tedavi planı (aşamalı, fiyatlı)
+--   3) materials        : klinik malzeme envanteri + son kullanma
+--   4) lab_cases        : laboratuvar takibi (protez, zirkonyum...)
+--   5) price_items      : tedavi fiyat listesi
+--   6) invoices         : tahakkuk ve bakiye
+--   7) profiles'a anamnez özeti alanları
+-- IDEMPOTENT — veri silinmez.
+-- ============================================================
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
+-- ---------- 7) Profil üzerindeki anamnez özeti ----------
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS allergies   TEXT DEFAULT '';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS chronic     TEXT DEFAULT '';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS medications TEXT DEFAULT '';
+
+-- ---------- 1) ANAMNEZ ----------
+CREATE TABLE IF NOT EXISTS anamnesis (
+  id BIGSERIAL PRIMARY KEY,
+  patient_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL DEFAULT 'alerji',   -- alerji | hastalik | ilac | mudah
+  title TEXT NOT NULL,
+  detail TEXT DEFAULT '',
+  critical BOOLEAN DEFAULT false,        -- true = tedavi öncesi kritik uyarı
+  created_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS anamnesis_patient_idx ON anamnesis (patient_id, created_at DESC);
+
+ALTER TABLE anamnesis ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anamnesis_rw" ON anamnesis;
+CREATE POLICY "anamnesis_rw" ON anamnesis FOR ALL
+  USING (is_hekim() OR is_admin() OR patient_id = auth.uid())
+  WITH CHECK (is_hekim() OR is_admin() OR patient_id = auth.uid());
+
+-- ---------- 2) TEDAVİ PLANI ----------
+CREATE TABLE IF NOT EXISTS treatment_plans (
+  id BIGSERIAL PRIMARY KEY,
+  patient_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  fdi INT,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'planlandi',  -- planlandi | devam | bitti | iptal
+  price NUMERIC DEFAULT 0,
+  tooth TEXT DEFAULT '',
+  note TEXT DEFAULT '',
+  doctor_id UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS plans_patient_idx ON treatment_plans (patient_id, created_at DESC);
+
+ALTER TABLE treatment_plans ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "plans_rw" ON treatment_plans;
+CREATE POLICY "plans_rw" ON treatment_plans FOR ALL
+  USING (is_hekim() OR is_admin() OR patient_id = auth.uid())
+  WITH CHECK (is_hekim() OR is_admin() OR patient_id = auth.uid());
+
+-- ---------- 3) MALZEME ENVANTERİ ----------
+CREATE TABLE IF NOT EXISTS materials (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  category TEXT DEFAULT 'sarf',
+  unit TEXT DEFAULT 'adet',
+  quantity NUMERIC DEFAULT 0,
+  min_quantity NUMERIC DEFAULT 0,
+  expiry DATE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE materials ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "materials_rw" ON materials;
+CREATE POLICY "materials_rw" ON materials FOR ALL
+  USING (is_hekim() OR is_admin()) WITH CHECK (is_hekim() OR is_admin());
+
+-- ---------- 4) LABORATUVAR TAKİBİ ----------
+CREATE TABLE IF NOT EXISTS lab_cases (
+  id BIGSERIAL PRIMARY KEY,
+  patient_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  patient_name TEXT DEFAULT '',
+  kind TEXT NOT NULL,                       -- protez | zirkonyum | implant | ortodonti | tamir
+  lab TEXT DEFAULT '',
+  sent_at DATE DEFAULT CURRENT_DATE,
+  due_at DATE,
+  status TEXT NOT NULL DEFAULT 'laboratuvarda', -- laboratuvarda | geldi | uygulandi
+  note TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE lab_cases ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "lab_rw" ON lab_cases;
+CREATE POLICY "lab_rw" ON lab_cases FOR ALL
+  USING (is_hekim() OR is_admin()) WITH CHECK (is_hekim() OR is_admin());
+
+-- ---------- 5) FİYAT LİSTESİ ----------
+CREATE TABLE IF NOT EXISTS price_items (
+  id BIGSERIAL PRIMARY KEY,
+  code TEXT DEFAULT '',
+  name TEXT NOT NULL,
+  category TEXT DEFAULT 'tedavi',
+  price NUMERIC DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE price_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "prices_rw" ON price_items;
+CREATE POLICY "prices_rw" ON price_items FOR ALL
+  USING (is_hekim() OR is_admin()) WITH CHECK (is_hekim() OR is_admin());
+
+-- ---------- 6) TAHAKKUK / BAKİYE ----------
+CREATE TABLE IF NOT EXISTS invoices (
+  id BIGSERIAL PRIMARY KEY,
+  patient_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  patient_name TEXT DEFAULT '',
+  item TEXT NOT NULL,
+  amount NUMERIC DEFAULT 0,
+  paid NUMERIC DEFAULT 0,
+  due_date DATE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS invoices_patient_idx ON invoices (patient_id, created_at DESC);
+
+ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "invoices_rw" ON invoices;
+CREATE POLICY "invoices_rw" ON invoices FOR ALL
+  USING (is_hekim() OR is_admin() OR patient_id = auth.uid())
+  WITH CHECK (is_hekim() OR is_admin() OR patient_id = auth.uid());
+
+-- ---------- Örnek fiyat listesi (tek seferlik, silinmez) ----------
+INSERT INTO price_items (code, name, category, price)
+SELECT * FROM (VALUES
+  ('D01','Dijital diş hekimliği muayenesi','muayene',750),
+  ('D02','Dijital röntgen (periapikal)','görüntüleme',350),
+  ('D03','Panoramik röntgen','görüntüleme',700),
+  ('F01','Kompozit dolgu (tek yüzey)','restoratif',1400),
+  ('F02','Amalgam dolgu (tek yüzey)','restoratif',1100),
+  ('K01','Kanal tedavisi (tek kök)','endodonti',4500),
+  ('K02','Kanal tedavisi (çok kök)','endodonti',6500),
+  ('T01','Diş taşı temizliği','temizlik','var'),
+  ('T02','Ofis tipi beyazlatma','estetik',12000),
+  ('P01','Sabit protez (tek üye)','protez',18000),
+  ('P02','İmplant (yerli)','implant',22000),
+  ('O01','Ortodontik muayene','ortodonti',1000)
+) AS v(code, name, category, price)
+WHERE NOT EXISTS (SELECT 1 FROM price_items LIMIT 1);
+
+-- ================================================================
+-- BÖLÜM 10/14: 10) Hekim kişisel takvimi (etkinlik ve görevler)
+-- Kaynak: db/migration_events.sql
+-- ================================================================
+
+-- ============================================================
+-- TeleDentist — HEKİM KİŞİSEL TAKVİMİ (etkinlik / görev)
+-- Randevulardan bağımsız: hekim kendi iş etkinliklerini yazar.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS doctor_events (
+  id BIGSERIAL PRIMARY KEY,
+  doctor_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'gorev',   -- gorev | etkinlik | toplanti | izin | egitim
+  event_date DATE NOT NULL,
+  event_time TEXT DEFAULT '09:00',
+  duration_min INT DEFAULT 30,
+  note TEXT DEFAULT '',
+  done BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS doctor_events_idx ON doctor_events (doctor_id, event_date);
+
+ALTER TABLE doctor_events ENABLE ROW LEVEL SECURITY;
+
+-- Hekim yalnızca kendi etkinliğini görür ve yazar; süper admin hepsini görür
+DROP POLICY IF EXISTS "events_own" ON doctor_events;
+CREATE POLICY "events_own" ON doctor_events FOR ALL
+  USING (doctor_id = auth.uid() OR is_admin())
+  WITH CHECK (doctor_id = auth.uid() OR is_admin());
+
+DROP POLICY IF EXISTS "events_read_all" ON doctor_events;
+CREATE POLICY "events_read_all" ON doctor_events FOR SELECT USING (is_hekim() OR is_admin());
+
+-- ================================================================
+-- BÖLÜM 11/14: 11) Sekreter ve diş teknisyeni rolleri + yardımcı tablolar
+-- Kaynak: db/migration_staff.sql
+-- ================================================================
+
+-- ============================================================
+-- TeleDentist — SEKRETER / DİŞ TEKNİSYENİ ROLLERİ
+--   sekreter  : randevu, ön bilgilendirme, hasta kaydı, iletişim
+--   teknisyen : hasta adına dijital form doldurma (yüz yüze)
+-- ============================================================
+
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
+ALTER TABLE profiles ADD CONSTRAINT profiles_role_check
+  CHECK (role IN ('admin','hekim','hasta','ebeveyn','sekreter','teknisyen'));
+
+-- Yetki yardımcıları
+CREATE OR REPLACE FUNCTION public.is_staff() RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role IN ('admin','hekim','sekreter','teknisyen')
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- Randevuları sekreter de yazabilir / düzenleyebilir
+DROP POLICY IF EXISTS "appt_staff" ON appointments;
+CREATE POLICY "appt_staff" ON appointments FOR UPDATE
+  USING (is_staff()) WITH CHECK (is_staff());
+
+DROP POLICY IF EXISTS "appt_delete_staff" ON appointments;
+CREATE POLICY "appt_delete_staff" ON appointments FOR DELETE USING (is_staff());
+
+-- Sekreter/teknisyen hasta profili oluşturup güncelleyebilir (hekim kadar değil)
+DROP POLICY IF EXISTS "staff_profile_write" ON profiles;
+CREATE POLICY "staff_profile_write" ON profiles FOR INSERT
+  WITH CHECK (is_staff());
+DROP POLICY IF EXISTS "staff_profile_update" ON profiles;
+CREATE POLICY "staff_profile_update" ON profiles FOR UPDATE
+  USING (is_staff()) WITH CHECK (is_staff());
+
+-- Yüz yüze doldurulan hasta kayıtları (teknisyen girer)
+CREATE TABLE IF NOT EXISTS intake_records (
+  id BIGSERIAL PRIMARY KEY,
+  patient_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  recorded_by UUID REFERENCES profiles(id),
+  method TEXT NOT NULL DEFAULT 'yuz-yuze',  -- yuz-yuze | telefon | hasta girdisi
+  pain INT DEFAULT 0,
+  complaint TEXT DEFAULT '',
+  note TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE intake_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "intake_rw" ON intake_records;
+CREATE POLICY "intake_rw" ON intake_records FOR ALL
+  USING (is_staff()) WITH CHECK (is_staff());
+
+-- Ön bilgilendirme / hazırlık notları (randevu öncesi)
+CREATE TABLE IF NOT EXISTS prep_notes (
+  id BIGSERIAL PRIMARY KEY,
+  appointment_id BIGINT REFERENCES appointments(id) ON DELETE CASCADE,
+  patient_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  author_id UUID REFERENCES profiles(id),
+  text TEXT NOT NULL,
+  done BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE prep_notes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "prep_rw" ON prep_notes;
+CREATE POLICY "prep_rw" ON prep_notes FOR ALL
+  USING (is_staff()) WITH CHECK (is_staff());
+
+-- ================================================================
+-- BÖLÜM 12/14: 12) Kurulum durumu fonksiyonu (uygulama bunu okur)
 -- Kaynak: db/setup_status.sql
 -- ================================================================
 
@@ -656,7 +962,8 @@ DECLARE
                                   'admin_set_password','admin_update_profile'];
   v_required_tbl  text[] := ARRAY['profiles','teeth','triage','hygiene','anxiety',
                                   'appointments','notifications','clinical_notes',
-                                  'kayit_istekleri','referrals','parent_child'];
+                                  'kayit_istekleri','referrals','parent_child','photos','doctor_events',
+                                  'intake_records','prep_notes'];
   v_required_cols text[] := ARRAY['username','branch','tc_no','birth_date','gender','phone',
                                   'address','city','district','blood','insurance','school',
                                   'occupation','near_name','near_phone','near_relation',
@@ -747,7 +1054,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.setup_status() TO authenticated, anon;
 
 -- ================================================================
--- BÖLÜM 9/10: 9) Süper admin hesabını admin yapar
+-- BÖLÜM 13/14: 13) Süper admin hesabını admin yapar
 -- Kaynak: db/fix_admin.sql
 -- ================================================================
 
@@ -792,7 +1099,7 @@ WHERE lower(email) = 'tcsametsari@gmail.com';
 -- sonra bu dosyayı TEKRAR çalıştır.
 
 -- ================================================================
--- BÖLÜM 10/10: 10) Eski demo hekim kayıtlarını temizler
+-- BÖLÜM 14/14: 14) Eski demo hekim kayıtlarını temizler
 -- Kaynak: db/fix_demo_doctor.sql
 -- ================================================================
 

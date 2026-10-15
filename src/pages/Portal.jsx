@@ -20,7 +20,7 @@ import {
   ChevronLeft, ChevronRight, Video, Box, Flask, Tag, Receipt, Notebook
 } from '../components/Icons.jsx'
 import {
-  DailyFlow, Inventory, LabTracker, Billing, ClinicJournal, ClinicStats, DemoSeeder
+  DailyFlow, Inventory, LabTracker, Billing, ClinicJournal, ClinicStats, DemoSeeder, DoctorSchedule
 } from './DoctorModules.jsx'
 
 function xrayKey(pid, tooth) { return `${pid}_${tooth}` }
@@ -496,7 +496,15 @@ export function DoctorList() {
       )}
 
       {/* ---------------- TAKVİM ---------------- */}
-      {tab === 'takvim' && <CalendarView appts={approved} onComplete={async (id) => { await completeAppointment(id); reload() }} />}
+      {tab === 'takvim' && (
+        <div>
+          <div className="card">
+            <h3><Calendar size={18} /> Randevu Takvimi</h3>
+            <CalendarView appts={approved} onComplete={async (id) => { const r = await completeAppointment(id); setMsg(r.error || 'Randevu tamamlandı.'); reload() }} />
+          </div>
+          <DoctorSchedule />
+        </div>
+      )}
 
       {/* ---------------- RANDEVU TALEPLERİ ---------------- */}
       {tab === 'randevu' && (

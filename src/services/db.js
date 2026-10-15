@@ -3,28 +3,31 @@ import { supabase, hasSupabase } from './supabase.js'
 import { load, save, keys } from './store.js'
 import { allUsers } from './auth.js'
 
+// Ağ yavaş kalırsa veri katmanı asılı kalmasın: okuma isteklerine zaman aşımı.
+// Başarısız olursa çağıran taraf yerel kayda düşer.
+function withTimeout(promise, ms = 6000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('zaman aşımı')), ms))
+  ])
+}
+
 export async function listPatients() {
   if (hasSupabase) {
-    const { data, error } = await supabase.from('profiles').select('*').in('role', ['hasta', 'ebeveyn']).order('created_at', { ascending: false })
-    if (!error && data && data.length) return data
-    if (!error) {
-      const local = allUsers().filter((u) => u.role === 'hasta' || u.role === 'ebeveyn')
-      if (local.length) return local
-      return data || []
-    }
+    try {
+      const { data, error } = await withTimeout(supabase.from('profiles').select('*').in('role', ['hasta', 'ebeveyn']).order('created_at', { ascending: false }))
+      if (!error && data && data.length) return data
+    } catch { /* sunucuya ulaşılamadı, yerele düş */ }
   }
   return allUsers().filter((u) => u.role === 'hasta' || u.role === 'ebeveyn')
 }
 
 export async function listDoctors() {
   if (hasSupabase) {
-    const { data, error } = await supabase.from('profiles').select('*').eq('role', 'hekim').order('created_at', { ascending: false })
-    if (!error && data && data.length) return data
-    if (!error) {
-      const local = allUsers().filter((u) => u.role === 'hekim')
-      if (local.length) return local
-      return data || []
-    }
+    try {
+      const { data, error } = await withTimeout(supabase.from('profiles').select('*').eq('role', 'hekim').order('created_at', { ascending: false }))
+      if (!error && data && data.length) return data
+    } catch { /* sunucuya ulaşılamadı, yerele düş */ }
   }
   return allUsers().filter((u) => u.role === 'hekim')
 }
@@ -120,14 +123,15 @@ export async function insertAnxiety(pid, total) {
   return {}
 }
 
-// Triyaj kayıtlarını oku (hekim paneli). Sunucu yoksa yerel kayıt.
+// Triyaj kayıtlarını oku (hekim paneli). Sunucu yoksa veya boşsa yerel kayıt.
 export async function listTriage(pid) {
   if (hasSupabase) {
-    let q = supabase.from('triage').select('*').order('created_at', { ascending: false }).limit(100)
-    if (pid) q = q.eq('patient_id', pid)
-    const { data, error } = await q
-    if (!error && data && data.length) return data
-    if (!error) return []
+    try {
+      let q = supabase.from('triage').select('*').order('created_at', { ascending: false }).limit(100)
+      if (pid) q = q.eq('patient_id', pid)
+      const { data, error } = await withTimeout(q)
+      if (!error && data && data.length) return data
+    } catch { /* sunucuya ulaşılamadı, yerele düş */ }
   }
   const all = load(keys.triage, [])
   const list = pid ? all.filter((t) => t.patientId === pid) : all
@@ -139,10 +143,12 @@ export async function listTriage(pid) {
 // başka bir cihazdan da hastanın fotoğraflarını görür.
 export async function listPhotos(pid) {
   if (hasSupabase) {
-    let q = supabase.from('photos').select('*').order('created_at', { ascending: false }).limit(100)
-    if (pid) q = q.eq('patient_id', pid)
-    const { data, error } = await q
-    if (!error && data) return data
+    try {
+      let q = supabase.from('photos').select('*').order('created_at', { ascending: false }).limit(100)
+      if (pid) q = q.eq('patient_id', pid)
+      const { data, error } = await withTimeout(q)
+      if (!error && data && data.length) return data
+    } catch { /* sunucuya ulaşılamadı, yerele düş */ }
   }
   // Yedek: tarayıcıdaki eski kayıtlar
   return load(keys.photos, []).filter((p) => !pid || p.patientId === pid)
@@ -306,18 +312,20 @@ export async function getSetupStatus() {
 // Hastanın kendi panelinde girdiği verileri hekim panelinde gösterir.
 export async function listHygiene(pid) {
   if (hasSupabase) {
-    const { data, error } = await supabase.from('hygiene').select('*').eq('patient_id', pid).order('hdate', { ascending: false })
-    if (!error && data && data.length) return data
-    if (!error) return []
+    try {
+      const { data, error } = await withTimeout(supabase.from('hygiene').select('*').eq('patient_id', pid).order('hdate', { ascending: false }))
+      if (!error && data && data.length) return data
+    } catch { /* sunucuya ulaşılamadı, yerele düş */ }
   }
   return load(keys.hygiene, []).filter((h) => String(h.patientId) === String(pid)).slice().reverse()
 }
 
 export async function listAnxiety(pid) {
   if (hasSupabase) {
-    const { data, error } = await supabase.from('anxiety').select('*').eq('patient_id', pid).order('adate', { ascending: false })
-    if (!error && data && data.length) return data
-    if (!error) return []
+    try {
+      const { data, error } = await withTimeout(supabase.from('anxiety').select('*').eq('patient_id', pid).order('adate', { ascending: false }))
+      if (!error && data && data.length) return data
+    } catch { /* sunucuya ulaşılamadı, yerele düş */ }
   }
   return load(keys.anxiety, []).filter((a) => String(a.patientId) === String(pid)).slice().reverse()
 }
@@ -394,6 +402,9 @@ export const labApi = store('lab_cases')
 export const pricesApi = store('price_items')
 export const invoicesApi = store('invoices')
 export const notesApi = store('clinical_notes')
+export const eventsApi = store('doctor_events')
+export const intakeApi = store('intake_records')
+export const prepApi = store('prep_notes')
 
 // ---------- Randevu / Takvim / Bildirim ----------
 
