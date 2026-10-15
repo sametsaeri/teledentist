@@ -143,6 +143,53 @@ export async function updateUserByAdmin(uid, patch) {
   return { ok: true }
 }
 
+// Süper admin: bir kullanıcıya yeni şifre atar (kullanıcının açık oturumları kapanır)
+export async function setPasswordByAdmin(uid, pass) {
+  const me = getSession()
+  if (!me || me.role !== 'admin') return { error: 'Yalnızca süper admin.' }
+  pass = String(pass || '')
+  if (pass.length < 6) return { error: 'Şifre en az 6 karakter olmalı.' }
+  if (!hasSupabase) {
+    save(USERS_KEY, allUsers().map((u) => u.id === uid ? { ...u, pass } : u))
+    return { ok: true }
+  }
+  const { data, error } = await supabase.rpc('admin_set_password', {
+    p_user_id: uid,
+    p_new_password: pass
+  })
+  if (error) {
+    if (/does not exist|not found|schema cache/i.test(error.message || '')) {
+      return { error: 'Sunucu fonksiyonu kurulu değil. db/migration_admin_manage.sql dosyasını çalıştırın.' }
+    }
+    return { error: error.message }
+  }
+  if (!data || data.ok !== true) return { error: 'Şifre atanamadı.' }
+  return { ok: true }
+}
+
+// Süper admin: kullanıcının TÜM verisini günceller (ad, e-posta, kimlik, iletişim, klinik...)
+export async function updateProfileByAdmin(uid, patch) {
+  const me = getSession()
+  if (!me || me.role !== 'admin') return { error: 'Yalnızca süper admin.' }
+  if (!hasSupabase) {
+    save(USERS_KEY, allUsers().map((u) => u.id === uid ? { ...u, ...patch } : u))
+    return { ok: true }
+  }
+  const { data, error } = await supabase.rpc('admin_update_profile', {
+    p_user_id: uid,
+    p_patch: patch || {}
+  })
+  if (!error && data && data.ok === true) return { ok: true }
+  // Sunucu fonksiyonu yoksa doğrudan güncellemeyi dene (e-posta senkronu olmadan)
+  const { error: e2 } = await supabase.from('profiles').update(patch).eq('id', uid)
+  if (!e2) return { ok: true, fallback: true }
+  return {
+    error: error
+      ? (e2.message || error.message)
+      : (e2.message || 'Güncellenemedi.')
+  }
+}
+
 export async function logout() {
   if (hasSupabase) await supabase.auth.signOut()
   localStorage.removeItem('td_session')

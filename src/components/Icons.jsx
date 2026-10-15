@@ -75,6 +75,8 @@ export const LogOut = (p) => <S {...p}><path d="M14 4.5H7.5A1.5 1.5 0 0 0 6 6v12
 export const Pin = (p) => <S {...p}><path d="M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 5.3 7 11 7 11z" /><circle cx="12" cy="10" r="2.6" /></S>
 export const Save = (p) => <S {...p}><path d="M5 4.5h11L20 8.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19V6a1.5 1.5 0 0 1 1-1.5z" /><path d="M8 4.5v5h7v-5M8 20.5V14h8v6.5" /></S>
 export const Lock = (p) => <S {...p}><rect x="4.5" y="10" width="15" height="11" rx="2.5" /><path d="M8 10V7.5a4 4 0 0 1 8 0V10" /></S>
+export const Key = (p) => <S {...p}><circle cx="8" cy="12" r="4" /><path d="M12 12h9M18.5 12v3.5M15.5 12v2.2" /></S>
+export const Refresh = (p) => <S {...p}><path d="M20 11.5a8 8 0 1 1-2.5-5.8" /><path d="M20.2 3.5V9h-5.5" /></S>
 export const Grid = (p) => <S {...p}><rect x="3.5" y="3.5" width="7" height="7" rx="2" /><rect x="13.5" y="3.5" width="7" height="7" rx="2" /><rect x="3.5" y="13.5" width="7" height="7" rx="2" /><rect x="13.5" y="13.5" width="7" height="7" rx="2" /></S>
 export const Send = (p) => <S {...p}><path d="M21 3 10.5 13.5" /><path d="M21 3 14.5 21l-4-7.5L3 9.5z" /></S>
 export const Eye = (p) => <S {...p}><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="3" /></S>

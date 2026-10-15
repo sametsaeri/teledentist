@@ -210,7 +210,11 @@ export async function updatePatient(pid, patch) {
 export async function listAllProfiles() {
   if (hasSupabase) {
     const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
-    if (data) return data
+    if (data && data.length) return data
+    // Sunucuda kayıt yoksa (örn. yerel demo) tarayıcı verisine düş
+    const local = allUsers()
+    if (local.length) return local
+    return data || []
   }
   return allUsers()
 }
