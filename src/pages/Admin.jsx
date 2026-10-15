@@ -84,7 +84,12 @@ export function AdminPanel() {
             <div className="kpi warn"><b>{requests.length}</b><span>Bekleyen İstek</span></div>
           </div>
           <div className="card">
-            <h3><Stethoscope size={18} /> Hekimler</h3>
+            <div className="card-head">
+              <h3><Stethoscope size={18} /> Hekimler</h3>
+              <button onClick={() => { setTab('kullanici'); setForm({ ...empty, role: 'hekim' }) }}>
+                <UserPlus size={15} /> Hekim Ekle
+              </button>
+            </div>
             {doctors.length === 0 && <p className="muted">Kayıtlı hekim yok.</p>}
             {doctors.map((d) => (
               <p key={d.id}><strong>Dt. {d.name}</strong> <span className="muted">({d.email})</span> <span className="badge">{BRANCH_TR[d.branch] || d.branch}</span></p>

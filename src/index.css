@@ -239,6 +239,9 @@ button.tiny { padding: 2px 6px; font-size: 10px; border-radius: 6px; }
   display: inline-flex; align-items: center; gap: 7px;
 }
 .card h2, .card h3 { margin-top: 0; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.card-head h3 { margin: 0; }
+.card-head button { display: inline-flex; align-items: center; gap: 6px; }
 .dept-mini { display: flex; flex-direction: column; gap: 4px; }
 .dept-mini svg { color: var(--primary); }
 .hero-badge, .modal-actions button, .kpi-btn, .btn-new, .panel-top button { display: inline-flex; align-items: center; gap: 6px; }
