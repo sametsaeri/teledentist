@@ -312,6 +312,8 @@ button.tiny { padding: 2px 6px; font-size: 10px; border-radius: 6px; }
 .kpi.ok { background: #f0fdf4; border-color: #bbf7d0; }
 .kpi-row.compact { margin-bottom: 12px; }
 .edit-panel { background: #f8fbfe; border: 1px dashed var(--line); margin-top: 10px; }
+.warn-card { border-color: #fcd34d; background: #fffbeb; }
+.warn-card h3 { color: #92400e; }
 button.tiny.danger, .ghost.tiny.danger { color: #b91c1c; border-color: #fecaca; }
 button.tiny.danger:hover { background: #fef2f2; }
 

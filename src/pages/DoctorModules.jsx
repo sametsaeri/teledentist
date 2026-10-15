@@ -27,6 +27,71 @@ function RowActions({ onEdit, onDelete, onSave, editing, msg }) {
 }
 
 /* ================================================================== */
+/* 0) DEMO VERİ YÜKLEYİCİ                                              */
+/* Modüller boş görünmesin diye örnek klinik verisi yükler.            */
+/* ================================================================== */
+export function DemoSeeder({ onDone }) {
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const seed = async () => {
+    setBusy(true); setMsg('Yükleniyor...')
+    const pid = getSession()?.id || 'demo'
+    const ev = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10)
+
+    const mats = [
+      { name: 'Latex Eldiven M', category: 'sarf', unit: 'kutu', quantity: 12, min_quantity: 20 },
+      { name: 'Lokal anestezik (lidokain)', category: 'anestezi', unit: 'adet', quantity: 40, min_quantity: 15 },
+      { name: 'Kompozit dolgu seti', category: 'dolgu', unit: 'paket', quantity: 6, min_quantity: 10 },
+      { name: 'Kanal eğesi 25 numara', category: 'endodonti', unit: 'adet', quantity: 18, min_quantity: 5 },
+      { name: 'Protez akrili tozu', category: 'protez', unit: 'gram', quantity: 800, min_quantity: 500, expiry: ev(-20) },
+      { name: 'Cerrahi maske tip 2', category: 'sarf', unit: 'adet', quantity: 200, min_quantity: 100 },
+      { name: 'İmplant titanyum vida', category: 'cerrahi', unit: 'adet', quantity: 3, min_quantity: 5, expiry: ev(45) }
+    ]
+    for (const m of mats) await materialsApi.insert(m)
+
+    const prices = [
+      { code: 'F03', name: 'İmplant üstü protez', category: 'protez', price: 18500 },
+      { code: 'K03', name: 'Kanal tedavisi yeniden', category: 'endodonti', price: 5200 },
+      { code: 'T03', name: 'Air flow temizlik', category: 'temizlik', price: 1600 }
+    ]
+    for (const p of prices) await pricesApi.insert(p)
+
+    const labCases = [
+      { patient_id: null, patient_name: 'Demo Hasta', kind: 'zirkonyum', lab: 'Anadolu Diş Lab.', sent_at: ev(-12), due_at: ev(-2), status: 'laboratuvarda', note: 'Üst sol 16 nolu diş zirkonyum kaplama' },
+      { patient_id: null, patient_name: 'Demo Hasta', kind: 'protez', lab: 'Anadolu Diş Lab.', sent_at: ev(-40), due_at: ev(-12), status: 'geldi', note: 'Alt çene bütün protez' }
+    ]
+    for (const l of labCases) await labApi.insert(l)
+
+    const notes = [
+      { patient_id: pid, kind: 'not', body: '16 nolu dişte derin çürük, kanal tedavisi planlandı. Geçici dolgu yapıldı.' },
+      { patient_id: pid, kind: 'rapor', body: 'Dijital muayene: plak indeksi 1.8, ağız hijyeni orta düzey.' }
+    ]
+    for (const n of notes) await notesApi.insert(n)
+
+    setBusy(false)
+    setMsg('Demo veri yüklendi: 7 malzeme, 3 fiyat, 2 laboratuvar kaydı, 2 klinik notu.')
+    onDone()
+  }
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h3><Flask size={18} /> Demo Verisi</h3>
+        <button className="ghost" onClick={seed} disabled={busy}>
+          {busy ? 'Yükleniyor...' : 'Örnek Veri Yükle'}
+        </button>
+      </div>
+      <p className="muted">
+        Modülleri denemek için örnek klinik verisi ekler: malzeme stoğu, fiyat listesi,
+        laboratuvar takibi ve klinik günlük kayıtları.
+      </p>
+      {msg && <p className="muted">{msg}</p>}
+    </div>
+  )
+}
+
+/* ================================================================== */
 /* 1) GÜNLÜK AKIŞ                                                      */
 /* ================================================================== */
 export function DailyFlow({ appts, patients, onComplete }) {

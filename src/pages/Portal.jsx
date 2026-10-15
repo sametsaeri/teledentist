@@ -11,7 +11,7 @@ import {
   insertTriage, insertHygiene, insertAnxiety, listDoctors, listReferrals, referPatient,
   listAppointments, approveAppointment, completeAppointment, listRequests, approveRequest,
   uploadImage, loadImage, setAppointmentOnline, listPhotos, listTriage, setPhotoNote, signedPhotoUrl,
-  plansApi, materialsApi, labApi, invoicesApi, notesApi
+  plansApi, materialsApi, labApi, invoicesApi, notesApi, getSetupStatus
 } from '../services/db.js'
 import { triageScore } from '../services/clinical.js'
 import {
@@ -20,7 +20,7 @@ import {
   ChevronLeft, ChevronRight, Video, Box, Flask, Tag, Receipt, Notebook
 } from '../components/Icons.jsx'
 import {
-  DailyFlow, Inventory, LabTracker, Billing, ClinicJournal, ClinicStats
+  DailyFlow, Inventory, LabTracker, Billing, ClinicJournal, ClinicStats, DemoSeeder
 } from './DoctorModules.jsx'
 
 function xrayKey(pid, tooth) { return `${pid}_${tooth}` }
@@ -261,7 +261,10 @@ export function DoctorList() {
   const [photoDraft, setPhotoDraft] = useState({})
   const [sortBy, setSortBy] = useState('ad')
   const [clinic, setClinic] = useState({ plans: [], materials: [], lab: [], invoices: [], notes: [] })
+  const [setup, setSetup] = useState(null)
   const me = getSession()
+
+  useEffect(() => { getSetupStatus().then(setSetup) }, [])
 
   const loadClinic = async () => {
     const [plans, materials, lab, invoices, notes] = await Promise.all([
@@ -397,6 +400,19 @@ export function DoctorList() {
       {/* ---------------- GENEL BAKIŞ ---------------- */}
       {tab === 'ozet' && (
         <div>
+          {setup?.data && !setup.data.ok && (
+            <div className="card warn-card">
+              <h3><Alert size={18} /> Veritabanı kurulumu eksik</h3>
+              <p className="muted">
+                Klinik modülleri veritabanı tablolarını kullanır. SQL henüz çalıştırılmadığı için
+                modüller tarayıcınızda çalışır ama cihazlar arasında paylaşılmaz.
+              </p>
+              <p className="muted">
+                Eksikler: {[...(setup.data.missing_tables || []), ...(setup.data.missing_functions || [])].join(', ') || '—'}
+              </p>
+              <p className="muted">Proje klasöründe terminal açıp <code>npm run db:push</code> yazın.</p>
+            </div>
+          )}
           <ClinicStats
             patients={patients}
             appts={appts}
@@ -406,6 +422,7 @@ export function DoctorList() {
             lab={clinic.lab}
             photos={photos}
           />
+          <DemoSeeder onDone={loadClinic} />
           <div className="card">
             <h3><Bell size={18} /> Yaklaşan Hatırlatmalar</h3>
             <ReminderList patients={all} />
