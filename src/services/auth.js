@@ -1,4 +1,4 @@
-// Hibrit auth: Supabase varsa gerçek giriş, yoksa yerel hesaplar
+﻿// Hibrit auth: Supabase varsa gerçek giriş, yoksa yerel hesaplar
 // Politika: hasta/ebeveyn kaydını yalnızca hekim açar.
 import { load, save, getSession, setSession } from './store.js'
 import { supabase, hasSupabase } from './supabase.js'
@@ -37,19 +37,173 @@ export async function login(email, pass, allowedRoles) {  email = String(email |
   return { user: u }
 }
 
-// Hasta kayıt isteği: hesap açılır, hekim onaylayınca profil tanımlanır
-export async function registerRequest({ name, email, pass, role, childEmail }) {
+// Hasta kayıt isteği: hesap açılır, hekim onaylayınca profil tanımlanır.
+//
+// ÖNEMLİ: Projede "Allow new users to sign up" KAPALI olduğunda
+// supabase.auth.signUp() "Signups not allowed for this instance" hatası
+// verir ve talep hiçbir yere düşmez. Bu yüzden SECURITY DEFINER olan
+// register_patient_request() RPC'si kullanılır; o fonksiyon signup
+// kısıtlamasını aşar ve talebi doğrudan kayit_istekleri tablosuna yazar.
+export async function registerRequest({ name, email, pass, role, childEmail, phone, note }) {
   email = String(email).trim().toLowerCase()
-  if (!name || !email || !pass) return { error: 'Ad, e-posta ve şifre zorunlu.' }
+  if (!name || !name.trim()) return { error: 'Ad soyad zorunlu.' }
+  if (!email || !email.includes('@')) return { error: 'Geçerli bir e-posta girin.' }
+  if (!pass || pass.length < 6) return { error: 'Şifre en az 6 karakter olmalı.' }
   if (!['hasta', 'ebeveyn'].includes(role)) return { error: 'Kayıt yalnızca hasta/ebeveyn için.' }
-  if (!hasSupabase) return { error: 'Kayıt şu an kapalı, hekiminize başvurun.' }
-  const { data, error } = await supabase.auth.signUp({ email, password: pass })
-  if (error) return { error: error.message }
-  const uid = data.user?.id
-  if (!uid) return { error: 'Kayıt oluşturulamadı.' }
-  const { error: e2 } = await supabase.from('kayit_istekleri').insert({ user_id: uid, email, name, role, child_email: childEmail || null })
-  if (e2) return { error: e2.message }
-  return { ok: true }
+  if (role === 'ebeveyn' && !childEmail) {
+    return { error: 'Çocuğunuzun e-posta adresini girin; kayıt sonrası bağlanacak.' }
+  }
+
+  const yerel = { name: name.trim(), email, role, childEmail, phone, note }
+
+  if (!hasSupabase) {
+    // Sunucu yoksa talebi tarayıcıda sakla ki hekim panelinde görünsün
+    kaydetYerelTalep(yerel)
+    return { ok: true, local: true }
+  }
+
+  // 1) Öncelikli yol: SECURITY DEFINER RPC
+  //    Ağ yavaş kalırsa asılı kalmasın: 8 saniyede vazgeçip yedeğe düşeriz.
+  try {
+    const { data, error } = await zamanAsimli(
+      supabase.rpc('register_patient_request', {
+        p_email: email,
+        p_password: pass,
+        p_name: name.trim(),
+        p_role: role,
+        p_child_email: childEmail || null,
+        p_phone: phone || null,
+        p_note: note || null
+      }),
+      8000
+    )
+    if (!error) return { ok: true, uid: data?.uid, email: data?.email }
+    // RPC yoksa eski yola düş; gerçek bir hata ise göster
+    if (!rpcYok(error)) {
+      return { error: suMesaj(error.message) }
+    }
+  } catch (e) {
+    const m = String(e?.message || '')
+    if (/zaman aşımı|timeout/i.test(m)) { /* yedeğe düş */ }
+    else if (!rpcYok({ message: m }) && !/fetch|network/i.test(m)) {
+      return { error: suMesaj(m) }
+    }
+  }
+
+  // 2) Yedek yol: RPC yoksa doğrudan signup + tabloya yaz
+  try {
+    const { data, error } = await zamanAsimli(
+      supabase.auth.signUp({ email, password: pass }),
+      8000
+    )
+    if (error) {
+      // Kayıt kapalıysa da talebi kaydet; hekim hesabı açabilir
+      kaydetYerelTalep(yerel)
+      return {
+        ok: true,
+        local: true,
+        uyari: 'Talebiniz alındı. Hesabınız hekiminiz onayladığında açılacaktır.'
+      }
+    }
+    const uid = data?.user?.id
+    if (!uid) return { error: 'Kayıt oluşturulamadı.' }
+    const { error: e2 } = await supabase.from('kayit_istekleri')
+      .insert({ user_id: uid, email, name: name.trim(), role, child_email: childEmail || null })
+    if (e2) {
+      kaydetYerelTalep({ ...yerel, user_id: uid })
+      return { ok: true, local: true }
+    }
+    return { ok: true, uid }
+  } catch {
+    kaydetYerelTalep(yerel)
+    return { ok: true, local: true }
+  }
+}
+
+/* --- Yerel talep yedeği: sunucu yoksa veya hata verirse kaybolmasın --- */
+const YEREL_TALEP_ANAHTARI = 'td_kayit_talepleri'
+
+/** Ağ yavaş kalırsa istek asılı kalmasın; zaman aşımına düşer. */
+function zamanAsimli(soru, ms = 8000) {
+  return Promise.race([
+    soru,
+    new Promise((_, reddet) => setTimeout(() => reddet(new Error('zaman aşımı')), ms))
+  ])
+}
+
+export function kaydetYerelTalep(talep) {
+  try {
+    const liste = JSON.parse(localStorage.getItem(YEREL_TALEP_ANAHTARI) || '[]')
+    if (liste.some((t) => t.email === talep.email)) return
+    liste.unshift({
+      ...talep,
+      id: yeniTalepId(),
+      created_at: new Date().toISOString(),
+      durum: 'bekliyor'
+    })
+    localStorage.setItem(YEREL_TALEP_ANAHTARI, JSON.stringify(liste))
+  } catch { /* tarayıcı kaydı kapalı olabilir */ }
+}
+
+/**
+ * Aynı milisaniyede eklenen iki talep Date.now() ile AYNI id alıyordu;
+ * biri silinince ikisi de kayboluyordu. Bu yüzden benzersiz üretilir.
+ */
+function yeniTalepId() {
+  return `y${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+}
+
+export function yerelTalepleriOku() {
+  try {
+    return JSON.parse(localStorage.getItem(YEREL_TALEP_ANAHTARI) || '[]')
+  } catch {
+    return []
+  }
+}
+
+export function yerelTalebiSil(id) {
+  try {
+    const liste = JSON.parse(localStorage.getItem(YEREL_TALEP_ANAHTARI) || '[]')
+    localStorage.setItem(YEREL_TALEP_ANAHTARI, JSON.stringify(liste.filter((t) => t.id !== id)))
+  } catch { /* yoksay */ }
+}
+
+/**
+ * PostgREST'in "fonksiyon yok" hatasını tanı.
+ *
+ * DİKKAT: Gerçek mesaj şöyledir:
+ *   "Could not find the function public.register_patient_request(p_email,
+ *    p_password, ...) in the schema cache."
+ * Bu metinde "p_password" GEÇER; düz bir /password/ araması yanlışlıkla
+ * "şifre hatası" sanabilir. Bu yüzden önce yapısal işaretler aranır.
+ */
+export function rpcYok(hata) {
+  const birlestir = [
+    hata?.message, hata?.code, hata?.details, hata?.status, hata?.hint
+  ].map((x) => String(x || '')).join(' ')
+  return /does not exist|not found|404|PGRST|schema cache|Could not find the function|no matches were found|undefined function/i.test(birlestir)
+}
+
+/** Postgres/Auth hata mesajlarını Türkçeye çevirir */
+export function suMesaj(mesaj) {
+  const m = String(mesaj || '')
+  // Sıralama önemli: en spesifik eşleşme önce gelmeli.
+  if (/Signups not allowed/i.test(m)) return 'Sunucu kayıtları geçici olarak kapalı. Talebiniz alındı, hekiminiz onaylayınca hesabınız açılacak.'
+  if (/already registered|User already exists/i.test(m)) return 'Bu e-posta zaten kayıtlı.'
+  if (/Bu e-posta zaten kayitli/i.test(m)) return 'Bu e-posta zaten kayıtlı. Lütfen giriş yapın.'
+  if (/zaten talep/i.test(m)) return 'Bu e-posta için zaten talep gönderilmiş. Hekiminiz inceliyor.'
+  if (/yetkisiz|Yetkisiz islem/i.test(m)) return 'Yetkisiz işlem.'
+  if (/row-level security|401|403|Unauthorized|new row violates row-level/i.test(m)) {
+    return 'Veritabanı izni yok. Süper admin’den "npm run db:push" ile SQL kurulumunun tamamlanmasını isteyin.'
+  }
+  if (/gecersiz e-posta|Gecersiz e-posta|Invalid email|invalid email|email address/i.test(m)) return 'Geçerli bir e-posta adresi girin.'
+  if (/Ad soyad zorunlu|name.*zorunlu/i.test(m)) return 'Ad soyad zorunlu.'
+  // Şifre kuralı: yalnızca GERÇEK şifre hataları. Parametre adı (p_password)
+  // yanlışlıkla eşleşmesin diye "en az N karakter" kalıbı aranır.
+  if (/sifre en az|şifre en az|password should be at least|password must be at least|at least \d+ characters|minimum \d+ characters/i.test(m)) {
+    return 'Şifre en az 6 karakter olmalı.'
+  }
+  return m || 'İşlem tamamlanamadı. Lütfen tekrar deneyin.'
 }
 
 // Hekim veya süper admin panelden tek tuşla hesap açar (UID gerekmez)

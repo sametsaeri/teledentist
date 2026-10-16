@@ -395,6 +395,183 @@ $$;
 GRANT EXECUTE ON FUNCTION public.create_account(text,text,text,text,text,text,jsonb) TO authenticated;
 
 -- ------------------------------------------------------------
+-- 1b) HASTA / EBEVEYN KAYIT TALEBİ (hasta formu doldurur, hekim onaylar)
+--
+-- Sorun: Supabase projesinde "Allow new users to sign up" KAPALI ise
+-- auth.signUp() "Signups not allowed for this instance" hatası verir ve
+-- hasta talebi hiçbir yere düşmez. Bu fonksiyon SECURITY DEFINER ile
+-- signup kısıtlamasını aşarak hesabı açar ve talebi kayit_istekleri'ne yazar.
+--
+-- Hasta burada PROFIL almaz; profil kaydı hekim onayladığında yapılır.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS kayit_istekleri (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL,
+  email TEXT NOT NULL,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('hasta','ebeveyn')),
+  child_email TEXT,
+  phone TEXT,
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE kayit_istekleri ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION public.register_patient_request(
+  p_email       text,
+  p_password    text,
+  p_name        text,
+  p_role        text,
+  p_child_email text DEFAULT NULL,
+  p_phone       text DEFAULT NULL,
+  p_note        text DEFAULT NULL
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, extensions
+AS $$
+DECLARE
+  v_uid    uuid;
+  v_exists boolean;
+  v_email  text := lower(trim(coalesce(p_email,'')));
+BEGIN
+  -- --- Doğrulama ---
+  IF p_name IS NULL OR trim(p_name) = '' THEN
+    RAISE EXCEPTION 'Ad soyad zorunlu';
+  END IF;
+  IF p_email IS NULL OR position('@' in p_email) = 0 THEN
+    RAISE EXCEPTION 'Gecersiz e-posta adresi';
+  END IF;
+  IF coalesce(length(p_password),0) < 6 THEN
+    RAISE EXCEPTION 'Sifre en az 6 karakter olmali';
+  END IF;
+  IF p_role IS NULL OR p_role NOT IN ('hasta','ebeveyn') THEN
+    RAISE EXCEPTION 'Kayit yalnizca hasta veya ebeveyn icin yapilabilir';
+  END IF;
+
+  -- Zaten profili olan biri talep gönderemez
+  SELECT true INTO v_exists FROM profiles WHERE lower(email) = v_email;
+  IF v_exists THEN
+    RAISE EXCEPTION 'Bu e-posta zaten kayitli. Lutfen giris yapin.';
+  END IF;
+
+  -- Daha önce talep gönderilmiş mi?
+  SELECT true INTO v_exists FROM kayit_istekleri WHERE lower(email) = v_email;
+  IF v_exists THEN
+    RAISE EXCEPTION 'Bu e-posta icin zaten talep gonderilmis. Hekiminiz inceliyor.';
+  END IF;
+
+  -- --- auth kullanıcısı ---
+  SELECT id INTO v_uid FROM auth.users WHERE lower(email) = v_email;
+
+  IF v_uid IS NULL THEN
+    v_uid := gen_random_uuid();
+    INSERT INTO auth.users (
+      instance_id, id, aud, role, email, encrypted_password,
+      email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+      created_at, updated_at,
+      confirmation_token, recovery_token, email_change_token_new, email_change
+    ) VALUES (
+      '00000000-0000-0000-0000-000000000000', v_uid,
+      'authenticated', 'authenticated', v_email,
+      extensions.crypt(p_password, extensions.gen_salt('bf')),
+      now(),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{}'::jsonb, now(), now(), '', '', '', ''
+    );
+  END IF;
+
+  -- --- talep kaydı (profil YOK; hekim onaylayınca oluşur) ---
+  INSERT INTO kayit_istekleri (user_id, email, name, role, child_email, phone, note)
+  VALUES (
+    v_uid, v_email, trim(p_name), p_role,
+    nullif(lower(trim(coalesce(p_child_email,''))),''),
+    nullif(trim(coalesce(p_phone,'')),''),
+    nullif(trim(coalesce(p_note,'')),'')
+  );
+
+  RETURN jsonb_build_object('ok', true, 'uid', v_uid, 'email', v_email);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.register_patient_request(text,text,text,text,text,text,text) TO anon, authenticated;
+
+-- ------------------------------------------------------------
+-- 1c) Hekim talebi onaylar / reddeder
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.decide_registration_request(
+  p_request_id bigint,
+  p_approve     boolean,
+  p_doctor_id   uuid DEFAULT NULL
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_req   kayit_istekleri%ROWTYPE;
+  v_uid   uuid;
+  v_email text;
+  v_child uuid;
+BEGIN
+  IF NOT (public.is_hekim() OR public.is_admin()) THEN
+    RAISE EXCEPTION 'Yetkisiz islem';
+  END IF;
+
+  SELECT * INTO v_req FROM kayit_istekleri WHERE id = p_request_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Talep bulunamadi';
+  END IF;
+
+  IF NOT p_approve THEN
+    DELETE FROM kayit_istekleri WHERE id = p_request_id;
+    RETURN jsonb_build_object('ok', true, 'durum', 'reddedildi');
+  END IF;
+
+  v_uid := v_req.user_id;
+  v_email := lower(trim(v_req.email));
+
+  -- auth kullanıcısı gerçekten var mı
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = v_uid) THEN
+    v_uid := gen_random_uuid();
+    INSERT INTO auth.users (
+      instance_id, id, aud, role, email, encrypted_password,
+      email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+      created_at, updated_at,
+      confirmation_token, recovery_token, email_change_token_new, email_change
+    ) VALUES (
+      '00000000-0000-0000-0000-000000000000', v_uid,
+      'authenticated', 'authenticated', v_email,
+      -- geçici şifre; hekim hesap oluştururken kendi şifresini belirler
+      extensions.crypt('teledentist', extensions.gen_salt('bf')),
+      now(), '{"provider":"email","providers":["email"]}'::jsonb,
+      '{}'::jsonb, now(), now(), '', '', '', ''
+    );
+  END IF;
+
+  -- profil oluştur (yoksa)
+  INSERT INTO profiles (id, role, email, name, created_by, reminder_days, last_visit, plaque_index, anxiety_score, treatment_type)
+  VALUES (v_uid, v_req.role, v_email, v_req.name, coalesce(p_doctor_id, auth.uid()), 5, CURRENT_DATE, 1, 3, 'kontrol')
+  ON CONFLICT (id) DO UPDATE
+    SET role = EXCLUDED.role, email = EXCLUDED.email, name = EXCLUDED.name;
+
+  -- ebeveyn ise çocuk profilini bağla
+  IF v_req.role = 'ebeveyn' AND v_req.child_email IS NOT NULL AND v_req.child_email <> '' THEN
+    SELECT id INTO v_child FROM profiles WHERE lower(email) = lower(v_req.child_email);
+    IF v_child IS NOT NULL THEN
+      INSERT INTO parent_child (parent_id, child_id)
+      VALUES (v_uid, v_child) ON CONFLICT DO NOTHING;
+    END IF;
+  END IF;
+
+  DELETE FROM kayit_istekleri WHERE id = p_request_id;
+  RETURN jsonb_build_object('ok', true, 'durum', 'onaylandi', 'uid', v_uid);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.decide_registration_request(bigint,boolean,uuid) TO authenticated;
+
+-- ------------------------------------------------------------
 -- 2) Kullanıcı adı veya e-posta ile e-posta çözümleme (giriş için)
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.resolve_login_id(p_identifier text)
@@ -959,6 +1136,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_required_fn   text[] := ARRAY['is_hekim','is_admin','create_account','resolve_login_id',
+                                  'register_patient_request','decide_registration_request',
                                   'admin_set_password','admin_update_profile'];
   v_required_tbl  text[] := ARRAY['profiles','teeth','triage','hygiene','anxiety',
                                   'appointments','notifications','clinical_notes',

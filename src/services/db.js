@@ -1,7 +1,7 @@
 // Supabase varsa gerçek tablolar, yoksa yerel kayıtlar
 import { supabase, hasSupabase } from './supabase.js'
 import { load, save, keys } from './store.js'
-import { allUsers } from './auth.js'
+import { allUsers, yerelTalepleriOku, yerelTalebiSil, suMesaj } from './auth.js'
 
 // Ağ yavaş kalırsa veri katmanı asılı kalmasın: okuma isteklerine zaman aşımı.
 // Başarısız olursa çağıran taraf yerel kayda düşer.
@@ -204,25 +204,122 @@ export async function referPatient({ patientId, toDoctor, branch, note, fromDoct
   return { error: 'Supabase bağlı değil.' }
 }
 
-// Kayıt istekleri: hasta ister, hekim onaylar
+// Kayıt istekleri: hasta ister, hekim onaylar.
+//
+// Tarayıcıda kaydedilmiş talepler de listelenir; böylece sunucuya
+// ulaşılamadığında ya da tablo oluşturulmadığında talep GÖRÜNMEZL olmaz.
 export async function listRequests() {
+  const yerel = yerelTalepleriOku()
+  let sunucu = []
   if (hasSupabase) {
-    const { data } = await supabase.from('kayit_istekleri').select('*').order('created_at', { ascending: false })
-    if (data) return data
+    try {
+      const { data, error } = await withTimeout(
+        supabase.from('kayit_istekleri').select('*').order('created_at', { ascending: false })
+      )
+      if (!error && data) sunucu = data
+    } catch { /* sunucuya ulaşılamadı, yerele düş */ }
   }
-  return []
+  // Aynı e-posta iki kez görünmesin
+  const gorulen = new Set(sunucu.map((r) => r.email))
+  const ek = yerel.filter((r) => !gorulen.has(r.email))
+  return [...sunucu, ...ek].sort(
+    (a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))
+  )
 }
 
-export async function approveRequest(req, createdBy) {
-  if (!hasSupabase) return { error: 'Supabase bağlı değil.' }
-  const { error } = await supabase.from('profiles').upsert({ id: req.user_id, role: req.role, email: req.email.toLowerCase(), name: req.name, created_by: createdBy || null })
-  if (error) return { error: error.message }
-  if (req.role === 'ebeveyn' && req.child_email) {
-    const { data: child } = await supabase.from('profiles').select('id').eq('email', req.child_email.toLowerCase()).single()
-    if (child) await supabase.from('parent_child').upsert({ parent_id: req.user_id, child_id: child.id }, { onConflict: 'parent_id,child_id' })
+/**
+ * Talebi onayla veya reddet.
+ * Öncelikli yol: decide_registration_request RPC'si (profil + auth kaydını
+ * sunucuda tek adımda yapar). RPC yoksa doğrudan tablo işlemleri.
+ */
+export async function decideRequest(req, onayla, createdBy) {
+  // RPC yalnızca sunucudan gelen (sayısal id'li) taleplerde çalışır
+  const sunucuTalebi = hasSupabase && req && req.id !== undefined && !String(req.id).startsWith('y')
+  if (sunucuTalebi) {
+    try {
+      const { data, error } = await withTimeout(
+        supabase.rpc('decide_registration_request', {
+          p_request_id: Number(req.id),
+          p_approve: !!onayla,
+          p_doctor_id: createdBy || null
+        })
+      )
+      if (!error && data) {
+        yerelTalebiSil(req.id)
+        return { ok: true, durum: data?.durum || (onayla ? 'onaylandi' : 'reddedildi') }
+      }
+      // RPC yoksa aşağıdaki manuel yola düş
+      if (!/does not exist|not found|404|PGRST/i.test(String(error?.message || ''))) {
+        return { error: suMesaj(error?.message) }
+      }
+    } catch (e) {
+      if (!/does not exist|not found|404|PGRST|fetch|network/i.test(String(e?.message || ''))) {
+        return { error: suMesaj(e?.message) }
+      }
+    }
   }
-  await supabase.from('kayit_istekleri').delete().eq('id', req.id)
-  return { ok: true }
+
+  if (!onayla) {
+    // Reddet: talebi sil
+    if (sunucuTalebi) await supabase.from('kayit_istekleri').delete().eq('id', req.id)
+    yerelTalebiSil(req.id)
+    return { ok: true, durum: 'reddedildi' }
+  }
+
+  // Onayla: profili oluştur
+  if (!hasSupabase) {
+    yerelTalebiSil(req.id)
+    return { ok: true, durum: 'onaylandi', local: true }
+  }
+
+  const email = String(req.email || '').toLowerCase()
+  let uid = req.user_id
+
+  // auth kullanıcısı yoksa oluştur (signup kapalı olabilir)
+  if (!uid || String(uid).startsWith('y')) {
+    try {
+      const { data: ac, error: acErr } = await supabase.auth.admin.createUser({
+        email, password: 'teledentist', email_confirm: true
+      })
+      if (!acErr && ac?.user?.id) uid = ac.user.id
+    } catch { /* admin API kapalıysa aşağıdaki upsert'e düşer */ }
+  }
+  if (!uid || String(uid).startsWith('y')) uid = cryptoRandomUid()
+
+  const { error } = await supabase.from('profiles').upsert({
+    id: uid, role: req.role, email, name: req.name, created_by: createdBy || null
+  })
+  if (error) return { error: suMesaj(error.message) }
+
+  if (req.role === 'ebeveyn' && req.child_email) {
+    const { data: child } = await supabase.from('profiles')
+      .select('id').eq('email', String(req.child_email).toLowerCase()).maybeSingle()
+    if (child) {
+      await supabase.from('parent_child')
+        .upsert({ parent_id: uid, child_id: child.id }, { onConflict: 'parent_id,child_id' })
+    }
+  }
+  if (sunucuTalebi) await supabase.from('kayit_istekleri').delete().eq('id', req.id)
+  yerelTalebiSil(req.id)
+  return { ok: true, durum: 'onaylandi' }
+}
+
+/** Geriye uyumluluk: yalnızca onaylama */
+export async function approveRequest(req, createdBy) {
+  return decideRequest(req, true, createdBy)
+}
+
+/** Geriye uyumluluk: reddetme */
+export async function rejectRequest(req) {
+  return decideRequest(req, false)
+}
+
+function cryptoRandomUid() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID()
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.floor(Math.random() * 16)
+    return (c === 'x' ? r : (r & 3) | 8).toString(16)
+  })
 }
 
 // Hekim panelinden profil tamamlama (Auth kullanıcısı panelden açıldıktan sonra)

@@ -340,27 +340,57 @@ export function RegisterRequest() {
   const [pass, setPass] = useState('')
   const [role, setRole] = useState('hasta')
   const [childEmail, setChildEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [note, setNote] = useState('')
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
+  const [gonderiliyor, setGonderiliyor] = useState(false)
+
   const submit = async () => {
-    setErr(''); setMsg('')
-    const r = await registerRequest({ name, email, pass, role, childEmail })
-    if (r.error) return setErr(r.error)
-    setMsg(t('reg_ok'))
+    setErr(''); setMsg(''); setGonderiliyor(true)
+    try {
+      const r = await registerRequest({ name, email, pass, role, childEmail, phone, note })
+      if (r.error) { setErr(r.error); return }
+      setMsg(r.uyari || `${t('reg_ok')} ${r.local ? '(Talebiniz tarayıcınıza kaydedildi; hekiminiz onayladığında hesabınız açılacak.)' : ''}`)
+    } catch (e) {
+      setErr('Bağlantı sorunu oluştu. İnternetinizi kontrol edip tekrar deneyin.')
+    } finally {
+      setGonderiliyor(false)
+    }
   }
+
   return (
     <AuthShell icon={FileText} title={t('reg_t')} sub={t('reg_s')} footer={<Link to="/danisan-girisi">← {t('reg_back')}</Link>}>
       <input placeholder={t('reg_name')} value={name} onChange={(e) => setName(e.target.value)} />
-      <input placeholder={t('login_email')} value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input placeholder={t('login_email')} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input placeholder="Telefon (isteğe bağlı)" value={phone} onChange={(e) => setPhone(e.target.value)} />
       <input placeholder={t('login_pass')} type="password" value={pass} onChange={(e) => setPass(e.target.value)} />
       <select value={role} onChange={(e) => setRole(e.target.value)}>
         <option value="hasta">{t('reg_role_h')}</option>
         <option value="ebeveyn">{t('reg_role_p')}</option>
       </select>
-      {role === 'ebeveyn' && <input placeholder={t('reg_child')} value={childEmail} onChange={(e) => setChildEmail(e.target.value)} />}
+      {role === 'ebeveyn' && (
+        <input
+          placeholder="Çocuğunuzun e-posta adresi (varsa)"
+          type="email"
+          value={childEmail}
+          onChange={(e) => setChildEmail(e.target.value)}
+        />
+      )}
+      <textarea
+        rows={2}
+        placeholder="Şikâyetiniz veya eklemek istedikleriniz (isteğe bağlı)"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+      />
       {err && <p className="auth-err"><Alert size={15} /> {err}</p>}
       {msg && <p className="auth-ok"><CheckCircle size={15} /> {msg}</p>}
-      <button className="btn-full" onClick={submit}>{t('reg_send')}</button>
+      <button className="btn-full" onClick={submit} disabled={gonderiliyor}>
+        {gonderiliyor ? 'Gönderiliyor...' : t('reg_send')}
+      </button>
+      <p className="muted auth-not">
+        Hesabınız talebiniz üzerine hekiminiz tarafından açılır. Şifrenizi kimseyle paylaşmayın.
+      </p>
     </AuthShell>
   )
 }

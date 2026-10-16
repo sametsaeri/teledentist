@@ -9,7 +9,7 @@ import { createUserByDoctor } from '../services/auth.js'
 import {
   listPatients, getPatient, getTeeth, saveTooth, lastRecords, updatePatient, getChildren,
   insertTriage, insertHygiene, insertAnxiety, listDoctors, listReferrals, referPatient,
-  listAppointments, approveAppointment, completeAppointment, listRequests, approveRequest,
+  listAppointments, approveAppointment, completeAppointment, listRequests, decideRequest, rejectRequest,
   uploadImage, loadImage, setAppointmentOnline, listPhotos, listTriage, setPhotoNote, signedPhotoUrl,
   plansApi, materialsApi, labApi, invoicesApi, notesApi, getSetupStatus
 } from '../services/db.js'
@@ -257,6 +257,7 @@ export function DoctorList() {
   const [appts, setAppts] = useState([])
   const [refTo, setRefTo] = useState({})
   const [msg, setMsg] = useState('')
+  const [istekHata, setIstekHata] = useState(false)
   const [refMsg, setRefMsg] = useState('')
   const [form, setForm] = useState(emptyForm())
   const [approveDate, setApproveDate] = useState({})
@@ -628,21 +629,62 @@ export function DoctorList() {
       {tab === 'istek' && (
         <div className="card">
           <h3><Clipboard size={18} /> Gelen Kayıt İstekleri ({requests.length})</h3>
-          {requests.length === 0 && <p className="muted">Bekleyen kayıt isteği yok.</p>}
+          <p className="muted">
+            Hastaların <Link to="/kayit">kayıt isteği</Link> formundan gönderdiği başvurular burada listelenir.
+            Onayladığınızda hesap açılır ve hasta kendi paneline girebilir.
+          </p>
+
+          {requests.length === 0 && (
+            <div className="empty-state">
+              <p className="muted">Şu anda bekleyen kayıt isteği yok.</p>
+              <p className="muted">
+                Hasta kaydı yalnızca talep üzerinden yapılır. Hastanın formu doldurması gerekir;
+                adres: <b>/kayit</b>. Bu sayfayı yeni bir sekmede test edebilirsiniz.
+              </p>
+            </div>
+          )}
+
+          {/* Kurulum uyarısı: talep geliyor ama onaylanamıyorsa sebebi budur */}
+          {istekHata && (
+            <p className="auth-err"><Alert size={15} /> {msg}</p>
+          )}
+
           {requests.map((r) => (
-            <div key={r.id} className="appt-row">
-              <div>
-                <strong>{r.name}</strong> <span className="muted">({r.email})</span>
-                <span className="badge">{r.role}</span>
+            <div className="istek-row" key={r.id}>
+              <div className="istek-bilgi">
+                <p>
+                  <strong>{r.name}</strong>
+                  <span className="badge">{r.role === 'ebeveyn' ? 'Ebeveyn' : 'Hasta'}</span>
+                  {String(r.id).startsWith('y') && <span className="badge warn">tarayıcı kaydı</span>}
+                </p>
+                <p className="muted">
+                  {r.email}
+                  {r.phone ? ` · ${r.phone}` : ''}
+                  {r.created_at ? ` · ${String(r.created_at).slice(0, 10)}` : ''}
+                </p>
+                {r.child_email && <p className="muted">Çocuk: {r.child_email}</p>}
+                {r.note && <p className="muted">Not: {r.note}</p>}
               </div>
-              <button onClick={async () => {
-                const res = await approveRequest(r, me?.id)
-                setMsg(res.error || 'Kullanıcı onaylandı.')
-                reload()
-              }}><Check size={15} /> Onayla</button>
+              <div className="istek-eylem">
+                <button onClick={async () => {
+                  const res = await decideRequest(r, true, me?.id)
+                  setIstekHata(!!res.error)
+                  setMsg(res.error || `${r.name} onaylandı — hesabı açıldı.`)
+                  reload()
+                }}><Check size={15} /> Onayla</button>
+                <button
+                  className="ghost"
+                  onClick={async () => {
+                    const res = await decideRequest(r, false)
+                    setIstekHata(!!res.error)
+                    setMsg(res.error || `${r.name} talebi reddedildi.`)
+                    reload()
+                  }}
+                ><X size={15} /> Reddet</button>
+              </div>
             </div>
           ))}
-          {msg && <p className="muted">{msg}</p>}
+          {msg && !istekHata && <p className="msg ok">{msg}</p>}
         </div>
       )}
     </div>
