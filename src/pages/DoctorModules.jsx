@@ -42,7 +42,7 @@ export function DoctorSchedule() {
   })
 
   const load = () => eventsApi.list({ order: 'event_date', asc: true }).then(setRows)
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
 
   const mine = rows.filter((r) => !me?.id || !r.doctor_id || r.doctor_id === me.id)
 
@@ -277,7 +277,7 @@ export function Inventory() {
   const [q, setQ] = useState('')
 
   const load = () => materialsApi.list({ order: 'name', asc: true }).then(setRows)
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
 
   const add = async () => {
     if (!form.name.trim()) return setMsg('Malzeme adı zorunlu.')
@@ -392,7 +392,7 @@ export function LabTracker({ patients }) {
   const [edit, setEdit] = useState(null)
 
   const load = () => labApi.list().then(setRows)
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
 
   const add = async () => {
     if (!form.kind) return setMsg('Proje türü seçin.')
@@ -530,7 +530,7 @@ export function Billing({ patients, initial = 'fiyat' }) {
   const [editI, setEditI] = useState(null)
 
   const load = () => { pricesApi.list({ order: 'id', asc: true }).then(setPrices); invoicesApi.list().then(setInvoices) }
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
 
   const addPrice = async () => {
     if (!form.name.trim()) return setMsg('İşlem adı zorunlu.')
@@ -697,7 +697,7 @@ export function ClinicJournal({ patients }) {
   const [form, setForm] = useState({ patient_id: '', kind: 'not', body: '' })
 
   const load = () => notesApi.list().then(setRows)
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
 
   const add = async () => {
     const p = patients.find((x) => x.id === form.patient_id)

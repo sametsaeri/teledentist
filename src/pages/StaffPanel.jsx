@@ -57,7 +57,7 @@ export function StaffPanel() {
     intakeApi.list().then(setIntake)
     prepApi.list().then(setPrep)
   }
-  useEffect(reload, [])
+  useEffect(() => { reload() }, [])
 
   const today = new Date().toISOString().slice(0, 10)
   const pending = appts.filter((a) => a.status === 'yeni')

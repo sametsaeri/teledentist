@@ -286,7 +286,7 @@ export function DoctorList() {
     loadPhotos()
     loadClinic()
   }
-  useEffect(reload, [])
+  useEffect(() => { reload() }, [])
 
   // Fotoğraflar sunucudan; her biri için geçici imzalı bağlantı üretilir
   const loadPhotos = async () => {

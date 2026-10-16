@@ -55,7 +55,7 @@ export function Hygiene() {
   const [done, setDone] = useState(false)
   const [history, setHistory] = useState([])
   const reload = () => { listHygiene(pid()).then(setHistory) }
-  useEffect(reload, [])
+  useEffect(() => { reload() }, [])
   const submit = async () => {
     const list = load(keys.hygiene, [])
     list.push({ id: Date.now(), patientId: pid(), plaque: Number(plaque), brush: Number(brush), date: new Date().toISOString().slice(0, 10) })
@@ -130,7 +130,7 @@ export function PhotoReview() {
   const [busy, setBusy] = useState(false)
 
   const reload = () => { listPhotos(pid()).then(setList) }
-  useEffect(reload, [])
+  useEffect(() => { reload() }, [])
 
   // Kayıt satırındaki dosya için imzalı bağlantı üret
   useEffect(() => {

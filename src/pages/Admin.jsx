@@ -256,7 +256,7 @@ export function AdminPanel() {
     listReferrals().then(setRefs)
     listRequests().then(setRequests)
   }
-  useEffect(reload, [])
+  useEffect(() => { reload() }, [])
 
   useEffect(() => {
     getSetupStatus().then((r) => setStatus(r))

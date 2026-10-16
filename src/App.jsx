@@ -11,6 +11,7 @@ import { ERandevu } from './pages/ERandevu.jsx'
 import { AdminPanel } from './pages/Admin.jsx'
 import { AccountSettings } from './pages/Account.jsx'
 import { StaffPanel } from './pages/StaffPanel.jsx'
+import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { currentUser } from './services/auth.js'
 
 // Hangi rol hangi giriş ekranına gitsin
@@ -55,8 +56,9 @@ function ReportWrapper() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
         {/* --- Tanıtım sitesi --- */}
         <Route path="/" element={<Public><Home /></Public>} />
         <Route path="/teledentistry" element={<Public><About /></Public>} />
@@ -100,7 +102,8 @@ export default function App() {
         <Route path="/hatirlatma" element={<Panel roles={['hekim', 'sekreter']}><Reminders /></Panel>} />
 
         <Route path="*" element={<Public><Home /></Public>} />
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }
