@@ -301,11 +301,15 @@ export async function listAllProfiles() {
 // ---------- Kurulum durumu (admin paneli "Sistem Durumu" kartı) ----------
 export async function getSetupStatus() {
   if (!hasSupabase) return { error: 'Supabase bağlantısı yok — yerel mod çalışıyor.' }
-  const { data, error } = await supabase.rpc('setup_status')
-  if (error) {
-    return { error: 'setup_status fonksiyonu bulunamadı — kurulum SQL\'i henüz çalıştırılmamış.' }
+  try {
+    const { data, error } = await withTimeout(supabase.rpc('setup_status'))
+    if (error) {
+      return { error: 'setup_status fonksiyonu bulunamadı — kurulum SQL\'i henüz çalıştırılmamış.' }
+    }
+    return { data }
+  } catch {
+    return { error: 'Kurulum durumu okunamadı (sunucuya ulaşılamadı).' }
   }
-  return { data }
 }
 
 // ---------- Hasta Kayıtları (salt okunur izlem) ----------
@@ -334,7 +338,14 @@ export async function listAnxiety(pid) {
 // Supabase kuruluysa sunucuya yazar; tablo/kolon yoksa veya hata
 // dönerse TARAYICIYA kaydeder. Böylece SQL henüz çalıştırılmamış
 // olsa bile hiçbir modül ölü kalmaz.
-function store(table) {
+// Aynı milisaniyede eklenen kayıtlar çakışmasın diye id benzersiz üretilir.
+// (Date.now() tek başına yeterli değildi: iki kayıt aynı id'yi alıyor,
+//  güncelleme/silme yanlış kaydı etkiliyordu.)
+function yeniId() {
+  return `k${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+}
+
+export function store(table) {
   const k = 'td_' + table
   let localOnly = false // tablo sunucuda yoksa kalıcı olarak yere düş
   const missing = (msg) => /does not exist|schema cache|not found|PGRST/i.test(String(msg || ''))
@@ -368,7 +379,7 @@ function store(table) {
         if (missing(error.message)) localOnly = true
       }
       const all = localList()
-      all.push({ id: Date.now(), created_at: new Date().toISOString(), ...row })
+      all.push({ id: yeniId(), created_at: new Date().toISOString(), ...row })
       save(k, all)
       return { ok: true, local: true }
     },

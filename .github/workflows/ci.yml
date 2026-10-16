@@ -1,0 +1,46 @@
+name: TeleDentist — Otomatik Kontrol
+
+# Her push ve PR'da çalışır:
+#   1. Ölü buton/bağlantı denetimi
+#   2. Otomatik testler (beyaz ekran regresyonu dahil)
+#   3. Üretim derlemesi
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  kontrol:
+    name: Denetim + Test + Derleme
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Bağımlılıkları kur
+        run: npm ci
+
+      - name: Ölü buton denetimi
+        run: npm run audit
+
+      - name: Otomatik testler
+        run: npm test
+
+      - name: Üretim derlemesi
+        run: npm run build
+
+      - name: Sıfır ölü buton raporu
+        if: always()
+        run: |
+          {
+            echo "## TeleDentist Kontrol Raporu"
+            echo ""
+            echo "- Tarih: $(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Başlık: ${{ github.event.head_commit.message }}"
+          } >> "$GITHUB_STEP_SUMMARY"
