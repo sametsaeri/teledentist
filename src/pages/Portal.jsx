@@ -17,8 +17,11 @@ import { triageScore } from '../services/clinical.js'
 import {
   Logo, Chart, Users, Calendar, Send, Clipboard, Camera, FileText, Search, Plus, Check,
   CheckCircle, Clock, Stethoscope, User, Save, X, Alert, Tooth, Lock, Phone, Bell, Chat,
-  ChevronLeft, ChevronRight, Video, Box, Flask, Tag, Receipt, Notebook
+  ChevronLeft, ChevronRight, Video, Box, Flask, Tag, Receipt, Notebook, TrendingUp
 } from '../components/Icons.jsx'
+import { Tooth3D } from '../components/Tooth3D.jsx'
+import { DisEditor } from '../components/Tooth3DEditor.jsx'
+import { DisGelecekSimulatoru } from '../components/DisGelecek.jsx'
 import {
   DailyFlow, Inventory, LabTracker, Billing, ClinicJournal, ClinicStats, DemoSeeder, DoctorSchedule
 } from './DoctorModules.jsx'
@@ -800,28 +803,45 @@ export function DoctorPatient() {
       </div>
 
       <div className="card">
-        <h3><Tooth size={18} /> Diş Haritası (FDI)</h3>
-        <ToothChart teeth={teeth} selected={selected} onSelect={setSelected} />
+        <h3><Tooth size={18} /> 3B Diş Haritası (FDI)</h3>
+        <p className="muted">
+          Modeli döndürün, dişin üzerine gelerek durumunu görün, tıklayarak seçin
+          ve aşağıdaki editörden bilgi girin.
+        </p>
+        <Tooth3D
+          teeth={teeth}
+          selected={selected}
+          onSelect={setSelected}
+          baslik="Hekim diş haritası"
+        />
+        <DisEditor
+          pid={id}
+          teeth={teeth}
+          selected={selected}
+          onSelect={setSelected}
+          onKaydedildi={() => getTeeth(id).then(setTeeth)}
+          mesajGoster={setMMsg}
+        />
       </div>
 
       <div className="card">
-        <ToothVisual no={selected} status={sel.status} />
-        <p><strong>Durum:</strong> {STATUS_TR[sel.status]} | <strong>Tedavi:</strong> {sel.treatment} | <strong>Tarih:</strong> {sel.date}</p>
-        <p className="muted"><strong>AI bilgilendirme:</strong> {toothEducation(selected, sel.status)} ({recallForTooth(sel.status)})</p>
-        <div className="toolbar">
-          <label>Durum:
-            <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              {Object.entries(STATUS_TR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-          </label>
-          <input placeholder="Tedavi" value={treatment} onChange={(e) => setTreatment(e.target.value)} />
-        </div><br />
-        <h4><Camera size={15} /> Röntgen</h4>
+        <h3><TrendingUp size={18} /> Diş Geleceği Simülatörü</h3>
+        <p className="muted">
+          Hastayla birlikte ekrandan inceleyin: tedavi şimdi mi, altı ay sonra mı,
+          yoksa hiç mi? Simülasyon klinik ilerleme kurallarına dayanır.
+        </p>
+        <DisGelecekSimulatoru
+          teeth={teeth}
+          fdi={selected}
+          onSelect={setSelected}
+          plaque={rec.hygiene !== 'kayıt yok' ? Number(rec.hygiene) : undefined}
+          hekimModu
+        />
+      </div>
+
+      <div className="card">
+        <h3><Camera size={15} /> Röntgen ve Görüntü</h3>
         <XrayBox pid={id} tooth={selected} />
-        <h4><FileText size={15} /> Değerlendirme Notu</h4>
-        <textarea rows="3" cols="50" value={note} onChange={(e) => setNote(e.target.value)} placeholder={`${selected} nolu diş için not...`} />
-        <br /><br />
-        <button onClick={saveNote}><Save size={15} /> Diş Kaydını Kaydet</button>
       </div>
 
       <div className="card">
@@ -856,93 +876,6 @@ export function DoctorPatient() {
         <h3><FileText size={18} /> Rapor / Onam</h3>
         <p className="muted">AI kontrol önerisi: {recall.nextVisit} ({recall.months} ay)</p>
         <Link to={`/rapor/${id}`}><button><FileText size={15} /> Yazdırılabilir Rapor</button></Link>
-      </div>
-    </div>
-  )
-}
-
-// ---------------- Danışan paneli ----------------
-export function PatientPanel() {
-  const session = getSession()
-  const isParent = session?.role === 'ebeveyn'
-  const [children, setChildren] = useState([])
-  const [pid, setPid] = useState(isParent ? null : session?.id)
-  const [patient, setPatient] = useState(null)
-  const [teeth, setTeeth] = useState({})
-  const [selected, setSelected] = useState(16)
-  const [appts, setAppts] = useState([])
-  const [info, setInfo] = useState({})
-  const [msg, setMsg] = useState('')
-
-  useEffect(() => {
-    if (isParent && session?.id) getChildren(session.id).then((c) => { setChildren(c); if (c.length && !pid) setPid(c[0].id) })
-  }, [])
-  useEffect(() => {
-    if (!pid) return
-    getPatient(pid).then((p) => { setPatient(p || null); setInfo(p || {}) })
-    getTeeth(pid).then(setTeeth)
-  }, [pid])
-
-  useEffect(() => {
-    listAppointments().then(setAppts)
-  }, [])
-
-  const sel = teeth[selected] || { status: 'saglam', doctorNote: 'Kayıt yok.' }
-  const ximg = load(keys.xrays, {})[`${pid}_${selected}`]
-  const myAppts = appts.filter((a) => (a.name || '').toLowerCase() === (patient?.name || '').toLowerCase())
-
-  const saveInfo = async () => {
-    const r = await updatePatient(pid, { phone: info.phone, city: info.city, address: info.address, near_name: info.near_name, near_phone: info.near_phone })
-    setMsg(r.error || 'Bilgileriniz güncellendi.')
-  }
-
-  return (
-    <div>
-      <h1><Tooth size={24} /> Dişlerim</h1>
-      {isParent && (
-        <div className="card toolbar">
-          <span>Çocuk seç:</span>
-          {children.length === 0 && <span className="muted">Kayıtlı çocuk yok.</span>}
-          {children.map((c) => <button key={c.id} className={pid === c.id ? '' : 'ghost'} onClick={() => setPid(c.id)}>{c.name}</button>)}
-        </div>
-      )}
-      <p className="muted">{patient?.name || 'Yükleniyor...'} — dişinize tıklayın.</p>
-
-      <div className="card">
-        <ToothChart teeth={teeth} selected={selected} onSelect={setSelected} />
-      </div>
-
-      <div className="card">
-        <ToothVisual no={selected} status={sel.status} />
-        <p><strong>Hekim değerlendirmesi:</strong> {sel.doctorNote}</p>
-        <p className="muted"><strong>Dişim hakkında bilgi:</strong> {toothEducation(selected, sel.status)}</p>
-        <p><strong>Röntgenim:</strong></p>
-        {ximg ? <img src={ximg} alt="röntgen" className="xray" /> : <span className="muted">Bu dişe ait yüklü röntgen yok.</span>}
-        <p className="muted"><strong>Sonraki kontrol:</strong> {recallForTooth(sel.status)}</p>
-      </div>
-
-      <div className="card">
-        <h3><Calendar size={18} /> Randevularım</h3>
-        {myAppts.length === 0 && <p className="muted">Randevu kaydınız yok. <Link to="/randevu">Randevu oluşturun</Link>.</p>}
-        {myAppts.map((a) => (
-          <p key={a.id}>
-            <Calendar size={13} /> {a.appt_date || 'tarih bekleniyor'} · {a.appt_time || ''} · <span className="badge">{a.status}</span>
-            <span className="muted"> {a.complaint}</span>
-          </p>
-        ))}
-      </div>
-
-      <div className="card">
-        <h3><FileText size={18} /> İletişim Bilgilerim</h3>
-        <div className="grid form-grid">
-          <label>Telefon<input value={info.phone || ''} onChange={(e) => setInfo({ ...info, phone: e.target.value })} /></label>
-          <label>Şehir<input value={info.city || ''} onChange={(e) => setInfo({ ...info, city: e.target.value })} /></label>
-          <label>Adres<input value={info.address || ''} onChange={(e) => setInfo({ ...info, address: e.target.value })} /></label>
-          <label>Yakın<input value={info.near_name || ''} onChange={(e) => setInfo({ ...info, near_name: e.target.value })} /></label>
-          <label>Yakın Telefon<input value={info.near_phone || ''} onChange={(e) => setInfo({ ...info, near_phone: e.target.value })} /></label>
-        </div>
-        <button onClick={saveInfo}><Save size={15} /> Kaydet</button>
-        {msg && <p className="muted">{msg}</p>}
       </div>
     </div>
   )

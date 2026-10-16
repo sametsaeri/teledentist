@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getSession } from '../services/store.js'
 import { ToothChart, ToothVisual } from '../components/ToothChart.jsx'
+import { Tooth3D, DisOzet, DURUM_RENK, Dis3DKutu } from '../components/Tooth3D.jsx'
+import { DisGelecekSimulatoru } from '../components/DisGelecek.jsx'
+import { disBilgisi } from '../data/disAdlari.js'
 import { toothEducation, recallForTooth } from '../ai/toothAi.js'
 import { suggestRecall } from '../ai/recall.js'
 import {
@@ -13,7 +16,7 @@ import {
 import { STATUS_TR } from '../data/teeth.js'
 import {
   Tooth, Calendar, FileText, Save, Phone, User, MapPin, Heart, Bell,
-  Camera, Clipboard, Drop, Sparkle, Video, ChevronRight, Alert, CheckCircle, Clock
+  Camera, Clipboard, Drop, Sparkle, Video, ChevronRight, Alert, CheckCircle, Clock, TrendingUp
 } from '../components/Icons.jsx'
 import { reminderInfo } from './Portal.jsx'
 import { saglikPuani } from '../ai/saglikSkoru.js'
@@ -63,6 +66,7 @@ export function PatientPanel() {
   const [loading, setLoading] = useState(true)
   const [teeth, setTeeth] = useState({})
   const [selected, setSelected] = useState(16)
+  const [simDis, setSimDis] = useState(16)
   const [appts, setAppts] = useState([])
   const [photos, setPhotos] = useState([])
   const [anamnesis, setAnamnesis] = useState([])
@@ -272,26 +276,64 @@ export function PatientPanel() {
         <GunlukListe pid={pid} />
       </Card>
 
-      {/* ---------- Dişlerim ---------- */}
-      <Card icon={Tooth} title="Dişlerim" desc="Dişinize tıklayarak durumunu ve hekiminizin notunu görün.">
+      {/* ---------- 3B dişlerim ---------- */}
+      <Card
+        icon={Tooth}
+        title="Dişlerim — 3B Görünüm"
+        desc="Dişlerinizi döndürerek inceleyin, üzerine gelerek o dişin durumunu ve bilgisini görün."
+      >
         <div className="tooth-summary">
           {Object.entries(summary).map(([s, n]) => (
             <span className="badge" key={s}>{STATUS_TR[s] || s}: {n}</span>
           ))}
           {Object.keys(summary).length === 0 && <span className="muted">Henüz diş kaydı yok.</span>}
         </div>
-        <div style={{ marginTop: 12 }}>
-          <ToothChart teeth={teeth} selected={selected} onSelect={setSelected} />
-        </div>
 
+        <Tooth3D
+          teeth={teeth}
+          selected={selected}
+          onSelect={setSelected}
+          autoRotate={false}
+          baslik="Benim dişlerim"
+        />
+
+        {/* Seçili dişin ayrıntısı — dokunmatik cihazlar için de erişilebilir */}
         <div className="tooth-detail">
-          <ToothVisual no={selected} status={sel.status} />
-          <div>
-            <p><strong>{selected} nolu diş</strong> — <span className="badge">{STATUS_TR[sel.status] || sel.status}</span></p>
-            <p><strong>Hekim notu:</strong> {sel.doctorNote}</p>
-            <p className="muted"><strong>Bu diş hakkında:</strong> {toothEducation(selected, sel.status)}</p>
-            <p className="muted"><Clock size={13} /> Önerilen kontrol aralığı: {recallForTooth(sel.status)}</p>
-          </div>
+          <DisOzet fdi={selected} kayit={sel} />
+        </div>
+      </Card>
+
+      {/* ---------- Diş Geleceği Simülatörü ---------- */}
+      <Card
+        icon={TrendingUp}
+        title="Dişimin Geleceği"
+        desc="Tedavi olsam, geciktirirsem veya hiç müdahale etmezsem dişime ne olur? Üç senaryoyu karşılaştırın."
+      >
+        <DisGelecekSimulatoru
+          teeth={teeth}
+          fdi={simDis}
+          onSec={setSimDis}
+          plaque={hygiene[0]?.plaque}
+          yas={puan.yas}
+        />
+      </Card>
+
+      {/* ---------- Diş rehberi ---------- */}
+      <Card icon={Sparkle} title="Dişlerim Hakkında" desc="Dişlerinizin görevleri ve günlük bakımı.">
+        <div className="dis-rehber">
+          {['kesici', 'kanin', 'kucukAzi', 'buyukAzi'].map((t) => {
+            const b = disBilgisi(t === 'kesici' ? 11 : t === 'kanin' ? 13 : t === 'kucukAzi' ? 14 : 16)
+            return (
+              <div className="dis-rehber-kart" key={t}>
+                <Dis3DKutu tip={t} no={b.no} durum={DURUM_RENK.saglam} />
+                <div>
+                  <b>{b.tip.ad}</b>
+                  <p className="muted">{b.tip.egitim}</p>
+                  <p className="muted"><Clock size={12} /> {b.tip.bakim}</p>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </Card>
 
