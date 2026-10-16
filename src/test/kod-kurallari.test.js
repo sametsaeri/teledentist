@@ -113,14 +113,59 @@ describe('Kural 3 — Emoji yerine gerçek SVG ikon', () => {
   })
 
   it('ikonlar tek merkezden (Icons.jsx) geliyor', () => {
-    // ToothChart gibi görselleştirme dosyaları kendi çizimini yapabilir
-    const muaf = ['ToothChart.jsx', 'Icons.jsx']
+    // Veri görselleştirmesi (diş haritası, dairesel gösterge) kendi SVG'sini
+    // çizebilir; bu dosyalar `svg-grafik` işaretiyle açıkça belirtir.
     const olu = []
     for (const f of JSX) {
-      if (muaf.some((m) => f.endsWith(m))) continue
+      if (oku(f).includes('svg-grafik')) continue
       if (/<svg/i.test(oku(f))) olu.push(gor(f))
     }
-    expect(olu, `Elle yazılmış <svg> içeren dosya: ${olu.join(', ')}`).toHaveLength(0)
+    expect(olu, `Elle yazılmış <svg> içeren dosya (svg-grafik işaretiyle muaf olabilir): ${olu.join(', ')}`).toHaveLength(0)
+  })
+})
+
+describe('Kural 5 — Kullanılan her şey tanımlı (import eksikliği yok)', () => {
+  it('JSX içinde kullanılan her ikon bileşeni Icons.jsx içinden import edilmiş', () => {
+    // 16.10.2026'da `Calendar is not defined` bu şekilde çıkmıştı.
+    const ikonlar = new Set(
+      [...oku(path.join(SRC, 'components/Icons.jsx')).matchAll(/export const (\w+)/g)].map((m) => m[1])
+    )
+    const eksik = []
+    for (const f of JSX) {
+      const kod = oku(f)
+      if (!kod.includes('Icons.jsx')) continue
+      const importEdilen = new Set(
+        [...kod.matchAll(/import\s*\{([^}]+)\}\s*from\s*'[^']*Icons\.jsx'/g)]
+          .flatMap((m) => m[1].split(',').map((s) => s.trim().split(/\s+as\s+/).pop().trim()))
+          .filter(Boolean)
+      )
+      // JSX kullanımı: <Bilesen
+      const kullanilan = new Set([...kod.matchAll(/<([A-Z][A-Za-z0-9_]*)\b/g)].map((m) => m[1]))
+      for (const ad of kullanilan) {
+        if (ikonlar.has(ad) && !importEdilen.has(ad)) {
+          eksik.push(`${gor(f)}  <${ad} /> import edilmemiş`)
+        }
+      }
+    }
+    expect(eksik, `Eksik ikon importu:\n${eksik.join('\n')}`).toHaveLength(0)
+  })
+
+  it('hiçbir sayfa dosyası kullanılmayan değişken bırakmıyor (JSX hatası)', () => {
+    // Derleyici zaten yakalar; bu kural tarayıcı çökmesini önceden görür.
+    const eksik = []
+    for (const f of JSX) {
+      const kod = oku(f)
+      kod.split('\n').forEach((s, i) => {
+        // <Bilesen ... />  — Bilesen dosyanın kendi import listesinde de yok
+        const m = s.match(/<([A-Z][A-Za-z0-9_]*)\s*[\/>]/)
+        if (!m) return
+        const ad = m[1]
+        const tanimli = new RegExp(`import[^;]*\\b${ad}\\b[^;]*from|const\\s+${ad}\\s*=|function\\s+${ad}\\s*\\(`).test(kod)
+        const htmlEtiketi = ['div', 'span', 'p', 'b', 'a', 'button', 'ul', 'li', 'label', 'h1', 'h2', 'h3', 'h4'].includes(ad.toLowerCase())
+        if (!tanimli && !htmlEtiketi) eksik.push(`${gor(f)}:${i + 1}  <${ad}> tanımsız`)
+      })
+    }
+    expect(eksik, `Tanımsız bileşen kullanımı:\n${eksik.slice(0, 10).join('\n')}`).toHaveLength(0)
   })
 })
 

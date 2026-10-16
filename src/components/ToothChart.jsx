@@ -1,3 +1,4 @@
+// svg-grafik: dis haritasi gorsellestirmesidir; ikon degildir.
 import { FDI_UPPER, FDI_LOWER, STATUS_TR } from '../data/teeth.js'
 
 const STATUS_COLOR = {

@@ -423,7 +423,8 @@ export async function listAppointments() {
   if (hasSupabase) {
     // Sıralamayı tarayıcıda yapıyoruz: appt_date kolonu (migration_v2) yoksa da 400 almayalım
     const { data, error } = await supabase.from('appointments').select('*')
-    if (!error && data) return data.slice().sort((a, b) => String(a.appt_date || '').localeCompare(String(b.appt_date || '')))
+    // Sunucuda kayıt yoksa da tarayıcıdaki talepler görünmeye devam etmeli
+    if (!error && data && data.length) return data.slice().sort((a, b) => String(a.appt_date || '').localeCompare(String(b.appt_date || '')))
   }
   return load(keys.appointments, [])
 }

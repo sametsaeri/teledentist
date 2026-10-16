@@ -16,6 +16,11 @@ import {
   Camera, Clipboard, Drop, Sparkle, Video, ChevronRight, Alert, CheckCircle, Clock
 } from '../components/Icons.jsx'
 import { reminderInfo } from './Portal.jsx'
+import { saglikPuani } from '../ai/saglikSkoru.js'
+import {
+  PuanKarti, GunlukListe, BakimRehberi, AcilRehber,
+  GecmisZamanCizelgesi, RandevuHazirligi, HastaSoruFormu
+} from './PatientExtras.jsx'
 
 const EMPTY = {}
 
@@ -103,6 +108,23 @@ export function PatientPanel() {
 
   const sel = teeth[selected] || { status: 'saglam', doctorNote: 'Kayıt yok.' }
   const summary = useMemo(() => toothSummary(teeth), [teeth])
+
+  // Diş sağlığı puanı — tüm verilerden hesaplanır
+  const puan = useMemo(() => saglikPuani({
+    teeth,
+    plaque: hygiene[0]?.plaque,
+    anxiety: anxiety[0]?.total,
+    lastVisit: patient?.last_visit,
+    birthDate: patient?.birth_date,
+    pendingPhotos: photos.filter((f) => f.status !== 'degerlendirildi')
+  }), [teeth, hygiene, anxiety, patient, photos])
+
+  const bakimVerisi = useMemo(() => ({
+    teeth,
+    plaque: hygiene[0]?.plaque,
+    anxiety: anxiety[0]?.total,
+    lastVisit: patient?.last_visit
+  }), [teeth, hygiene, anxiety, patient])
   const recall = useMemo(() => suggestRecall({
     lastVisit: patient?.last_visit || new Date().toISOString().slice(0, 10),
     treatmentType: patient?.treatment_type || 'kontrol',
@@ -231,6 +253,24 @@ export function PatientPanel() {
           <p className="muted">Bu bilgiler hekiminiz tarafından işaretlendi. Tedavi öncesi mutlaka bildirin.</p>
         </div>
       )}
+
+      {/* ---------- Diş sağlığı puanı ---------- */}
+      <Card
+        icon={Sparkle}
+        title="Diş Sağlığı Puanım"
+        desc="Diş durumunuz, ağız hijyeniniz, kaygı düzeyiniz ve kontrol düzeninizden hesaplanır."
+      >
+        <PuanKarti puan={puan} />
+      </Card>
+
+      {/* ---------- Günlük ağız bakımı ---------- */}
+      <Card
+        icon={CheckCircle}
+        title="Bugünkü Ağız Bakımım"
+        desc="Dört basit adım. İşaretleriniz her gün sıfırlanır."
+      >
+        <GunlukListe pid={pid} />
+      </Card>
 
       {/* ---------- Dişlerim ---------- */}
       <Card icon={Tooth} title="Dişlerim" desc="Dişinize tıklayarak durumunu ve hekiminizin notunu görün.">
@@ -369,6 +409,40 @@ export function PatientPanel() {
         <p className="muted">
           Randevunuzdan önce hekiminize haber verilir. Size klinikten ön bilgilendirme yapılacaktır.
         </p>
+      </Card>
+
+      {/* ---------- Ağız bakımı rehberi ---------- */}
+      <Card icon={Drop} title="Ağız Bakımı Rehberim" desc="Diş kayıtlarınıza göre size özel öneriler.">
+        <BakimRehberi veri={bakimVerisi} />
+      </Card>
+
+      {/* ---------- Sağlık geçmişi ---------- */}
+      <Card
+        icon={Clock}
+        title="Sağlık Geçmişim"
+        desc="Muayeneleriniz, gönderdiğiniz fotoğraflar ve diş kayıtlarınız kronolojik sırada."
+      >
+        <GecmisZamanCizelgesi appts={myAppts} photos={photos} teeth={teeth} />
+      </Card>
+
+      {/* ---------- Randevu hazırlığı ---------- */}
+      <Card icon={Calendar} title="Randevu Hazırlığı" desc="Kliniğe giderken yanınıza almanız gerekenler.">
+        <RandevuHazirligi randevu={nextAppt} yas={puan.yas} />
+      </Card>
+
+      {/* ---------- Soru / talep ---------- */}
+      <Card icon={FileText} title="Hekimime Soru Sor" desc="Yazdığınız talep hekiminizin paneline anında düşer.">
+        <HastaSoruFormu pid={pid} />
+      </Card>
+
+      {/* ---------- Acil durum rehberi ---------- */}
+      <Card
+        icon={Alert}
+        title="Acil Durum Rehberi"
+        desc="Ağrı, kanama, kırık gibi durumlarda ilk yapmanız gerekenler."
+        action={<span className="badge warn">6 bölüm</span>}
+      >
+        <AcilRehber />
       </Card>
 
       {/* ---------- Yardım ---------- */}

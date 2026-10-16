@@ -1,4 +1,5 @@
 // Modern SVG ikon seti (Feather/Lucide tarzı, 24x24, currentColor)
+// svg-grafik: bu dosya tum ikonlarin kaynagidir; SVG burada tanimlanir.
 // Emoji yerine kullanılır: <Icon size={18} />
 
 const S = ({ children, size = 18, className = '', strokeWidth = 1.8, ...rest }) => (
@@ -30,6 +31,8 @@ export const Logo = ({ size = 32, ...r }) => (
 export const Tooth = (p) => <S {...p}><path d="M12 5.5C8.7 5.5 6.2 8 6.2 11.2c0 2.5 1.5 3.4 2.2 5.5.5 1.6.8 4.4 1.9 4.4 1.2 0 .8-3.5 2.2-3.5s1 3.5 2.2 3.5c1.1 0 1.4-2.8 1.9-4.4.7-2.1 2.2-3 2.2-5.5C18.8 8 16.3 5.5 12 5.5z" /></S>
 
 export const RefreshCw = (p) => <S {...p}><path d="M20.5 11.5a8.5 8.5 0 1 1-2.6-6.1" /><path d="M20.5 3.5v5.5H15" /></S>
+export const Info = (p) => <S {...p}><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 7.6v.6" /></S>
+export const Sunrise = (p) => <S {...p}><path d="M3 18h18" /><path d="M6.5 14.5a5.5 5.5 0 0 1 11 0" /><path d="M12 3.5v3" /><path d="M5.6 6.6 7.7 8.7" /><path d="M18.4 6.6 16.3 8.7" /></S>
 export const Home = (p) => <S {...p}><path d="M3 10.5 12 3l9 7.5" /><path d="M5.5 9.5V20h13V9.5" /><path d="M10 20v-5.5h4V20" /></S>
 export const Calendar = (p) => <S {...p}><rect x="3" y="5" width="18" height="16" rx="2.5" /><path d="M3 10h18M8 3v4M16 3v4" /></S>
 export const Clock = (p) => <S {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5.2l3.2 2" /></S>
