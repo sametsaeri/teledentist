@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Reveal } from '../components/Reveal.jsx'
 import { login, registerRequest } from '../services/auth.js'
 import { KvkkOnay } from '../components/KvkkOnay.jsx'
+import { OnGorusmeAnamnez } from '../components/OnGorusmeAnamnez.jsx'
 import { insertAppointment } from '../services/db.js'
 import {
   Logo, User, Stethoscope, Shield, Calendar, Phone, Book, Help, Cap,
