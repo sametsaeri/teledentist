@@ -139,8 +139,10 @@ export function kullaniciAdiTuret(email, ad = '') {
  */
 export async function registerRequest({ name, email, pass, role, childEmail, phone, note, kvkkOnay }) {
   email = String(email).trim().toLowerCase()
+  // Supabase Türkçe karakterleri kabul etmez (örn: "ö" → "o")
+  email = email.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   if (!name || !name.trim()) return { error: 'Ad soyad zorunlu.' }
-  if (!email || !email.includes('@')) return { error: 'Geçerli bir e-posta girin.' }
+  if (!email || !email.includes('@') || !email.includes('.', email.indexOf('@'))) return { error: 'Geçerli bir e-posta girin.' }
   if (!pass || pass.length < 6) return { error: 'Şifre en az 6 karakter olmalı.' }
   if (!['hasta', 'ebeveyn'].includes(role)) return { error: 'Kayıt yalnızca hasta/ebeveyn için.' }
   if (role === 'ebeveyn' && !childEmail) {
@@ -319,6 +321,7 @@ export function suMesaj(mesaj) {
   if (/row-level security|401|403|Unauthorized|new row violates row-level/i.test(m)) {
     return 'Veritabanı izni yok. Süper admin’den "npm run db:push" ile SQL kurulumunun tamamlanmasını isteyin.'
   }
+  if (/unable to validate email|invalid format/i.test(m)) return 'E-posta adresinizde İngilizce olmayan karakterler (ç,ğ,ı,ö,ş,ü) olamaz. Lütfen ad.soyad@gmail.com biçiminde girin.'
   if (/gecersiz e-posta|Gecersiz e-posta|Invalid email|invalid email|email address/i.test(m)) return 'Geçerli bir e-posta adresi girin.'
   if (/Ad soyad zorunlu|name.*zorunlu/i.test(m)) return 'Ad soyad zorunlu.'
   // Şifre kuralı: yalnızca GERÇEK şifre hataları. Parametre adı (p_password)
