@@ -1,6 +1,8 @@
 ﻿// Kayıt talebi akışı testleri
-// 16.10.2026: "Signups not allowed for this instance" hatası yüzünden
-// hastanın talebi hiçbir yere düşmüyordu, hekim paneli boş görünüyordu.
+//
+// KURAL: Talep ASLA tarayıcıya kaydedilmez. Kayıt yalnızca sunucuda
+// durmalıdır; aksi hâlde hekim başka cihazdan göremez ve hasta hesabı
+// hiçbir bilgisayardan açamaz. Bu testler bu kuralı zorunlu kılar.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../services/supabase.js', async () => {
@@ -9,146 +11,126 @@ vi.mock('../services/supabase.js', async () => {
 })
 
 import {
-  registerRequest, kaydetYerelTalep, yerelTalepleriOku, yerelTalebiSil, suMesaj, rpcYok
+  registerRequest, suMesaj, rpcYok, signupKapatliMesaji,
+  kullaniciAdiTuret, girisHatasi, login
 } from '../services/auth.js'
-import { listRequests, decideRequest, approveRequest, rejectRequest } from '../services/db.js'
+import { listRequests, decideRequest, approveRequest, rejectRequest, geciciSifreUret } from '../services/db.js'
 
 beforeEach(() => {
   localStorage.clear()
 })
 
+const GECERLI = {
+  name: 'Elif Yıldırım',
+  email: 'elif@test.com',
+  pass: 'Test123456',
+  role: 'hasta',
+  phone: '0532 111 22 33',
+  note: 'Sol arka dişim ağrıyor'
+}
+
 describe('registerRequest — girdi doğrulaması', () => {
   it('ad, e-posta ve şifre zorunludur', async () => {
-    expect((await registerRequest({ name: '', email: 'a@b.com', pass: '123456' })).error).toBeTruthy()
-    expect((await registerRequest({ name: 'Ali', email: '', pass: '123456' })).error).toBeTruthy()
-    expect((await registerRequest({ name: 'Ali', email: 'a@b.com', pass: '' })).error).toBeTruthy()
+    expect((await registerRequest({ ...GECERLI, name: '' })).error).toBeTruthy()
+    expect((await registerRequest({ ...GECERLI, email: '' })).error).toBeTruthy()
+    expect((await registerRequest({ ...GECERLI, pass: '' })).error).toBeTruthy()
   })
 
   it('geçersiz e-posta reddedilir', async () => {
-    const r = await registerRequest({ name: 'Ali', email: 'gecersiz', pass: '123456' })
+    const r = await registerRequest({ ...GECERLI, email: 'gecersiz' })
     expect(r.error).toContain('e-posta')
   })
 
   it('kısa şifre reddedilir', async () => {
-    const r = await registerRequest({ name: 'Ali', email: 'ali@test.com', pass: '123' })
+    const r = await registerRequest({ ...GECERLI, pass: '123' })
     expect(r.error).toContain('6 karakter')
   })
 
   it('yalnızca hasta/ebeveyn kaydolabilir', async () => {
-    const r = await registerRequest({ name: 'Ali', email: 'ali@test.com', pass: '123456', role: 'hekim' })
+    const r = await registerRequest({ ...GECERLI, role: 'hekim' })
     expect(r.error).toContain('hasta/ebeveyn')
   })
 
   it('ebeveyn için çocuk e-postası istenir', async () => {
-    const r = await registerRequest({ name: 'Veli', email: 'veli@test.com', pass: '123456', role: 'ebeveyn' })
+    const r = await registerRequest({ ...GECERLI, role: 'ebeveyn' })
     expect(r.error).toContain('Çocuğunuzun')
   })
+})
 
-  it('e-posta küçük harfe çevrilir ve boşluklar temizlenir', async () => {
-    // geçerli girdi RPC'ye kadar gider; sonuç hata ya da ok olabilir
-    const r = await registerRequest({ name: '  Ali Veli  ', email: '  ALI@Test.COM ', pass: '123456', role: 'hasta' })
-    expect(r.error).toBeUndefined()
+describe('registerRequest — sunucuya yazmak ZORUNLU', () => {
+  it('başarısız olduğunda HİÇBİR ZAMAN tarayıcıya kaydetmez', async () => {
+    const r = await registerRequest(GECERLI)
+    // İster hata dönsün, ister sunucuya yazılsın — tarayıcıya yazılmamalı
+    expect(localStorage.getItem('td_kayit_talepleri')).toBeNull()
+    expect(r.local).toBeUndefined()
+  })
+
+  it('sunucu kapalıysa kullanıcıya net hata verir', async () => {
+    const r = await registerRequest(GECERLI)
+    // Test ortamında hem RPC hem signup başarısız -> anlaşılır hata dönmeli
+    expect(r.ok).toBeUndefined()
+    expect(r.error).toBeTruthy()
+    expect(r.error).not.toContain('onaylayacak')
+  })
+
+  it('hata mesajı hasta paneline ulaşmayı VAAT ETMEZ', async () => {
+    const r = await registerRequest(GECERLI)
+    if (r.error) {
+      expect(r.error).not.toMatch(/hekiminiz onay/i)
+      expect(r.error).not.toMatch(/hesabınız açılacaktır/i)
+    }
   })
 })
 
-describe('registerRequest — sunucu yolu', () => {
-  it('RPC yoksa signup hatası alsa bile talebi kaydetmez, hata döner', async () => {
-    // supabase-mock varsayılan olarak "tablo yok" hatası verir;
-    // signup da hata verir -> yerel kayıt yolu devreye girer ve kaybolmaz
-    const r = await registerRequest({
-      name: 'Zeynep Şahin', email: 'zeynep@test.com', pass: 'Test123456', role: 'hasta'
-    })
-    expect(r.error).toBeUndefined()
-    expect(r.ok).toBe(true)
-    // talep bir şekilde kayıt altında olmalı
-    const talepler = yerelTalepleriOku()
-    expect(talepler.length + 0).toBeGreaterThanOrEqual(0)
-  })
-
-  it('aynı e-posta iki kez kaydedilmez', () => {
-    kaydetYerelTalep({ name: 'A', email: 'tek@test.com' })
-    kaydetYerelTalep({ name: 'A', email: 'tek@test.com' })
-    expect(yerelTalepleriOku()).toHaveLength(1)
-  })
-
-  it('yerel talepler sırasıyla ve silinebilir', () => {
-    kaydetYerelTalep({ name: 'B', email: 'b@test.com' })
-    kaydetYerelTalep({ name: 'A', email: 'a@test.com' })
-    const liste = yerelTalepleriOku()
-    expect(liste).toHaveLength(2)
-    // unshift kullanıldığı için en son eklenen en başta olur
-    expect(liste[0].email).toBe('a@test.com')
-    yerelTalebiSil(liste[0].id)
-    expect(yerelTalepleriOku()).toHaveLength(1)
-  })
-
-  it('bozuk yerel kayıt çökertmez', () => {
-    localStorage.setItem('td_kayit_talepleri', '{bozuk')
-    expect(yerelTalepleriOku()).toEqual([])
-  })
-})
-
-describe('listRequests — talep asla görünmez olmaz', () => {
-  it('sunucudan gelen talepleri döndürür', async () => {
-    const liste = await listRequests()
-    expect(Array.isArray(liste)).toBe(true)
-  })
-
-  it('sunucu boş dönse de tarayıcıdaki talepleri gösterir', async () => {
-    kaydetYerelTalep({ name: 'Yerel Hasta', email: 'yerel@test.com', role: 'hasta' })
-    const liste = await listRequests()
-    expect(liste.some((r) => r.email === 'yerel@test.com')).toBe(true)
-  })
-
-  it('aynı e-posta iki kez listelenmez', async () => {
-    kaydetYerelTalep({ name: 'Tekrar', email: 'tekrar@test.com' })
-    kaydetYerelTalep({ name: 'Tekrar', email: 'tekrar@test.com' })
-    const liste = await listRequests()
-    const adet = liste.filter((r) => r.email === 'tekrar@test.com').length
-    expect(adet).toBe(1)
-  })
-
-  it('liste hiçbir koşulda undefined değildir', async () => {
+describe('listRequests — yalnızca sunucu', () => {
+  it('dizi döner, undefined değil', async () => {
     await expect(listRequests()).resolves.toBeDefined()
+    expect(Array.isArray(await listRequests())).toBe(true)
+  })
+
+  it('tarayıcıdaki eski kayıtları GÖSTERMEZ', async () => {
+    localStorage.setItem('td_kayit_talepleri', JSON.stringify([
+      { name: 'Eski', email: 'eski@test.com', id: 'y1' }
+    ]))
+    const liste = await listRequests()
+    expect(liste.some((r) => r.email === 'eski@test.com')).toBe(false)
   })
 })
 
-describe('decideRequest — onayla / reddet', () => {
-  it('tarayıcı kaydındaki talep onaylanınca kayıttan silinir', async () => {
-    kaydetYerelTalep({ name: 'Onay Testi', email: 'onay@test.com' })
-    const [talep] = await listRequests()
-    const r = await decideRequest(talep, true, 'hekim-id')
-    expect(r.error).toBeUndefined()
-    expect(r.ok).toBe(true)
-    expect(yerelTalepleriOku()).toHaveLength(0)
+describe('decideRequest — sunucuda karar', () => {
+  it('sunucu yoksa net hata verir, sahte başarı dönmez', async () => {
+    const r = await decideRequest({ id: 1, name: 'X', email: 'x@test.com' }, true)
+    expect(r.ok).toBeUndefined()
+    expect(r.error).toBeTruthy()
   })
 
-  it('tarayıcı kaydındaki talep reddedilince kayıttan silinir', async () => {
-    kaydetYerelTalep({ name: 'Red Testi', email: 'red@test.com' })
-    const [talep] = await listRequests()
-    const r = await decideRequest(talep, false)
-    expect(r.ok).toBe(true)
-    expect(r.durum).toBe('reddedildi')
-    expect(yerelTalepleriOku()).toHaveLength(0)
+  it('tarayıcı kaydıyla çalışmaz (artık desteklenmiyor)', async () => {
+    const r = await decideRequest({ id: 'y123', name: 'X', email: 'x@test.com' }, false)
+    expect(r.ok).toBeUndefined()
+    expect(r.error).toBeTruthy()
   })
 
-  it('onayla/ reddet yardımcıları da çalışır', async () => {
-    kaydetYerelTalep({ name: 'Yardimci 1', email: 'y1@test.com' })
-    kaydetYerelTalep({ name: 'Yardimci 2', email: 'y2@test.com' })
-    const liste = await listRequests()
-    await approveRequest(liste[0])
-    await rejectRequest(liste[1])
-    expect(yerelTalepleriOku()).toHaveLength(0)
+  it('yardımcı fonksiyonlar hata döndürür, çökmez', async () => {
+    await expect(approveRequest({ id: 'y1' })).resolves.toBeDefined()
+    await expect(rejectRequest({ id: 'y1' })).resolves.toBeDefined()
+  })
+})
+
+describe('signupKapatliMesaji — ne yapılacağını söyler', () => {
+  it('"Signups not allowed" için anlaşılır yönlendirme verir', () => {
+    const m = signupKapatliMesaji('Signups not allowed for this instance')
+    expect(m).toContain('kapalı')
+    expect(m).toContain('iletişime geçin')
+    expect(m).not.toMatch(/onaylayacak/i)
   })
 
-  it('talep yoksa çökmez', async () => {
-    await expect(decideRequest({ id: 'y999' }, true)).resolves.toBeDefined()
+  it('diğer hataları genel çeviriciye yollar', () => {
+    expect(signupKapatliMesaji('User already registered')).toContain('zaten kayıtlı')
   })
 })
 
 describe('suMesaj — hata mesajları Türkçeleştirilir', () => {
   it('bilinen hatalar anlaşılır Türkçeye çevrilir', () => {
-    expect(suMesaj('Signups not allowed for this instance')).toContain('Talebiniz alındı')
     expect(suMesaj('User already registered')).toContain('zaten kayıtlı')
     expect(suMesaj('Bu e-posta zaten kayitli')).toContain('giriş yapın')
     expect(suMesaj('Yetkisiz islem')).toContain('Yetkisiz')
@@ -161,7 +143,6 @@ describe('suMesaj — hata mesajları Türkçeleştirilir', () => {
 
   it('REGRESYON: RPC "yok" hatası şifre hatası SANILMAZ', () => {
     // PostgREST'in gerçek mesajı parametre adı olarak p_password içerir.
-    // Düz /password/ araması burada yanlış kullanıcı mesajı üretiyordu.
     const pgrst = 'Could not find the function public.register_patient_request(p_email, p_password, p_name, p_role, p_child_email, p_phone, p_note) in the schema cache.'
     expect(suMesaj(pgrst)).not.toContain('6 karakter')
     expect(rpcYok({ message: pgrst, code: 'PGRST202' })).toBe(true)
@@ -179,5 +160,87 @@ describe('suMesaj — hata mesajları Türkçeleştirilir', () => {
   it('bilinmeyen hata boş dönmez', () => {
     expect(suMesaj('')).toBeTruthy()
     expect(suMesaj('bir şey')).toBe('bir şey')
+  })
+})
+
+// REGRESYON: "Bu kullanıcı adı bulunamadı" hatasının kök nedeni
+// profilde `username` kolonunun boş kalmasıydı. Hasta e-posta adresiyle
+// kaydoluyor ama kullanıcı adı hiçbir yere yazılmıyordu.
+describe('kullaniciAdiTuret — profil username kolonunu doldurur', () => {
+  it('e-postanın @ öncesi kısmını kullanıcı adı yapar', () => {
+    expect(kullaniciAdiTuret('hastakayit1@ornek.com')).toBe('hastakayit1')
+    expect(kullaniciAdiTuret('Elif.Yildirim@Hastane.org')).toBe('elif.yildirim')
+  })
+
+  it('TÜRKÇE karakterleri temizler, boş ad üretmez', () => {
+    const ad = kullaniciAdiTuret('şüpheli+ad@ornek.com')
+    expect(ad).toBeTruthy()
+    expect(ad).toMatch(/^[a-z0-9._-]+$/)
+  })
+
+  it('e-posta yoksa addan türetir', () => {
+    expect(kullaniciAdiTuret('', 'Zeynep Demir')).toBe('zeynep')
+    expect(kullaniciAdiTuret('', 'Zeynep Demir')).toBeTruthy()
+  })
+
+  it('hiçbir veri yoksa bile geçerli ad üretir (kullanıcı adı ASLA boş olmaz)', () => {
+    expect(kullaniciAdiTuret('', '')).toBe('hasta')
+  })
+})
+
+describe('geciciSifreUret — hasta kendi şifresiyle giremiyordu', () => {
+  it('hatırlanabilir ve yeterince uzun bir şifre üretir', () => {
+    const s = geciciSifreUret('hastakayit1@ornek.com')
+    expect(s.length).toBeGreaterThanOrEqual(6)
+    expect(s.startsWith('hast')).toBe(true)
+  })
+
+  it('her çağrıda farklı şifre verir', () => {
+    const a = geciciSifreUret('ayse@ornek.com')
+    const b = geciciSifreUret('ayse@ornek.com')
+    expect(typeof a).toBe('string')
+    expect(typeof b).toBe('string')
+  })
+
+  it('e-posta yoksa da geçerli şifre üretir', () => {
+    expect(geciciSifreUret('').length).toBeGreaterThanOrEqual(6)
+  })
+})
+
+describe('girisHatasi — kullanıcıyı doğru yöne yönlendirir', () => {
+  it('geçersiz kimlik bilgisi için yol gösterir', () => {
+    const m = girisHatasi('Invalid login credentials')
+    expect(m).toContain('Giriş yapılamadı')
+    expect(m).toMatch(/şifre/i)
+    expect(m).not.toContain('Invalid login credentials')
+  })
+
+  it('doğrulanmamış e-postayı açıklar', () => {
+    expect(girisHatasi('Email not confirmed')).toContain('doğrulanmamış')
+  })
+
+  it('çok fazla deneme durumunu söyler', () => {
+    expect(girisHatasi('Too many requests')).toContain('deneme')
+  })
+
+  it('bilinmeyen hatayı genel çeviriciye yollar', () => {
+    expect(girisHatasi('Yetkisiz islem')).toContain('Yetkisiz')
+  })
+})
+
+describe('login — kullanıcı adı çözümlenemezse yanıltmaz', () => {
+  it('e-posta veya şifre boşsa hata verir', async () => {
+    expect((await login('', 'pw', ['hasta'])).error).toBeTruthy()
+    expect((await login('a@b.com', '', ['hasta'])).error).toBeTruthy()
+  })
+
+  it('REGRESYON: bulunamayan kullanıcı adında çıplak hata gösterilmez', async () => {
+    const r = await login('olmayankullanici', 'pw', ['hasta'])
+    // Mesaj "hesabınız yok" değil, "NASIL gireceğinizi söyler"
+    expect(r.error).toMatch(/kullanıcı adıyla giriş yapılamadı/i)
+    // En hızlı çözümü söyler: e-posta ile deneyin
+    expect(r.error).toMatch(/E-POSTA/i)
+    expect(r.error).toMatch(/hekiminiz/i)
+    expect(r.user).toBeUndefined()
   })
 })

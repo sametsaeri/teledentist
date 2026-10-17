@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { createUserByDoctor, updateUserByAdmin, setPasswordByAdmin, updateProfileByAdmin, logout } from '../services/auth.js'
 import { listAllProfiles, listAppointments, listReferrals, listRequests, getSetupStatus } from '../services/db.js'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Chart, Users, Lock, Clipboard, LogOut, Stethoscope, UserPlus, Key, Refresh, X, CheckCircle, User, Phone, Save, Alert, Settings } from '../components/Icons.jsx'
+import { Shield, Chart, Users, Lock, Clipboard, LogOut, Stethoscope, UserPlus, Key, Refresh, X, CheckCircle, User, Phone, Save, Alert, Settings, Wrench } from '../components/Icons.jsx'
+import { BakimPaneli } from '../components/BakimPaneli.jsx'
 
 const BRANCHES = ['genel', 'restoratif', 'endodonti', 'periodontoloji', 'pedodonti', 'ortodonti', 'protez', 'ağız-cerrahi']
 const BRANCH_TR = { genel: 'Genel Diş', restoratif: 'Restoratif', endodonti: 'Endodonti', periodontoloji: 'Periodontoloji', pedodonti: 'Pedodonti', ortodonti: 'Ortodonti', protez: 'Protez', 'ağız-cerrahi': 'Ağız ve Çene Cerrahisi' }
@@ -304,6 +305,7 @@ export function AdminPanel() {
         <button className={tab === 'kullanici' ? 'tab active' : 'tab'} onClick={() => setTab('kullanici')}><Users size={15} /> Kullanıcılar</button>
         <button className={tab === 'yetki' ? 'tab active' : 'tab'} onClick={() => setTab('yetki')}><Lock size={15} /> Yetkilendirme</button>
         <button className={tab === 'istek' ? 'tab active' : 'tab'} onClick={() => setTab('istek')}><Clipboard size={15} /> Kayıt İstekleri</button>
+        <button className={tab === 'bakim' ? 'tab active' : 'tab'} onClick={() => setTab('bakim')}><Wrench size={15} /> Bakım Modu</button>
         <button className="ghost" onClick={out}><LogOut size={15} /> Çıkış</button>
       </div>
 
@@ -485,6 +487,9 @@ export function AdminPanel() {
           ))}
         </div>
       )}
+
+      {/* ---------- BAKIM MODU ---------- */}
+      {tab === 'bakim' && <BakimPaneli rol="admin" />}
 
       {pwUser && (
         <PasswordModal

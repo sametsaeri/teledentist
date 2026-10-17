@@ -2,6 +2,8 @@
 // Politika: hasta/ebeveyn kaydını yalnızca hekim açar.
 import { load, save, getSession, setSession } from './store.js'
 import { supabase, hasSupabase } from './supabase.js'
+import { rizaKaydi } from '../components/KvkkOnay.jsx'
+import { bildirimOlustur } from './bildirim.js'
 
 const USERS_KEY = 'td_users'
 
@@ -9,21 +11,79 @@ export function allUsers() {
   return load(USERS_KEY, [])
 }
 
-export async function login(email, pass, allowedRoles) {  email = String(email || '').trim()
+/**
+ * Giriş kimliğini ("kullanıcı adı") e-posta adresine çevirir.
+ *
+ * ÖNEMLİ — iki kaynak denenir, ikisi de tutmazsa hata VERİLMEZ:
+ *   1) resolve_login_id RPC'si (kuruluysa en doğrusu)
+ *   2) profiles tablosunda doğrudan arama (RPC hiç yoksa)
+ *
+ * Neden 2. adım şart: profilde `username` kolonu boşsa RPC boş döner ve
+ * kullanıcı "Bu kullanıcı adı bulunamadı" hatası görür — hesap ise vardır.
+ * Arama `username` ve `email` üzerinden yapılır; eşleşen satırın e-postası
+ * döndürülür. RLS bu okumayı engellerse yine de temiz bir hata mesajı verilir.
+ */
+export async function kimligeCevir(kimlik) {
+  const k = String(kimlik || '').trim()
+  if (!k) return null
+  if (k.includes('@')) return k.toLowerCase()
+  if (!hasSupabase) return null
+
+  // 1) RPC
+  try {
+    const { data: rid, error: rerr } = await supabase.rpc('resolve_login_id', { p_identifier: k })
+    if (!rerr && rid) return String(rid).toLowerCase()
+  } catch { /* RPC yok/erişilemiyor — aşağıdaki aramaya düş */ }
+
+  // 2) profiles tablosunda arama
+  try {
+    const q = supabase.from('profiles').select('email, username, name').limit(1)
+    if (typeof q.or === 'function') {
+      const { data, error } = await q.or(`username.eq.${k},email.eq.${k},name.eq.${k}`)
+      if (!error && data && data.length && data[0]?.email) return String(data[0].email).toLowerCase()
+    } else {
+      const { data, error } = await q.eq('username', k)
+      if (!error && data && data.length && data[0]?.email) return String(data[0].email).toLowerCase()
+    }
+  } catch { /* RLS engelledi — aşağıda anlaşılır hata döner */ }
+
+  return null
+}
+
+export async function login(email, pass, allowedRoles) {
+  email = String(email || '').trim()
   if (!email) return { error: 'Kullanıcı adı veya e-posta girin.' }
+  if (!pass) return { error: 'Şifrenizi girin.' }
   if (hasSupabase) {
-    // Kullanıcı adı ile giriş: adı e-postaya çevir
+    // Kullanıcı adı ile giriş: kimliği e-postaya çevir
     if (!email.includes('@')) {
-      const { data: rid, error: rerr } = await supabase.rpc('resolve_login_id', { p_identifier: email })
-      if (rerr) return { error: 'Giriş başarısız: ' + rerr.message }
-      if (!rid) return { error: 'Bu kullanıcı adı bulunamadı.' }
+      const rid = await kimligeCevir(email)
+      if (!rid) {
+        return {
+          // Bu mesaj bilerek EYLEM GÖSTERİR. Kullanıcı hesabı var olsa bile
+          // (profilde username kolonu boşsa veya sunucu fonksiyonu kurulmamışsa)
+          // çözümleme yapılamaz; en hızlı çözüm e-posta ile giriş denemektir.
+          error: 'Bu kullanıcı adıyla giriş yapılamadı. Hesabınız varsa E-POSTA adresinizle ' +
+            'girmeyi deneyin (örn. ad.soyad@ornek.com). Yine olmuyorsa hekiminizden ' +
+            'hesabınızı kontrol etmesini isteyin.'
+        }
+      }
       email = rid
     }
     email = email.toLowerCase()
     const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass })
-    if (error) return { error: 'Giriş başarısız: ' + error.message }
-    const { data: prof } = await supabase.from('profiles').select('*').eq('id', data.user.id).single()
-    if (!prof) { await supabase.auth.signOut(); return { error: 'Hesabınız hekim onayı bekliyor.' } }
+    if (error) {
+      await supabase.auth.signOut()
+      return { error: girisHatasi(error?.message) }
+    }
+    const { data: prof } = await supabase.from('profiles').select('*').eq('id', data.user.id).maybeSingle()
+    if (!prof) {
+      await supabase.auth.signOut()
+      return {
+        error: 'Şifreniz doğru ancak profil kaydınız henüz oluşmamış. Hekiminizden ' +
+          'hesabınızı tamamlamasını isteyin.'
+      }
+    }
     if (allowedRoles && !allowedRoles.includes(prof.role)) { await supabase.auth.signOut(); return { error: 'Bu giriş bu role kapalı.' } }
     setSession({ ...prof, loginAt: new Date().toISOString(), supabase: true })
     return { user: prof }
@@ -37,14 +97,47 @@ export async function login(email, pass, allowedRoles) {  email = String(email |
   return { user: u }
 }
 
-// Hasta kayıt isteği: hesap açılır, hekim onaylayınca profil tanımlanır.
+// Hasta kayıt isteği: hesabı sunucuda açılır, hekim onaylayınca profil oluşur.
 //
-// ÖNEMLİ: Projede "Allow new users to sign up" KAPALI olduğunda
-// supabase.auth.signUp() "Signups not allowed for this instance" hatası
-// verir ve talep hiçbir yere düşmez. Bu yüzden SECURITY DEFINER olan
-// register_patient_request() RPC'si kullanılır; o fonksiyon signup
-// kısıtlamasını aşar ve talebi doğrudan kayit_istekleri tablosuna yazar.
-export async function registerRequest({ name, email, pass, role, childEmail, phone, note }) {
+// ÖNEMLİ — talep ASLA tarayıcıya kaydedilmez. Kayıt yalnızca sunucuda
+// durmalıdır; aksi hâlde hekim başka bir cihazdan talebi göremez ve
+// hasta hesabı hiçbir bilgisayardan açamaz.
+//
+// Sunucuya yazmanın iki yolu vardır:
+//   1) register_patient_request() RPC  (SQL kuruluysa; signup kapalıyken bile çalışır)
+//   2) auth.signUp() + kayit_istekleri tablosuna INSERT
+//      (Supabase'de "Allow new users to sign up" anahtarı AÇIKSA çalışır)
+/**
+ * E-postadan kısa, tahmin edilebilir bir kullanıcı adı türetir.
+ *
+ * NEDEN VAR: hastalar kullanıcı adıyla giriş yapmak ister ama kayıt
+ * formunda kullanıcı adı alanı yoktur. Profil `username` kolonu boş
+ * kalırsa sunucudaki çözümleme fonksiyonu boş döner ve kullanıcı
+ * "Bu kullanıcı adı bulunamadı" hatası görür — hesabı varken bile.
+ * Bu yüzden varsayılan ad e-postanın @ öncesi kısmından türetilir.
+ */
+export function kullaniciAdiTuret(email, ad = '') {
+  const temizle = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9._-]/g, '')
+  // E-posta varsa @ öncesi kısım kullanılır (en tahmin edilebilir olan)
+  const epostaAdi = temizle(String(email || '').split('@')[0])
+  if (epostaAdi) return epostaAdi
+  // Yoksa addan İLK kelime: boşlukları temizlemeden ÖNCE ayır,
+  // yoksa "Zeynep Demir" -> "zeynepdemir" olur ve yanlış olur.
+  const ilkKelime = String(ad || '').trim().split(/\s+/)[0] || ''
+  return temizle(ilkKelime) || 'hasta'
+}
+
+/**
+ * Kayıt talebi — KVKK onayı olmadan TALEP OLUŞTURULAMAZ.
+ *
+ * YASAL DAYANAK: 6698 md. 5/1 aydınlatma yükümlülüğü ve md. 3/6 açık rıza.
+ * Sağlık verisi özel nitelikli veridir; onay kaydı talep satırına yazılır.
+ * Bu kontrol SUNUCUDA tekrar yapılır; tarayıcı doğrulaması tek başına yeterli
+ * değildir (isteğe bağlı: RPC içinde de karşılaştırılabilir).
+ *
+ * @param {boolean} kvkkOnay  kullanıcının metni okuduğuna dair beyanı
+ */
+export async function registerRequest({ name, email, pass, role, childEmail, phone, note, kvkkOnay }) {
   email = String(email).trim().toLowerCase()
   if (!name || !name.trim()) return { error: 'Ad soyad zorunlu.' }
   if (!email || !email.includes('@')) return { error: 'Geçerli bir e-posta girin.' }
@@ -53,13 +146,17 @@ export async function registerRequest({ name, email, pass, role, childEmail, pho
   if (role === 'ebeveyn' && !childEmail) {
     return { error: 'Çocuğunuzun e-posta adresini girin; kayıt sonrası bağlanacak.' }
   }
+  // KVKK: onay yoksa talep yazılmaz. Bu satır olmadan "rıza" beyanı eksiktir.
+  if (kvkkOnay !== true) {
+    return { error: 'KVKK aydınlatma metnini okuduğunuzu onaylamadan kayıt talebi gönderemezsiniz.' }
+  }
 
-  const yerel = { name: name.trim(), email, role, childEmail, phone, note }
+  const username = kullaniciAdiTuret(email, name)
+  // Rıza kanıtı: kim, ne zaman, hangi metin sürümü
+  const riza = rizaKaydi({ ad: name.trim() })
 
   if (!hasSupabase) {
-    // Sunucu yoksa talebi tarayıcıda sakla ki hekim panelinde görünsün
-    kaydetYerelTalep(yerel)
-    return { ok: true, local: true }
+    return { error: 'Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin.' }
   }
 
   // 1) Öncelikli yol: SECURITY DEFINER RPC
@@ -73,11 +170,24 @@ export async function registerRequest({ name, email, pass, role, childEmail, pho
         p_role: role,
         p_child_email: childEmail || null,
         p_phone: phone || null,
-        p_note: note || null
+        p_note: note || null,
+        p_username: username,
+        p_kvkk_onay: true,
+        p_kvkk_surum: riza.kvkk_surum,
+        p_kvkk_zaman: riza.kvkk_zaman
       }),
       8000
     )
-    if (!error) return { ok: true, uid: data?.uid, email: data?.email }
+    if (!error) {
+      // Hekimlere bildir: yeni kayıt talebi geldi
+      bildirimOlustur({
+        tur: 'kayit_talebi',
+        title: `${name.trim()} kayıt talebi gönderdi`,
+        body: `${email} · ${role === 'ebeveyn' ? 'Ebeveyn' : 'Hasta'}${phone ? ` · ${phone}` : ''}`,
+        link: '/hekim?tab=istek'
+      })
+      return { ok: true, uid: data?.uid, email: data?.email, username }
+    }
     // RPC yoksa eski yola düş; gerçek bir hata ise göster
     if (!rpcYok(error)) {
       return { error: suMesaj(error.message) }
@@ -90,38 +200,88 @@ export async function registerRequest({ name, email, pass, role, childEmail, pho
     }
   }
 
-  // 2) Yedek yol: RPC yoksa doğrudan signup + tabloya yaz
+  // 2) Yedek yol: signup açıksa doğrudan hesap + tabloya yaz
   try {
     const { data, error } = await zamanAsimli(
       supabase.auth.signUp({ email, password: pass }),
       8000
     )
     if (error) {
-      // Kayıt kapalıysa da talebi kaydet; hekim hesabı açabilir
-      kaydetYerelTalep(yerel)
-      return {
-        ok: true,
-        local: true,
-        uyari: 'Talebiniz alındı. Hesabınız hekiminiz onayladığında açılacaktır.'
-      }
+      return { error: signupKapatliMesaji(error.message) }
     }
     const uid = data?.user?.id
-    if (!uid) return { error: 'Kayıt oluşturulamadı.' }
-    const { error: e2 } = await supabase.from('kayit_istekleri')
-      .insert({ user_id: uid, email, name: name.trim(), role, child_email: childEmail || null })
-    if (e2) {
-      kaydetYerelTalep({ ...yerel, user_id: uid })
-      return { ok: true, local: true }
-    }
-    return { ok: true, uid }
-  } catch {
-    kaydetYerelTalep(yerel)
-    return { ok: true, local: true }
+    if (!uid) return { error: 'Kayıt oluşturulamadı. Lütfen tekrar deneyin.' }
+
+    const { error: e2 } = await supabase.from('kayit_istekleri').insert({
+      user_id: uid,
+      email,
+      username,
+      name: name.trim(),
+      role,
+      child_email: childEmail || null,
+      phone: phone || null,
+      note: note || null,
+      // KVKK rıza kanıtı — hekim onaylarken de görünür
+      ...riza
+    })
+    if (e2) return { error: suMesaj(e2.message) }
+    // Hekimlere bildir: kayıt isteği oluştu
+    bildirimOlustur({
+      tur: 'kayit_talebi',
+      title: `${name.trim()} kayıt talebi gönderdi`,
+      body: `${email} · ${role === 'ebeveyn' ? 'Ebeveyn' : 'Hasta'}${phone ? ` · ${phone}` : ''}`,
+      link: '/hekim?tab=istek'
+    })
+    return { ok: true, uid, username, email }
+  } catch (e) {
+    return { error: 'Sunucuya ulaşılamadı. İnternetinizi kontrol edip tekrar deneyin.' }
   }
 }
 
-/* --- Yerel talep yedeği: sunucu yoksa veya hata verirse kaybolmasın --- */
-const YEREL_TALEP_ANAHTARI = 'td_kayit_talepleri'
+/**
+ * "Signups not allowed" hatası: kullanıcıya ne yapması gerektiğini SÖYLER.
+ * Bu hata sunucu tarafı bir ayardır; kod ile aşılamaz.
+ */
+export function signupKapatliMesaji(mesaj) {
+  if (/Signups not allowed/i.test(String(mesaj || ''))) {
+    return 'Klinik kayıt sistemi şu anda kapalı. Hekiminiz veya klinik yöneticinizle ' +
+      'iletişime geçin; kayıt talebiniz açıldığında tekrar deneyebilirsiniz.'
+  }
+  return suMesaj(mesaj)
+}
+
+/**
+ * Tarayıcıda kalmış eski kayıt taleplerini temizler.
+ * Artık kullanılmıyor; yalnızca önceki sürümden kalan veriyi siler.
+ */
+export function eskiYerelTalepleriTemizle() {
+  try { localStorage.removeItem('td_kayit_talepleri') } catch { /* yoksay */ }
+}
+
+/**
+ * Giriş hatasını kullanıcıya yol göstererek çevirir.
+ *
+ * DİKKAT: "Invalid login credentials" iki farklı durumu birleştirir:
+ *   (a) şifre yanlış, (b) hesap hiç yok. Hangisi olduğunu bilemeyiz;
+ *   bu yüzden ikisini de kapsayan ama panik ettirmeyen bir mesaj verilir
+ *   ve "e-posta mı kullanıcı adı mı" ayrımı hatırlatılır.
+ */
+export function girisHatasi(mesaj) {
+  const m = String(mesaj || '')
+  if (/Invalid login credentials|invalid credentials/i.test(m)) {
+    return 'Giriş yapılamadı. Şifreyi ve giriş bilgisini (e-posta ya da kullanıcı adı) ' +
+      'kontrol edin. Hekiminizden geçici şifrenizi isteyebilirsiniz.'
+  }
+  if (/Email not confirmed/i.test(m)) {
+    return 'E-posta adresiniz henüz doğrulanmamış. Hekiminizden hesabınızı tamamlamasını isteyin.'
+  }
+  if (/rate limit|too many/i.test(m)) {
+    return 'Çok fazla deneme yapıldı. Birkaç dakika sonra tekrar deneyin.'
+  }
+  return suMesaj(m)
+}
+
+/* --- Yardımcılar --- */
 
 /** Ağ yavaş kalırsa istek asılı kalmasın; zaman aşımına düşer. */
 function zamanAsimli(soru, ms = 8000) {
@@ -129,43 +289,6 @@ function zamanAsimli(soru, ms = 8000) {
     soru,
     new Promise((_, reddet) => setTimeout(() => reddet(new Error('zaman aşımı')), ms))
   ])
-}
-
-export function kaydetYerelTalep(talep) {
-  try {
-    const liste = JSON.parse(localStorage.getItem(YEREL_TALEP_ANAHTARI) || '[]')
-    if (liste.some((t) => t.email === talep.email)) return
-    liste.unshift({
-      ...talep,
-      id: yeniTalepId(),
-      created_at: new Date().toISOString(),
-      durum: 'bekliyor'
-    })
-    localStorage.setItem(YEREL_TALEP_ANAHTARI, JSON.stringify(liste))
-  } catch { /* tarayıcı kaydı kapalı olabilir */ }
-}
-
-/**
- * Aynı milisaniyede eklenen iki talep Date.now() ile AYNI id alıyordu;
- * biri silinince ikisi de kayboluyordu. Bu yüzden benzersiz üretilir.
- */
-function yeniTalepId() {
-  return `y${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
-}
-
-export function yerelTalepleriOku() {
-  try {
-    return JSON.parse(localStorage.getItem(YEREL_TALEP_ANAHTARI) || '[]')
-  } catch {
-    return []
-  }
-}
-
-export function yerelTalebiSil(id) {
-  try {
-    const liste = JSON.parse(localStorage.getItem(YEREL_TALEP_ANAHTARI) || '[]')
-    localStorage.setItem(YEREL_TALEP_ANAHTARI, JSON.stringify(liste.filter((t) => t.id !== id)))
-  } catch { /* yoksay */ }
 }
 
 /**

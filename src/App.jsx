@@ -12,6 +12,7 @@ import { AdminPanel } from './pages/Admin.jsx'
 import { AccountSettings } from './pages/Account.jsx'
 import { StaffPanel } from './pages/StaffPanel.jsx'
 import { ErrorBoundary } from './components/ErrorBoundary.jsx'
+import { BildirimMerkezi } from './components/BildirimMerkezi.jsx'
 import { currentUser } from './services/auth.js'
 
 // Hangi rol hangi giriş ekranına gitsin
@@ -100,6 +101,11 @@ export default function App() {
         {/* --- Ortak --- */}
         <Route path="/video" element={<Panel roles={['hasta', 'ebeveyn', 'hekim']}><VideoVisit /></Panel>} />
         <Route path="/hatirlatma" element={<Panel roles={['hekim', 'sekreter']}><Reminders /></Panel>} />
+        {/* Bildirimler her rol için açıktır — hekim ve hasta farklı görür */}
+        <Route
+          path="/bildirimler"
+          element={<Panel roles={['hekim', 'admin', 'hasta', 'ebeveyn', 'sekreter', 'teknisyen']}><BildirimMerkezi rol={currentUser()?.role} /></Panel>}
+        />
 
         <Route path="*" element={<Public><Home /></Public>} />
         </Routes>

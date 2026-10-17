@@ -10,20 +10,25 @@ import {
   listPatients, getPatient, getTeeth, saveTooth, lastRecords, updatePatient, getChildren,
   insertTriage, insertHygiene, insertAnxiety, listDoctors, listReferrals, referPatient,
   listAppointments, approveAppointment, completeAppointment, listRequests, decideRequest, rejectRequest,
+  repairAccount,
   uploadImage, loadImage, setAppointmentOnline, listPhotos, listTriage, setPhotoNote, signedPhotoUrl,
-  plansApi, materialsApi, labApi, invoicesApi, notesApi, getSetupStatus
+  plansApi, materialsApi, labApi, notesApi, getSetupStatus
 } from '../services/db.js'
 import { triageScore } from '../services/clinical.js'
 import {
   Logo, Chart, Users, Calendar, Send, Clipboard, Camera, FileText, Search, Plus, Check,
   CheckCircle, Clock, Stethoscope, User, Save, X, Alert, Tooth, Lock, Phone, Bell, Chat,
-  ChevronLeft, ChevronRight, Video, Box, Flask, Tag, Receipt, Notebook, TrendingUp
+  ChevronLeft, ChevronRight, Video, Tag, Receipt, Notebook, TrendingUp, Shield
 } from '../components/Icons.jsx'
 import { Tooth3D } from '../components/Tooth3D.jsx'
 import { DisEditor } from '../components/Tooth3DEditor.jsx'
 import { DisGelecekSimulatoru } from '../components/DisGelecek.jsx'
+import { AnamnezForm } from '../components/AnamnezForm.jsx'
+import { DosyaArsivi } from '../components/DosyaArsivi.jsx'
+import { bildirimOlustur } from '../services/bildirim.js'
+import { kabulMesaji } from '../services/onGorusme.js'
 import {
-  DailyFlow, Inventory, LabTracker, Billing, ClinicJournal, ClinicStats, DemoSeeder, DoctorSchedule
+  DailyFlow, TedaviSureleri, ClinicJournal, ClinicStats, DemoSeeder, DoctorSchedule
 } from './DoctorModules.jsx'
 
 function xrayKey(pid, tooth) { return `${pid}_${tooth}` }
@@ -40,49 +45,25 @@ export function reminderInfo(p) {
   return { left, days, date: v.toISOString().slice(0, 10), missing: false }
 }
 
-function XrayBox({ pid, tooth }) {
-  const [img, setImg] = useState(load(keys.xrays, {})[xrayKey(pid, tooth)] || null)
-  const [busy, setBusy] = useState(false)
-  const [info, setInfo] = useState('')
-
-  // Sayfa açılınca depolamadan da çek
+/**
+ * Seçili dişin röntgeni — büyük önizleme.
+ * Kalıcı arşiv, belge yükleme ve tüm dosyaların listesi
+ * aşağıdaki DosyaArsivi bileşenindedir.
+ */
+function XrayOnizleme({ pid, tooth }) {
+  const [img, setImg] = useState(null)
   useEffect(() => {
-    loadImage('xrays', pid, `tooth${tooth}`).then((u) => { if (u) setImg(u) })
+    let iptal = false
+    // Yalnız bu dişin EN YENİ röntgeni gösterilir
+    loadImage('xrays', pid, `tooth${tooth}`).then((u) => { if (!iptal) setImg(u) })
+    return () => { iptal = true }
   }, [pid, tooth])
 
-  const onFile = (e) => {
-    const f = e.target.files[0]
-    if (!f) return
-    setBusy(true)
-    setInfo('')
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const dataUrl = reader.result
-      // 1) Buluta yükle
-      const up = await uploadImage('xrays', pid, `tooth${tooth}`, dataUrl)
-      if (up.ok) {
-        const url = await loadImage('xrays', pid, `tooth${tooth}`)
-        setImg(url || dataUrl)
-        setInfo('Sunucuya yüklendi')
-      } else {
-        // 2) Yedek: tarayıcıda sakla
-        const cur = load(keys.xrays, {})
-        cur[xrayKey(pid, tooth)] = dataUrl
-        save(keys.xrays, cur)
-        setImg(dataUrl)
-        setInfo('Yerel kaydedildi: ' + (up.error || ''))
-      }
-      setBusy(false)
-    }
-    reader.readAsDataURL(f)
-  }
   return (
-    <div>
-      {img ? <img src={img} alt="röntgen" className="xray" /> : <p className="muted">Bu dişe ait yüklü röntgen yok.</p>}
-      <br />
-      <input type="file" accept="image/*" onChange={onFile} disabled={busy} />
-      {busy && <p className="muted">Yükleniyor...</p>}
-      {info && <p className="muted">{info}</p>}
+    <div className="rontgen-onizleme">
+      {img
+        ? <img src={img} alt={`${tooth} nolu diş röntgeni`} className="xray" />
+        : <p className="muted">Bu dişe ait röntgen yok. Aşağıdan yükleyebilirsiniz.</p>}
     </div>
   )
 }
@@ -96,10 +77,7 @@ const TABS = [
   { id: 'takvim', label: 'Takvim', Icon: Calendar, desc: 'Onaylı randevuların aylık görünümü.' },
   { id: 'triyaj', label: 'Triyaj ve Sevk', Icon: Clipboard, desc: 'Hasta triyaj kayıtları ve hekimler arası sevk.' },
   { id: 'foto', label: 'Hasta Fotoğrafları', Icon: Camera, desc: 'Hastanın gönderdiği fotoğrafları değerlendirin ve yorumlayın.' },
-  { id: 'envanter', label: 'Malzeme Envanteri', Icon: Box, desc: 'Stok takibi, kritik seviye ve son kullanma uyarısı.' },
-  { id: 'laboratuvar', label: 'Laboratuvar', Icon: Flask, desc: 'Protez ve zirkonyum işlerinin teslim takibi.' },
-  { id: 'fiyat', label: 'Fiyatlandırma', Icon: Tag, desc: 'Tedavi ve işlem fiyat listesi.' },
-  { id: 'hesap', label: 'Hesap ve Bakiye', Icon: Receipt, desc: 'Tahakkuk, tahsilat ve hasta bakiyeleri.' },
+  { id: 'sure', label: 'Tedavi Süreleri', Icon: Clock, desc: 'İşlem süreleri, seans sayısı ve kontrol aralıkları.' },
   { id: 'istek', label: 'Kayıt İstekleri', Icon: FileText, desc: 'Hasta kayıt taleplerini onaylayın.' }
 ]
 
@@ -109,8 +87,7 @@ const GROUPS = [
   { label: 'Klinik', items: ['hastalar', 'gunluk-not'] },
   { label: 'Planlama', items: ['randevu', 'takvim'] },
   { label: 'Değerlendirme', items: ['triyaj', 'foto'] },
-  { label: 'İşletme', items: ['envanter', 'laboratuvar'] },
-  { label: 'Finans', items: ['fiyat', 'hesap'] },
+  { label: 'Planlama', items: ['sure'] },
   { label: 'Kayıtlar', items: ['istek'] }
 ]
 
@@ -262,22 +239,27 @@ export function DoctorList() {
   const [form, setForm] = useState(emptyForm())
   const [approveDate, setApproveDate] = useState({})
   const [showNew, setShowNew] = useState(false)
+  // Onay sonrası verilen giriş bilgileri — hekim hastaya iletir
+  const [verilen, setVerilen] = useState(null)
+  // "Giriş yapamıyor" aracı
+  const [onarim, setOnarim] = useState({ email: '', sifre: '' })
+  const [onarimSonuc, setOnarimSonuc] = useState(null)
   const [triage, setTriage] = useState([])
   const [photos, setPhotos] = useState([])
   const [photoDraft, setPhotoDraft] = useState({})
   const [sortBy, setSortBy] = useState('ad')
-  const [clinic, setClinic] = useState({ plans: [], materials: [], lab: [], invoices: [], notes: [] })
+  const [clinic, setClinic] = useState({ plans: [], materials: [], lab: [], notes: [] })
   const [setup, setSetup] = useState(null)
   const me = getSession()
 
   useEffect(() => { getSetupStatus().then(setSetup) }, [])
 
   const loadClinic = async () => {
-    const [plans, materials, lab, invoices, notes] = await Promise.all([
+    const [plans, materials, lab, notes] = await Promise.all([
       plansApi.list(), materialsApi.list({ order: 'name', asc: true }), labApi.list(),
-      invoicesApi.list(), notesApi.list()
+      notesApi.list()
     ])
-    setClinic({ plans, materials, lab, invoices, notes })
+    setClinic({ plans, materials, lab, notes })
   }
 
   const reload = () => {
@@ -406,7 +388,6 @@ export function DoctorList() {
             patients={patients}
             appts={appts}
             plans={clinic.plans}
-            invoices={clinic.invoices}
             materials={clinic.materials}
             lab={clinic.lab}
             photos={photos}
@@ -428,17 +409,8 @@ export function DoctorList() {
         />
       )}
 
-      {/* ---------------- ENVANTER ---------------- */}
-      {tab === 'envanter' && <Inventory />}
-
-      {/* ---------------- LABORATUVAR ---------------- */}
-      {tab === 'laboratuvar' && <LabTracker patients={all} />}
-
-      {/* ---------------- FİYATLANDIRMA ---------------- */}
-      {tab === 'fiyat' && <Billing patients={all} initial="fiyat" />}
-
-      {/* ---------------- HESAP / BAKİYE ---------------- */}
-      {tab === 'hesap' && <Billing patients={all} initial="hesap" />}
+      {/* ---------------- TEDAVİ SÜRELERİ (ücret yok) ---------------- */}
+      {tab === 'sure' && <TedaviSureleri patients={all} plans={clinic.plans} />}
 
       {/* ---------------- KLINIK GÜNLÜK ---------------- */}
       {tab === 'gunluk-not' && <ClinicJournal patients={all} />}
@@ -641,6 +613,16 @@ export function DoctorList() {
                 Hasta kaydı yalnızca talep üzerinden yapılır. Hastanın formu doldurması gerekir;
                 adres: <b>/kayit</b>. Bu sayfayı yeni bir sekmede test edebilirsiniz.
               </p>
+              <div className="kurulum-notu">
+                <Alert size={15} />
+                <p>
+                  <b>Talep gelmiyorsa:</b> Supabase projenizde
+                  <b> Authentication → Sign In / Providers → Email → "Allow new users to sign up"</b>
+                  anahtarı kapalıdır. Hasta kaydı hiçbir yere yazılamaz.
+                  <br />
+                  Çözüm: anahtarı açın <b>veya</b> proje kökünde <code>npm run db:push</code> çalıştırın.
+                </p>
+              </div>
             </div>
           )}
 
@@ -659,17 +641,44 @@ export function DoctorList() {
                 </p>
                 <p className="muted">
                   {r.email}
+                  {r.username ? ` · kullanıcı adı: ${r.username}` : ''}
                   {r.phone ? ` · ${r.phone}` : ''}
                   {r.created_at ? ` · ${String(r.created_at).slice(0, 10)}` : ''}
                 </p>
                 {r.child_email && <p className="muted">Çocuk: {r.child_email}</p>}
                 {r.note && <p className="muted">Not: {r.note}</p>}
+                {r.kvkk_onay
+                  ? (
+                    <p className="kvkk-kanit">
+                      <Shield size={12} /> KVKK rızası alındı · metin v{r.kvkk_surum || '1.0'}
+                      {r.kvkk_zaman ? ` · ${String(r.kvkk_zaman).slice(0, 16).replace('T', ' ')}` : ''}
+                    </p>
+                  )
+                  : <p className="muted">KVKK onayı kaydı bulunmuyor — talebi onaylamadan önce doğrulayın.</p>}
               </div>
               <div className="istek-eylem">
                 <button onClick={async () => {
                   const res = await decideRequest(r, true, me?.id)
                   setIstekHata(!!res.error)
-                  setMsg(res.error || `${r.name} onaylandı — hesabı açıldı.`)
+                  if (res.error) { setMsg(res.error); return }
+                  // Hesap yeni oluşturulduysa giriş bilgisini hekime göster
+                  if (res.geciciSifre) {
+                    setVerilen({ name: r.name, email: res.email || r.email, username: res.username, sifre: res.geciciSifre })
+                    setMsg(`${r.name} onaylandı. Aşağıdaki giriş bilgisini hastaya iletin.`)
+                  } else {
+                    setVerilen(null)
+                    setMsg(`${r.name} onaylandı — hesabı açıldı. Hasta kendi şifresiyle girebilir.`)
+                  }
+                  // KABUL BİLDİRİMİ: hasta paneline girince ön değerlendirme
+                  // formunu dolduracak. Hekimin adı mesajda yer alır.
+                  bildirimOlustur({
+                    tur: 'kabul',
+                    title: `Başvurunuz onaylandı — ${me?.name || 'hekim'}`,
+                    body: kabulMesaji(me?.name),
+                    hekimId: me?.id || null,
+                    hastaId: res.uid || null,
+                    link: '/hastam'
+                  })
                   reload()
                 }}><Check size={15} /> Onayla</button>
                 <button
@@ -685,6 +694,82 @@ export function DoctorList() {
             </div>
           ))}
           {msg && !istekHata && <p className="msg ok">{msg}</p>}
+
+          {/* Onayda üretilen giriş bilgisi — hekim bunu hastaya iletir */}
+          {verilen && (
+            <div className="card edit-panel">
+              <h4><Lock size={15} /> {verilen.name} — giriş bilgileri</h4>
+              <p className="muted">
+                Hesap yeni açıldığı için geçici şifre üretildi. Bu bilgileri hastaya iletin;
+                hasta giriş yaptıktan sonra şifresini değiştirebilir.
+              </p>
+              <div className="grid form-grid">
+                <label>Kullanıcı adı<input readOnly value={verilen.username || ''} /></label>
+                <label>E-posta<input readOnly value={verilen.email || ''} /></label>
+                <label>Geçici şifre<input readOnly value={verilen.sifre || ''} /></label>
+              </div>
+              <div className="toolbar">
+                <button
+                  className="ghost"
+                  onClick={() => setVerilen(null)}
+                >Kapat</button>
+                <button
+                  className="ghost"
+                  onClick={() => {
+                    const metin = `${verilen.name} için TeleDentist giriş bilgileriniz:\n` +
+                      `Kullanıcı adı: ${verilen.username}\nE-posta: ${verilen.email}\n` +
+                      `Geçici şifre: ${verilen.sifre}\nGiriş sonrası şifrenizi değiştirin.`
+                    navigator.clipboard?.writeText(metin)
+                  }}
+                >Bilgileri Kopyala</button>
+              </div>
+            </div>
+          )}
+
+          {/* Giriş yapamayan hastalar için onarım aracı */}
+          <div className="card edit-panel">
+            <h4><User size={15} /> "Hesabı bulunamadı" sorunu mu var?</h4>
+            <p className="muted">
+              Hasta "Bu kullanıcı adı bulunamadı" veya şifre hatası alıyorsa e-postasını
+              yazın; hesabı tek tuşla onarıp yeni giriş bilgisi üretin.
+            </p>
+            <div className="grid form-grid">
+              <label>Hasta e-postası *
+                <input
+                  value={onarim.email}
+                  onChange={(e) => setOnarim({ ...onarim, email: e.target.value })}
+                  placeholder="hastakayit1@ornek.com"
+                />
+              </label>
+              <label>Yeni şifre (boşsa otomatik üretilir)
+                <input
+                  value={onarim.sifre}
+                  onChange={(e) => setOnarim({ ...onarim, sifre: e.target.value })}
+                  placeholder="en az 6 karakter"
+                />
+              </label>
+            </div>
+            <button onClick={async () => {
+              setOnarimSonuc(null)
+              const res = await repairAccount(onarim.email, onarim.sifre, me?.id)
+              if (res.error) { setOnarimSonuc({ hata: res.error }); return }
+              setOnarimSonuc({
+                ad: res.username, email, sifre: res.sifre, not: res.not
+              })
+              setOnarim({ email: '', sifre: '' })
+              reload()
+            }}><CheckCircle size={15} /> Hesabı Onar</button>
+            {onarimSonuc?.hata && <p className="auth-err"><Alert size={15} /> {onarimSonuc.hata}</p>}
+            {onarimSonuc && !onarimSonuc.hata && (
+              <div className="msg ok">
+                <p><b>{onarimSonuc.ad}</b> için giriş bilgileri hazır:</p>
+                <p>Kullanıcı adı: <b>{onarimSonuc.ad}</b></p>
+                <p>E-posta: <b>{onarimSonuc.email}</b></p>
+                <p>Şifre: <b>{onarimSonuc.sifre}</b></p>
+                <p className="muted">{onarimSonuc.not}</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -844,6 +929,17 @@ export function DoctorPatient() {
         {mMsg && <p className="muted">{mMsg}</p>}
       </div>
 
+      {/* ---------- Anamnez: hekim doldurur, hasta doldurmaz ---------- */}
+      <div className="card">
+        <h3><Clipboard size={18} /> Anamnez — Geçmiş Hastalık Öyküsü</h3>
+        <p className="muted">
+          Hastanın geçmiş hastalıkları, alerjileri ve kullandığı ilaçlar muayene sırasında
+          hasta ile konuşularak buraya kaydedilir. Kritik işaretlenen durumlar tedavi
+          planında dikkat gerektirir ve hastanın kendi paneline uyarı olarak düşer.
+        </p>
+        <AnamnezForm pid={id} mesajGoster={setMMsg} />
+      </div>
+
       <div className="card">
         <h3><Tooth size={18} /> 3B Diş Haritası (FDI)</h3>
         <p className="muted">
@@ -882,8 +978,13 @@ export function DoctorPatient() {
       </div>
 
       <div className="card">
-        <h3><Camera size={15} /> Röntgen ve Görüntü</h3>
-        <XrayBox pid={id} tooth={selected} />
+        <h3><Camera size={18} /> Röntgen ve Görüntü</h3>
+        <p className="muted">
+          Seçili diş: <b>{selected} nolu</b>. Röntgen, tomografi ve belge yükleyip
+          arşivleyebilirsiniz. Arşivleme silmek değildir — dosya depolamada kalır.
+        </p>
+        <XrayOnizleme pid={id} tooth={selected} />
+        <DosyaArsivi pid={id} tooth={selected} tur="xray" baslik="Diş Görüntüleri ve Belgeler" />
       </div>
 
       <div className="card">

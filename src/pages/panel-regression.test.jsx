@@ -39,12 +39,16 @@ import { PanelLayout } from '../components/PanelLayout.jsx'
 import { DoctorList } from '../pages/Portal.jsx'
 import { PatientPanel } from '../pages/PatientPanel.jsx'
 import { StaffPanel } from '../pages/StaffPanel.jsx'
-import { Inventory, LabTracker, Billing, ClinicJournal, DoctorSchedule, DailyFlow, ClinicStats } from '../pages/DoctorModules.jsx'
+import { TedaviSureleri, ClinicJournal, DoctorSchedule, DailyFlow, ClinicStats } from '../pages/DoctorModules.jsx'
 
 // Her render sonrası "temizleme fonksiyonu bir fonksiyon olmalı" kontrolü yapılır.
 // Vitest, mount/unmount sırasında oluşan hataları zaten test hatası olarak yazar.
+//
+// NOT: Router ile sarılır. Modüllerde <Link> kullanımı normaldir ve
+// router bağlamı olmadan render edilirse bileşenin kendisi değil, test
+// düzeneği hata verir.
 function mountUnmount(element) {
-  const { unmount } = render(element)
+  const { unmount } = render(<MemoryRouter>{element}</MemoryRouter>)
   unmount() // <-- asıl test edilen adım
 }
 
@@ -55,10 +59,7 @@ describe('Beyaz ekran regresyon testi (16.10.2026)', () => {
 
     const moduller = [
       ['Günlük Akış', () => <DailyFlow appts={[]} patients={[HASTA]} onComplete={() => {}} />],
-      ['Envanter', () => <Inventory />],
-      ['Laboratuvar', () => <LabTracker patients={[HASTA]} />],
-      ['Fiyatlandırma', () => <Billing patients={[HASTA]} initial="fiyat" />],
-      ['Hesap ve Bakiye', () => <Billing patients={[HASTA]} initial="hesap" />],
+      ['Tedavi Süreleri', () => <TedaviSureleri patients={[HASTA]} plans={[]} />],
       ['Klinik Günlük', () => <ClinicJournal patients={[HASTA]} />],
       ['Kişisel Takvim', () => <DoctorSchedule />]
     ]
@@ -83,7 +84,7 @@ describe('Beyaz ekran regresyon testi (16.10.2026)', () => {
     localStorage.setItem('td_users', JSON.stringify([HASTA, HEKIM]))
 
     // Menüden modüllere 5 kez geçiş yap (döngüsel)
-    for (const t of ['ozet', 'envanter', 'laboratuvar', 'takvim', 'gunluk-not']) {
+    for (const t of ['ozet', 'sure', 'takvim', 'gunluk-not', 'foto']) {
       const { unmount } = render(
         <MemoryRouter initialEntries={[`/hekim?tab=${t}`]}>
           <PanelLayout><DoctorList /></PanelLayout>
@@ -103,9 +104,11 @@ describe('Beyaz ekran regresyon testi (16.10.2026)', () => {
       </MemoryRouter>
     )
     await act(async () => {})
-    expect(screen.getAllByText('İşletme').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Finans').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Genel').length).toBeGreaterThan(0)
+    // Finans grubu kaldırıldı; yerine Tedavi (Tedavi Süreleri) var
+    expect(screen.queryAllByText('Finans').length).toBe(0)
+    expect(screen.queryAllByText('İşletme').length).toBe(0)
+    expect(screen.getAllByText('Tedavi').length).toBeGreaterThan(0)
   })
 
   it('menüde bir grup açılınca diğeri kapanır (ekran kirliliği olmaz)', async () => {
@@ -126,13 +129,13 @@ describe('Beyaz ekran regresyon testi (16.10.2026)', () => {
     // Başlangıçta yalnız etkin sayfanın grubu açık
     expect(acik().join()).toContain('Genel')
 
-    await act(async () => { bas('İşletme').click() })
-    expect(bas('İşletme').getAttribute('aria-expanded')).toBe('true')
+    await act(async () => { bas('Tedavi').click() })
+    expect(bas('Tedavi').getAttribute('aria-expanded')).toBe('true')
     expect(acik().length).toBeLessThanOrEqual(2) // etkin grup + tıklanan grup
 
-    await act(async () => { bas('Finans').click() })
-    expect(bas('Finans').getAttribute('aria-expanded')).toBe('true')
-    expect(bas('İşletme').getAttribute('aria-expanded')).toBe('false')
+    await act(async () => { bas('İletişim').click() })
+    expect(bas('İletişim').getAttribute('aria-expanded')).toBe('true')
+    expect(bas('Tedavi').getAttribute('aria-expanded')).toBe('false')
   })
 
   it('erişimi olmayan rolün menüsü görünmez (ölü menü yok)', async () => {
@@ -145,7 +148,11 @@ describe('Beyaz ekran regresyon testi (16.10.2026)', () => {
     await act(async () => {})
     const yazi = document.body.textContent || ''
     // Teknisyen için hekim modülleri görünmemeli
-    expect(yazi).not.toContain('Malzeme Envanteri')
+    expect(yazi).not.toContain('Tedavi Süreleri')
+    // Devlet projesidir: ücret ekranları hiçbir rol için var olmamalı
     expect(yazi).not.toContain('Fiyatlandırma')
+    expect(yazi).not.toContain('Bakiye')
+    expect(yazi).not.toContain('Malzeme Envanteri')
+    expect(yazi).not.toContain('Laboratuvar')
   })
 })

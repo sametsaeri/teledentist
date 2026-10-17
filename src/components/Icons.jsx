@@ -83,6 +83,8 @@ export const Key = (p) => <S {...p}><circle cx="8" cy="12" r="4" /><path d="M12 
 export const Heart = (p) => <S {...p}><path d="M12 20s-7-4.4-7-9.3A4 4 0 0 1 12 8a4 4 0 0 1 7 2.7c0 4.9-7 9.3-7 9.3z" /></S>
 export const MapPin = (p) => <S {...p}><path d="M12 21s6.5-6 6.5-11a6.5 6.5 0 1 0-13 0c0 5 6.5 11 6.5 11z" /><circle cx="12" cy="10" r="2.4" /></S>
 export const Box = (p) => <S {...p}><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z" /><path d="M3 7.5 12 12l9-4.5M12 12v9" /></S>
+export const Trash = (p) => <S {...p}><path d="M4.5 6.5h15M9.5 6.5V4.2h5v2.3M6.5 6.5 7.4 20h9.2l.9-13.5M10 10v6.5M14 10v6.5" /></S>
+export const Archive = (p) => <S {...p}><rect x="3" y="4" width="18" height="4.5" rx="1.2" /><path d="M5 8.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19V8.5M9.5 12.5h5" /></S>
 export const Flask = (p) => <S {...p}><path d="M9.5 3v6.2L4.4 18a2 2 0 0 0 1.7 3h11.8a2 2 0 0 0 1.7-3l-5.1-8.8V3" /><path d="M8 3h8M6.6 14.5h10.8" /></S>
 export const Tag = (p) => <S {...p}><path d="M3 11.5V4h7.5l9.5 9.5-7.5 7.5z" /><circle cx="7" cy="8" r="1.4" /></S>
 export const Receipt = (p) => <S {...p}><path d="M5 3v18l2.2-1.6L9.4 21l2.2-1.6L13.8 21l2.2-1.6L18.2 21l1.3-1V3z" /><path d="M8.5 8.5h7M8.5 12.5h7M8.5 16h4" /></S>

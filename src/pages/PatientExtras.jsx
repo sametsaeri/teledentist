@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import {
   saglikPuani, bakimOnerileri, ACIL, GUNLUK_ADIMLAR, listeyiOku, listeyiYaz
 } from '../ai/saglikSkoru.js'
+import { HASTALIKLAR } from '../components/AnamnezForm.jsx'
 import {
   Tooth, Sparkle, Alert, CheckCircle, Clipboard, Phone, Clock,
   ChevronRight, Camera, Drop, Shield, Info, Calendar, Video
@@ -299,6 +300,58 @@ export function GecmisZamanCizelgesi({ appts = [], photos = [], teeth = {} }) {
 /* ================================================================== */
 /*  6. Randevu hazırlığı                                             */
 /* ================================================================== */
+
+/**
+ * Hekimin doldurduğu anamnezin HASTAYA gösterilen özeti.
+ *
+ * Hastanın veri GİRMEZ; yalnızca hekimin kaydettiği bilgileri okur.
+ * Alan yoksa "henüz kaydedilmedi" denir ve form gösterilmez.
+ */
+export function AnamnezOzet({ kayitlar = [] }) {
+  const k = kayitlar[0]
+  if (!k) {
+    return <p className="muted">Henüz anamnez kaydı yapılmadı. Bir sonraki muayenenizde hekiminiz bu bilgileri dolduracaktır.</p>
+  }
+  const ad = (id) => HASTALIKLAR.find((h) => h.id === id)?.ad || id
+  const sistemik = Array.isArray(k.sistemik) ? k.sistemik : []
+  const satirlar = [
+    ['Sistemik hastalıklar', sistemik.length ? sistemik.map(ad).join(', ') : 'Belirtilmedi'],
+    ['Alerjiler', k.alerjiler || 'Belirtilmedi'],
+    ['Kullandığı ilaçlar', k.ilaclar || 'Belirtilmedi'],
+    ['Geçmiş hastalıklar', k.gecmis_hastaliklar || 'Belirtilmedi'],
+    ['Geçmiş ameliyatlar', k.gecmis_ameliyatlar || 'Belirtilmedi'],
+    ['Aile sağlık öyküsü', k.aile_saglik || 'Belirtilmedi']
+  ]
+  return (
+    <div className="anamnez-ozet">
+      <p className="muted">
+        <Clock size={14} /> Son güncelleme: {String(k.updated_at || k.created_at || '').slice(0, 10)}
+      </p>
+      <div className="record-grid">
+        {satirlar.map(([baslik, deger]) => (
+          <div className="record-box" key={baslik}>
+            <b>{baslik}</b>
+            <p>{deger}</p>
+          </div>
+        ))}
+      </div>
+      {k.notlar && (
+        <>
+          <h4 className="modal-sub"><Clipboard size={15} /> Hekimin notu</h4>
+          <p className="muted">{k.notlar}</p>
+        </>
+      )}
+      <p className="muted">
+        <Shield size={14} /> Bu kaydı siz doldurmazsınız; hekiminiz muayene sırasında girer.
+        Bilgilerinizi değiştirmek isterseniz hekiminize söyleyin.
+      </p>
+    </div>
+  )
+}
+
+/* ================================================================== */
+/*  7. Randevu hazırlığı                                             */
+/* ================================================================== */
 export function RandevuHazirligi({ randevu, yas }) {
   if (!randevu) {
     return (
@@ -344,84 +397,49 @@ export function RandevuHazirligi({ randevu, yas }) {
 /* ================================================================== */
 /*  7. Başvuru / danışma formu (panel içi, hekime iletilir)          */
 /* ================================================================== */
-export function HastaSoruFormu({ pid, onGonderildi }) {
-  const [konu, setKonu] = useState('ağrı')
-  const [aciklama, setAciklama] = useState('')
-  const [durum, setDurum] = useState('')
-
-  const KONULAR = [
-    { id: 'ağrı', ad: 'Ağrı / sızı' },
-    { id: 'tedavi', ad: 'Tedavi ve süreç' },
-    { id: 'randevu', ad: 'Randevu değişikliği' },
-    { id: 'hijyen', ad: 'Diş bakımı / hijyen' },
-    { id: 'fatura', ad: 'Ücret ve ödeme' },
-    { id: 'diger', ad: 'Diğer' }
-  ]
-
-  const gonder = (e) => {
-    e.preventDefault()
-    // Not klinik kaydına yazılır; hekim panelinde hasta detayında görünür
-    const kayitlar = JSON.parse(localStorage.getItem(`td_hasta_soru_${pid}`) || '[]')
-    kayitlar.unshift({
-      id: `s${Date.now()}`,
-      konu, aciklama,
-      tarih: new Date().toISOString(),
-      durum: 'bekliyor'
-    })
-    localStorage.setItem(`td_hasta_soru_${pid}`, JSON.stringify(kayitlar))
-    setAciklama('')
-    setDurum('Talebiniz iletildi. Hekiminiz paneline düşecektir.')
-    onGonderildi?.()
-  }
-
-  const gonderilenler = JSON.parse(localStorage.getItem(`td_hasta_soru_${pid}`) || '[]')
-
+/**
+ * Randevu ve görüşme kartı — hastanın paneldeki ANA eylem alanı.
+ *
+ * NEDEN form yok: Anamnez ve klinik geçmiş hekim tarafından doldurulur.
+ * Hasta panelinde veri toplayan boş formlar, veri hiçbir yere ulaşmıyorsa
+ * (tarayıcıda kalıyorsa) yanıltıcıdır. Bunun yerine hastanın yapabileceği
+ * iki gerçek eylem bırakıldı: randevu almak ve hekimiyle görüşmek.
+ */
+export function RandevuGorusmeKarti({ sonrakiRandevu }) {
   return (
-    <div className="soru-formu">
-      <p className="muted">
-        <Info size={14} /> Sorunuzu yazın; talebiniz hekiminizin paneline anında düşer.
-        Acil durumlar için lütfen doğrudan telefonla arayın.
-      </p>
-      <form onSubmit={gonder}>
-        <label>Konu
-          <select value={konu} onChange={(e) => setKonu(e.target.value)}>
-            {KONULAR.map((k) => <option key={k.id} value={k.id}>{k.ad}</option>)}
-          </select>
-        </label>
-        <label>Açıklamanız
-          <textarea
-            rows={3}
-            value={aciklama}
-            onChange={(e) => setAciklama(e.target.value)}
-            placeholder="Ne olduğunu, ne zamandır olduğunu, geçmişte bir tedavi olduysa yazın"
-            required
-          />
-        </label>
-        <button type="submit" disabled={!aciklama.trim()}>
-          <Shield size={15} /> Talebi Gönder
-        </button>
-      </form>
-      {durum && <p className="msg ok"><CheckCircle size={15} /> {durum}</p>}
+    <div className="randevu-gorusme">
+      <div className="rg-satir">
+        <div>
+          <b>Randevu almak</b>
+          <p className="muted">
+            Seçtiğiniz tarih hekiminizce onaylanır; onaylandığında panelde görünür.
+          </p>
+        </div>
+        <Link to="/randevu"><button className="btn-new"><Calendar size={16} /> Randevu İste</button></Link>
+      </div>
 
-      {gonderilenler.length > 0 && (
-        <>
-          <h4 className="modal-sub"><Clock size={15} /> Gönderdiğim Talepler</h4>
-          <div className="soru-listesi">
-            {gonderilenler.slice(0, 5).map((s) => (
-              <div className="soru-satir" key={s.id}>
-                <div>
-                  <b>{KONULAR.find((k) => k.id === s.konu)?.ad || s.konu}</b>
-                  <span className="muted"> · {String(s.tarih).slice(0, 10)}</span>
-                </div>
-                <p className="muted">{s.aciklama}</p>
-                <span className={`badge ${s.durum === 'bekliyor' ? '' : 'online'}`}>
-                  {s.durum === 'bekliyor' ? 'Hekim yanıtı bekliyor' : 'Yanıtlandı'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </>
+      <div className="rg-satir">
+        <div>
+          <b>Hekiminizle görüşmek</b>
+          <p className="muted">
+            Şikâyet ve sorularınızı yüz yüze anlatın. Acil durumlarda
+            hekiminizin sekreterini arayın.
+          </p>
+        </div>
+        <Link to="/video"><button className="btn-new"><Video size={16} /> Görüşme Başlat</button></Link>
+      </div>
+
+      {sonrakiRandevu?.appt_date && (
+        <p className="muted rg-not">
+          <Clock size={14} /> Yaklaşan randevunuz: <b>{String(sonrakiRandevu.appt_date).slice(0, 10)}</b>
+          {sonrakiRandevu.appt_time ? ` · ${sonrakiRandevu.appt_time}` : ''}
+        </p>
       )}
+
+      <p className="muted rg-not">
+        <Shield size={14} /> Geçmiş hastalık bilgilerinizi hekiminiz muayene sırasında sizinle konuşarak kaydeder.
+        Siz form doldurmazsınız; bu bilgiler yalnız hekiminiz tarafından girilir.
+      </p>
     </div>
   )
 }

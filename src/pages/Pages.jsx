@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { Reveal } from '../components/Reveal.jsx'
 import { login, registerRequest } from '../services/auth.js'
+import { KvkkOnay } from '../components/KvkkOnay.jsx'
 import { insertAppointment } from '../services/db.js'
 import {
   Logo, User, Stethoscope, Shield, Calendar, Phone, Book, Help, Cap,
@@ -261,9 +262,17 @@ function LoginForm({ roles, to, register }) {
     if (r.error) return setErr(r.error)
     nav(to)
   }
+  // Kullanıcı adıyla giriş çözümlenemediğinde: alanı e-posta için serbest bırak
+  const ePostaIcin = err && !email.includes('@')
   return (
     <>
-      <input placeholder="Kullanıcı adı veya e-posta" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
+      <input
+        placeholder={ePostaIcin ? 'E-posta adresiniz (örn. ad.soyad@ornek.com)' : 'Kullanıcı adı veya e-posta'}
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        autoComplete="username"
+        inputMode="email"
+      />
       <input placeholder={t('login_pass')} type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="current-password" />
       {err && <p className="auth-err"><Alert size={15} /> {err}</p>}
       <button className="btn-full" onClick={doLogin} disabled={busy}>{busy ? t('login_busy') : t('login_go')}</button>
@@ -274,6 +283,7 @@ function LoginForm({ roles, to, register }) {
 
 export function PatientLogin() {
   const { t } = useTranslation()
+  const [yardim, setYardim] = useState(false)
   return (
     <AuthShell
       tone="tone-patient"
@@ -283,6 +293,30 @@ export function PatientLogin() {
       footer={<Link to="/hekim-girisi"><Stethoscope size={16} /> {t('login_doctor_btn')}</Link>}
     >
       <LoginForm roles={['hasta', 'ebeveyn']} to="/hastam" register />
+      <button
+        className="ghost tiny"
+        onClick={() => setYardim(!yardim)}
+        style={{ marginTop: 10 }}
+      >
+        {yardim ? 'Yardımı kapat' : 'Giriş yapamıyorum'}
+      </button>
+      {yardim && (
+        <div className="kurulum-notu" style={{ marginTop: 10 }}>
+          <Alert size={15} />
+          <div>
+            <p><b>"Bu kullanıcı adı bulunamadı" hatası alıyorsanız:</b></p>
+            <p>
+              Kayıt talebiniz gönderilmiş ama henüz onaylanmamış olabilir.
+              Hekiminiz onayladığında hesabınız açılır ve giriş yapabilirsiniz.
+            </p>
+            <p>
+              Onaylandıysa ve yine giremiyorsanız, klinikten <b>e-posta adresinizi ve
+              geçici şifrenizi</b> isteyin. Hekiminiz giriş bilgilerinizi yenileyebilir.
+            </p>
+            <p className="muted">E-posta adresinizi hatırlamıyorsanız hekiminize başvurun.</p>
+          </div>
+        </div>
+      )}
     </AuthShell>
   )
 }
@@ -342,17 +376,29 @@ export function RegisterRequest() {
   const [childEmail, setChildEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [note, setNote] = useState('')
+  const [kvkk, setKvkk] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
+  const [mesajEk, setMesajEk] = useState('')
   const [gonderiliyor, setGonderiliyor] = useState(false)
 
   const submit = async () => {
-    setErr(''); setMsg(''); setGonderiliyor(true)
+    setErr(''); setMsg('')
+    // Düğme zaten pasif ama Enter tuşuyla atlatılmasın diye tekrar doğrulanır
+    if (!kvkk) {
+      setErr('KVKK aydınlatma metnini okuduğunuzu onaylamadan kayıt talebi gönderemezsiniz.')
+      return
+    }
+    setGonderiliyor(true)
     try {
-      const r = await registerRequest({ name, email, pass, role, childEmail, phone, note })
+      const r = await registerRequest({ name, email, pass, role, childEmail, phone, note, kvkkOnay: kvkk })
       if (r.error) { setErr(r.error); return }
-      setMsg(r.uyari || `${t('reg_ok')} ${r.local ? '(Talebiniz tarayıcınıza kaydedildi; hekiminiz onayladığında hesabınız açılacak.)' : ''}`)
-    } catch (e) {
+      // Sunucuya ulaşılmadıysa "başarı" gibi görünmemeli — uyarı gösterilir
+      if (r.local) { setMsg(r.uyari || 'Talebiniz kaydedildi ancak klinik paneline ulaşmadı.'); return }
+      setMsg(t('reg_ok'))
+      // Kullanıcı adını hemen göster: sonradan arayıp bulamamasın
+      if (r.username) setMesajEk(`Giriş için kullanıcı adınız: ${r.username} (e-posta: ${email})`)
+    } catch {
       setErr('Bağlantı sorunu oluştu. İnternetinizi kontrol edip tekrar deneyin.')
     } finally {
       setGonderiliyor(false)
@@ -383,14 +429,19 @@ export function RegisterRequest() {
         value={note}
         onChange={(e) => setNote(e.target.value)}
       />
+
+      {/* KVKK: metin okunmadan ve onaylanmadan talep gönderilemez */}
+      <KvkkOnay onayli={kvkk} degis={setKvkk} />
+
       {err && <p className="auth-err"><Alert size={15} /> {err}</p>}
       {msg && <p className="auth-ok"><CheckCircle size={15} /> {msg}</p>}
-      <button className="btn-full" onClick={submit} disabled={gonderiliyor}>
-        {gonderiliyor ? 'Gönderiliyor...' : t('reg_send')}
-      </button>
+      {mesajEk && <p className="auth-ok"><CheckCircle size={15} /> {mesajEk}</p>}
       <p className="muted auth-not">
         Hesabınız talebiniz üzerine hekiminiz tarafından açılır. Şifrenizi kimseyle paylaşmayın.
       </p>
+      <button className="btn-full" onClick={submit} disabled={gonderiliyor || !kvkk}>
+        {gonderiliyor ? 'Gönderiliyor...' : kvkk ? t('reg_send') : 'Önce KVKK metnini onaylayın'}
+      </button>
     </AuthShell>
   )
 }

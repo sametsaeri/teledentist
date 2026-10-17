@@ -147,9 +147,16 @@ $$;
 GRANT EXECUTE ON FUNCTION public.resolve_login_id(text) TO anon, authenticated;
 
 -- 4) Süper admin kullanıcı adı
+--
+-- ÖNEMLİ: Yalnızca username BOŞSA atanır.
+-- Daha önce şartsız UPDATE vardı; betik her çalıştırıldığında kullanıcının
+-- panelden değiştirdiği kullanıcı adını geri yazıyordu ve kullanıcı bir
+-- anda "kullanıcı adı bulunamadı" hatası alıyordu. Artık var olan kullanıcı
+-- adına dokunulmaz.
 UPDATE public.profiles
 SET username = 'resulyel'
-WHERE lower(email) = 'tcsametsari@gmail.com';
+WHERE lower(email) = 'tcsametsari@gmail.com'
+  AND (username IS NULL OR username = '');
 
 -- E-postası farklı olan admin hesabı için (username boşsa atanır)
 UPDATE public.profiles

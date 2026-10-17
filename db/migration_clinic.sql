@@ -4,7 +4,7 @@
 --   2) treatment_plans  : tedavi planı (aşamalı, fiyatlı)
 --   3) materials        : klinik malzeme envanteri + son kullanma
 --   4) lab_cases        : laboratuvar takibi (protez, zirkonyum...)
---   5) price_items      : tedavi fiyat listesi
+--   5) (price_items kaldırıldı — devlet projesi, belirlenmiş ücret yok)
 --   6) invoices         : tahakkuk ve bakiye
 --   7) profiles'a anamnez özeti alanları
 -- IDEMPOTENT — veri silinmez.
@@ -93,54 +93,21 @@ DROP POLICY IF EXISTS "lab_rw" ON lab_cases;
 CREATE POLICY "lab_rw" ON lab_cases FOR ALL
   USING (is_hekim() OR is_admin()) WITH CHECK (is_hekim() OR is_admin());
 
--- ---------- 5) FİYAT LİSTESİ ----------
-CREATE TABLE IF NOT EXISTS price_items (
-  id BIGSERIAL PRIMARY KEY,
-  code TEXT DEFAULT '',
-  name TEXT NOT NULL,
-  category TEXT DEFAULT 'tedavi',
-  price NUMERIC DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE price_items ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "prices_rw" ON price_items;
-CREATE POLICY "prices_rw" ON price_items FOR ALL
-  USING (is_hekim() OR is_admin()) WITH CHECK (is_hekim() OR is_admin());
-
--- ---------- 6) TAHAKKUK / BAKİYE ----------
-CREATE TABLE IF NOT EXISTS invoices (
-  id BIGSERIAL PRIMARY KEY,
-  patient_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  patient_name TEXT DEFAULT '',
-  item TEXT NOT NULL,
-  amount NUMERIC DEFAULT 0,
-  paid NUMERIC DEFAULT 0,
-  due_date DATE,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS invoices_patient_idx ON invoices (patient_id, created_at DESC);
-
-ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "invoices_rw" ON invoices;
-CREATE POLICY "invoices_rw" ON invoices FOR ALL
-  USING (is_hekim() OR is_admin() OR patient_id = auth.uid())
-  WITH CHECK (is_hekim() OR is_admin() OR patient_id = auth.uid());
-
--- ---------- Örnek fiyat listesi (tek seferlik, silinmez) ----------
-INSERT INTO price_items (code, name, category, price)
-SELECT * FROM (VALUES
-  ('D01','Dijital diş hekimliği muayenesi','muayene',750),
-  ('D02','Dijital röntgen (periapikal)','görüntüleme',350),
-  ('D03','Panoramik röntgen','görüntüleme',700),
-  ('F01','Kompozit dolgu (tek yüzey)','restoratif',1400),
-  ('F02','Amalgam dolgu (tek yüzey)','restoratif',1100),
-  ('K01','Kanal tedavisi (tek kök)','endodonti',4500),
-  ('K02','Kanal tedavisi (çok kök)','endodonti',6500),
-  ('T01','Diş taşı temizliği','temizlik','var'),
-  ('T02','Ofis tipi beyazlatma','estetik',12000),
-  ('P01','Sabit protez (tek üye)','protez',18000),
-  ('P02','İmplant (yerli)','implant',22000),
-  ('O01','Ortodontik muayene','ortodonti',1000)
-) AS v(code, name, category, price)
-WHERE NOT EXISTS (SELECT 1 FROM price_items LIMIT 1);
+-- ============================================================
+-- 5-6) FİYAT LİSTESİ VE TAHAKKUK/BAKİYE — KALDIRILDI
+--
+-- Bu proje DEVLET PROJESİDİR. Devlet tarafından belirlenmiş bir
+-- ücret/fiyat listesi YOKTUR. Bu nedenle price_items ve invoices
+-- tabloları bu dosyada OLUŞTURULMAZ ve örnek fiyat verisi EKLENMEZ.
+--
+-- ÖNCEKİ SÜRÜM NOTU: Daha önce burada 12 kalemlik örnek fiyat listesi
+-- ve hasta bakiye/tahakkuk tablosu vardı. Bunlar kaldırıldı:
+--   - Devlet tarafından belirlenmemiş ücretleri göstermek yanıltıcıdır
+--   - Hasta hesabı/tahsilat takibi bu projenin kapsamında değildir
+--   - Ülkemizde sağlık hizmeti fiyatlandırması düzenlemeyle belirlenir;
+--     uygulama kendi fiyat listesi tutarak çelişki yaratabilir
+--
+-- Daha önce kurulmuş veritabanlarında bu tablolar ARŞİVDE kalır;
+-- onları silmiyoruz çünkü içlerinde geçmiş veri olabilir. Uygulama
+-- artık bu tabloları hiç okumuyor ve yazmıyor.
+-- ============================================================

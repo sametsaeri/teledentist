@@ -10,22 +10,28 @@
 //   • kaplama kenarında sekonder çürük, aşınma/kırılma riski
 //   • implant çevresinde peri-implantit ve kemik kaybı
 //
-// ÜCRETLER: Yaklaşık 2026 Türkiye diş hekimliği aralıkları. Kesiin fiyat değildir;
-// klinik kendi ücret listesini UCRETLER ile güncelleyebilir.
+// TEDAVİ SÜRELERİ: Bu proje devlet projesidir; devlet tarafından
+// belirlenmiş bir fiyat/ücret listesi YOKTUR. Bu yüzden uygulamada ücret
+// bilgisi gösterilmez. Bunun yerine klinik olarak anlamlı olan SEANS
+// SAYISI ve SÜRE tahmini kullanılır — bu bir maliyet iddiası değildir.
+//
+// (Eski ücret tablosu ve ₺ aralıkları kaldırıldı: devlet projesinde
+//  belirlenmemiş bir ücreti göstermek yanıltıcı ve hukuken sorunludur.)
 
 import { disBilgisi, kontrolAraligi } from '../data/disAdlari.js'
 
-export const UCRETLER = {
-  muayene: { ad: 'Muayene', min: 0, max: 1500, seans: 1 },
-  temizlik: { ad: 'Diş taşı temizliği (kireçleme)', min: 1200, max: 4000, seans: 1 },
-  dolgu: { ad: 'Kompozit dolgu', min: 1800, max: 5000, seans: 1 },
-  kanal: { ad: 'Kanal tedavisi', min: 5000, max: 14000, seans: 2 },
-  kaplama: { ad: 'Porselen kaplama', min: 9000, max: 28000, seans: 2 },
-  implant: { ad: 'İmplant tedavisi', min: 18000, max: 42000, seans: 3 },
-  cekim: { ad: 'Diş çekimi', min: 1500, max: 5000, seans: 1 },
-  greltme: { ad: 'Kemik greftleme', min: 6000, max: 18000, seans: 1 },
-  apse: { ad: 'Apse drenajı', min: 2000, max: 6000, seans: 1 },
-  gerekce: { ad: 'Gerekçeli tedavi (çürük kaldırma)', min: 2500, max: 7000, seans: 1 }
+/** Tedavi işlemleri — süre ve seans bilgisiyle (ücret YOK). */
+export const ISLEMLER = {
+  muayene: { ad: 'Muayene ve değerlendirme', seans: 1, sure: '20–30 dk' },
+  temizlik: { ad: 'Diş taşı temizliği (kireçleme)', seans: 1, sure: '30–45 dk' },
+  dolgu: { ad: 'Kompozit dolgu', seans: 1, sure: '30–45 dk' },
+  kanal: { ad: 'Kanal tedavisi', seans: 2, sure: '2–3 seans' },
+  kaplama: { ad: 'Porselen kaplama', seans: 2, sure: '2–3 seans' },
+  implant: { ad: 'İmplant tedavisi', seans: 3, sure: '3–5 seans' },
+  cekim: { ad: 'Diş çekimi', seans: 1, sure: '30–45 dk' },
+  greftleme: { ad: 'Kemik greftleme', seans: 1, sure: '45–60 dk' },
+  apse: { ad: 'Apse drenajı', seans: 1, sure: '20–30 dk' },
+  gerekce: { ad: 'Gerekçeli tedavi (çürük kaldırma)', seans: 1, sure: '45–60 dk' }
 }
 
 /** Simülasyon aşamaları — görsel evre ile eşleşir */
@@ -157,28 +163,25 @@ const KURALLAR = {
 /**
  * Evreye göre gereken işlemler.
  *
- * ÖNEMLİ: Diş kaybedildiğinde (evre >= 4) çekim maliyeti tek başına yanıltıcıdır.
- * Kaybedilen dişin yerine konması gerekir; bu yüzden implant bedeli de eklenir.
- * Geciktikçe kemik eridiği için çekim senaryolarında greftleme de devreye girer.
+ * ÖNEMLİ: Diş kaybedildiğinde (evre >= 4) yalnız çekim yeterli bir yanıt
+ * değildir — kaybedilen dişin yerine konması gerekir. Geciktikçe kemik
+ * eridiği için greftleme de devreye girer.
  */
-function adimMaliyeti(evre, status) {
+function adimIslemleri(evre, status) {
   if (status === 'cekim') {
     // Diş zaten yok: tedavi = yerine koyma, geciktikçe kemik grefti gerekir
-    if (evre >= 4) return [UCRETLER.cekim, UCRETLER.greltme, UCRETLER.implant]
-    if (evre >= 2) return [UCRETLER.implant, UCRETLER.greltme]
-    return [UCRETLER.implant]
+    if (evre >= 4) return [ISLEMLER.cekim, ISLEMLER.greftleme, ISLEMLER.implant]
+    if (evre >= 2) return [ISLEMLER.implant, ISLEMLER.greftleme]
+    return [ISLEMLER.implant]
   }
-  if (evre >= 4) return [UCRETLER.cekim, UCRETLER.implant]
-  if (evre === 3) {
-    if (status === 'kanal') return [UCRETLER.kanal, UCRETLER.kaplama]
-    return [UCRETLER.kanal, UCRETLER.kaplama]
-  }
-  if (evre === 2) return [UCRETLER.gerekce, UCRETLER.dolgu]
+  if (evre >= 4) return [ISLEMLER.cekim, ISLEMLER.implant]
+  if (evre === 3) return [ISLEMLER.kanal, ISLEMLER.kaplama]
+  if (evre === 2) return [ISLEMLER.gerekce, ISLEMLER.dolgu]
   if (evre === 1) {
-    if (status === 'saglam') return [UCRETLER.temizlik]
-    return [UCRETLER.temizlik, UCRETLER.dolgu]
+    if (status === 'saglam') return [ISLEMLER.temizlik]
+    return [ISLEMLER.temizlik, ISLEMLER.dolgu]
   }
-  return [UCRETLER.muayene]
+  return [ISLEMLER.muayene]
 }
 
 function senaryoKur({ status, baslangicEvre, zamanKaydir, adimlar, baslik, ozet, acilMi }) {
@@ -187,9 +190,7 @@ function senaryoKur({ status, baslangicEvre, zamanKaydir, adimlar, baslik, ozet,
   const gecerli = evreler.filter((a) => a.ay >= 0)
   const sonAsama = gecerli[gecerli.length - 1] || adimlar[0]
 
-  const isler = adimMaliyeti(sonAsama.evre, status)
-  const min = isler.reduce((t, i) => t + i.min, 0)
-  const max = isler.reduce((t, i) => t + i.max, 0)
+  const isler = adimIslemleri(sonAsama.evre, status)
   const seans = isler.reduce((t, i) => t + i.seans, 0)
 
   // Ağrı olasılığı ve diş kaybı riski
@@ -204,7 +205,8 @@ function senaryoKur({ status, baslangicEvre, zamanKaydir, adimlar, baslik, ozet,
     agirPuan: Math.round(agirPuan),
     kayipRiski,
     acilMi,
-    maliyet: { min, max, seans },
+    // Ücret YOK; yalnız seans ve süre (tedavi planlaması için)
+    seans,
     sure: `${Math.min(24, Math.max(1, gecerli.reduce((t, a) => t + 1, 0) * seans))} ay`,
     isler: isler.map((i) => i.ad)
   }
@@ -237,7 +239,7 @@ export function senaryolar({ fdi, status = 'saglam', plaque, yas, lastVisit } = 
   const senaryoGecikme = senaryoKur({
     status, zamanKaydir: 6 + riskKaydir * 6, adimlar: kurallar.slice(0, 3),
     baslik: '6 ay geciktirirsem',
-    ozet: 'Altı ay beklemek, altı ay kaybetmek demektir. Tedavi bir kademe ilerler ve bedeli artar.',
+    ozet: 'Altı ay beklemek, altı ay kaybetmek demektir. Tedavi bir kademe ilerler ve süresi uzar.',
     acilMi: true
   })
 
@@ -254,12 +256,12 @@ export function senaryolar({ fdi, status = 'saglam', plaque, yas, lastVisit } = 
     mevcut: { status, ad: kontrolAraligi(status).metin },
     riskKaydir,
     senaryolar: [senaryoTedavi, senaryoGecikme, senaryoHiç],
-    // Karşılaştırma tablosu
+    // Karşılaştırma tablosu: ÜCRET YOK, yalnız klinik göstergeler
     karsilastirma: [
       { etiket: 'Ağrı olasılığı', degerler: [senaryoTedavi.agirPuan, senaryoGecikme.agirPuan, senaryoHiç.agirPuan], birim: '%' },
       { etiket: 'Diş kaybı riski', degerler: [senaryoTedavi.kayipRiski, senaryoGecikme.kayipRiski, senaryoHiç.kayipRiski], birim: '%' },
-      { etiket: 'Maliyet aralığı', degerler: [senaryoTedavi, senaryoGecikme, senaryoHiç], tip: 'maliyet' },
-      { etiket: 'Toplam seans', degerler: [senaryoTedavi, senaryoGecikme, senaryoHiç], tip: 'seans' }
+      { etiket: 'Toplam seans', degerler: [senaryoTedavi, senaryoGecikme, senaryoHiç], tip: 'seans' },
+      { etiket: 'Tedavi süresi', degerler: [senaryoTedavi, senaryoGecikme, senaryoHiç], tip: 'sure' }
     ]
   }
 }
@@ -285,13 +287,14 @@ export function acilDişler(teeth = {}, plakOrani) {
   return liste
 }
 
-/** Para biçimi (binlik ayırımlı, kısa) */
-export function paraTL(n) {
+/**
+ * Seans sayısını okunur metne çevirir.
+ * Ücret BİLGİSİ YOKTUR: bu proje devlet projesidir ve devlet tarafından
+ * belirlenmiş bir fiyat bulunmamaktadır. Simülatör yalnız süreyi ve
+ * seans sayısını gösterir; maliyet iddiasında bulunmaz.
+ */
+export function seansMetni(seans) {
+  const n = Number(seans || 0)
   if (!n) return '—'
-  if (n >= 1000) return `${Math.round(n / 1000)}B`
-  return `${Math.round(n)}`
-}
-
-export function maliyetMetni({ min, max }) {
-  return `${paraTL(min)}–${paraTL(max)} bin ₺`
+  return `${n} seans`
 }

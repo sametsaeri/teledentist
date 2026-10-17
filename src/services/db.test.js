@@ -9,7 +9,7 @@ vi.mock('../services/supabase.js', async () => {
 
 import {
   listPatients, listDoctors, getPatient, getSetupStatus, store,
-  materialsApi, labApi, pricesApi, invoicesApi, eventsApi
+  materialsApi, labApi, notesApi, eventsApi
 } from '../services/db.js'
 import { setSession } from '../services/store.js'
 
@@ -90,10 +90,10 @@ describe('store() — tablo yoksa tarayıcıya kaydeder', () => {
   })
 
   it('remove() kaydı siler', async () => {
-    await pricesApi.insert({ name: 'Dolgu', fiyat: 500 })
-    const liste = await pricesApi.list()
-    await pricesApi.remove(liste[0].id)
-    expect(await pricesApi.list()).toHaveLength(0)
+    await notesApi.insert({ baslik: 'Klinik notu', body: 'geçici' })
+    const liste = await notesApi.list()
+    await notesApi.remove(liste[0].id)
+    expect(await notesApi.list()).toHaveLength(0)
   })
 
   it('where filtresi doğru çalışır', async () => {
@@ -104,10 +104,11 @@ describe('store() — tablo yoksa tarayıcıya kaydeder', () => {
     expect(sadeceToplanti[0].baslik).toBe('Toplantı')
   })
 
-  it('faturalar da yere düşer (yeni tablolar kurulmamış olsa bile)', async () => {
-    const r = await invoicesApi.insert({ hasta: 'Ayşe Yılmaz', tutar: 1200 })
-    expect(r.ok).toBe(true)
-    expect(await invoicesApi.list()).toHaveLength(1)
+  // Devlet projesidir: ücret tablosu API'si tamamen kaldırıldı.
+  it('fiyat ve fatura API\'leri ARTIK VAR DEĞİLDİR', async () => {
+    const db = await import('../services/db.js')
+    expect(db.pricesApi).toBeUndefined()
+    expect(db.invoicesApi).toBeUndefined()
   })
 
   it('list() sunucudan veri gelirse onu tercih eder', async () => {

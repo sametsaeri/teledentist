@@ -17,7 +17,10 @@ export const keys = {
   hygiene: 'td_hygiene',
   anxiety: 'td_anxiety',
   photos: 'td_photos',
-  photoNotes: 'td_photo_notes'
+  photoNotes: 'td_photo_notes',
+  medicalFiles: 'td_medical_files',
+  bildirimler: 'td_bildirimler',
+  onGorusme: 'td_on_gorusme'
 }
 export function getSession() { return load(keys.session, null) }
 export function setSession(s) { save(keys.session, s) }

@@ -1,7 +1,9 @@
-// Supabase varsa gerçek tablolar, yoksa yerel kayıtlar
+﻿// Supabase varsa gerçek tablolar, yoksa yerel kayıtlar
 import { supabase, hasSupabase } from './supabase.js'
-import { load, save, keys } from './store.js'
-import { allUsers, yerelTalepleriOku, yerelTalebiSil, suMesaj } from './auth.js'
+import { load, save, keys, getSession } from './store.js'
+import { allUsers, suMesaj, rpcYok, kullaniciAdiTuret } from './auth.js'
+import { bakimKontrol } from './bakim.js'
+import { bildirimOlustur } from './bildirim.js'
 
 // Ağ yavaş kalırsa veri katmanı asılı kalmasın: okuma isteklerine zaman aşımı.
 // Başarısız olursa çağıran taraf yerel kayda düşer.
@@ -199,42 +201,63 @@ export async function listReferrals() {
 export async function referPatient({ patientId, toDoctor, branch, note, fromDoctor }) {
   if (hasSupabase) {
     const { error } = await supabase.from('referrals').insert({ patient_id: patientId, from_doctor: fromDoctor || null, to_doctor: toDoctor, branch: branch || 'genel', note: note || '' })
-    return { error: error?.message }
+    if (error) return { error: error?.message }
+    // Hedef hekime sevk bildirimi
+    const hasta = await getPatient(patientId)
+    bildirimOlustur({
+      tur: 'sevk',
+      title: `${hasta?.name || 'Bir hasta'} size sevk edildi`,
+      body: `${branch || 'genel'} · ${note || 'Muayene sonrası sevk'}`,
+      hekimId: toDoctor || null,
+      hastaId: patientId || null
+    })
+    return {}
   }
   return { error: 'Supabase bağlı değil.' }
 }
 
 // Kayıt istekleri: hasta ister, hekim onaylar.
 //
-// Tarayıcıda kaydedilmiş talepler de listelenir; böylece sunucuya
-// ulaşılamadığında ya da tablo oluşturulmadığında talep GÖRÜNMEZL olmaz.
+// ÖNEMLİ: Talep YALNIZCA sunucuda tutulur. Tarayıcıda kopya tutulmaz —
+// aksi hâlde hekim başka cihazdan göremez ve hasta hesabı hiçbir
+// bilgisayardan açamaz.
 export async function listRequests() {
-  const yerel = yerelTalepleriOku()
-  let sunucu = []
-  if (hasSupabase) {
-    try {
-      const { data, error } = await withTimeout(
-        supabase.from('kayit_istekleri').select('*').order('created_at', { ascending: false })
-      )
-      if (!error && data) sunucu = data
-    } catch { /* sunucuya ulaşılamadı, yerele düş */ }
-  }
-  // Aynı e-posta iki kez görünmesin
-  const gorulen = new Set(sunucu.map((r) => r.email))
-  const ek = yerel.filter((r) => !gorulen.has(r.email))
-  return [...sunucu, ...ek].sort(
-    (a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))
-  )
+  if (!hasSupabase) return []
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from('kayit_istekleri').select('*').order('created_at', { ascending: false })
+    )
+    if (!error && data) return data
+  } catch { /* sunucuya ulaşılamadı */ }
+  return []
+}
+
+/**
+ * Hatırlanabilir ama tahmin edilemeyecek geçici şifre üretir.
+ * Hasta bu şifreyi hekim panelinden alır; sonra kendi şifresini değiştirir.
+ */
+export function geciciSifreUret(email = '') {
+  const kisa = String(email).split('@')[0].replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toLowerCase() || 'hasta'
+  const sayi = Math.floor(1000 + Math.random() * 9000)
+  return `${kisa}${sayi}`
 }
 
 /**
  * Talebi onayla veya reddet.
  * Öncelikli yol: decide_registration_request RPC'si (profil + auth kaydını
  * sunucuda tek adımda yapar). RPC yoksa doğrudan tablo işlemleri.
+ *
+ * DÖNÜŞ: onaylandıysa `geciciSifre` de döner; hekim paneli bunu
+ * hastaya iletir. Şifre üretilmediyse (auth kullanıcısı zaten vardı)
+ * alan boş gelir ve hasta kendi şifresiyle girebilir.
  */
 export async function decideRequest(req, onayla, createdBy) {
-  // RPC yalnızca sunucudan gelen (sayısal id'li) taleplerde çalışır
-  const sunucuTalebi = hasSupabase && req && req.id !== undefined && !String(req.id).startsWith('y')
+  if (!hasSupabase) return { error: 'Sunucuya bağlanılamadı. İnternetinizi kontrol edin.' }
+  if (!req?.id || !Number.isFinite(Number(req.id))) {
+    return { error: 'Talep kaydı sunucuda bulunamadı. Sayfayı yenileyip tekrar deneyin.' }
+  }
+
+  const sunucuTalebi = req && req.id !== undefined && req.id !== null
   if (sunucuTalebi) {
     try {
       const { data, error } = await withTimeout(
@@ -244,50 +267,58 @@ export async function decideRequest(req, onayla, createdBy) {
           p_doctor_id: createdBy || null
         })
       )
-      if (!error && data) {
-        yerelTalebiSil(req.id)
-        return { ok: true, durum: data?.durum || (onayla ? 'onaylandi' : 'reddedildi') }
-      }
+      if (!error && data) return { ok: true, durum: data?.durum || (onayla ? 'onaylandi' : 'reddedildi') }
       // RPC yoksa aşağıdaki manuel yola düş
-      if (!/does not exist|not found|404|PGRST/i.test(String(error?.message || ''))) {
-        return { error: suMesaj(error?.message) }
-      }
+      if (!rpcYok(error)) return { error: suMesaj(error?.message) }
     } catch (e) {
-      if (!/does not exist|not found|404|PGRST|fetch|network/i.test(String(e?.message || ''))) {
+      if (!rpcYok({ message: e?.message }) && !/fetch|network|zaman aşımı|timeout/i.test(String(e?.message || ''))) {
         return { error: suMesaj(e?.message) }
       }
     }
   }
 
   if (!onayla) {
-    // Reddet: talebi sil
-    if (sunucuTalebi) await supabase.from('kayit_istekleri').delete().eq('id', req.id)
-    yerelTalebiSil(req.id)
+    const { error } = await supabase.from('kayit_istekleri').delete().eq('id', req.id)
+    if (error) return { error: suMesaj(error.message) }
     return { ok: true, durum: 'reddedildi' }
   }
 
   // Onayla: profili oluştur
-  if (!hasSupabase) {
-    yerelTalebiSil(req.id)
-    return { ok: true, durum: 'onaylandi', local: true }
-  }
-
   const email = String(req.email || '').toLowerCase()
   let uid = req.user_id
 
+  // NEDEN VAR: hasta kendi şifresini seçti. Hesap auth'da yoksa
+  // geçici şifre üretip HESABIN SAHİBİNE (hekim paneline) bildiriyoruz.
+  // Daha önce sabit "teledentist" şifresi veriliyordu; hasta kendi
+  // şifresiyle giremeyince "kullanıcı bulunamadı" sanıyordu.
+  const geciciSifre = geciciSifreUret(email)
+
   // auth kullanıcısı yoksa oluştur (signup kapalı olabilir)
-  if (!uid || String(uid).startsWith('y')) {
+  if (!uid) {
     try {
-      const { data: ac, error: acErr } = await supabase.auth.admin.createUser({
-        email, password: 'teledentist', email_confirm: true
-      })
+      const { data: ac, error: acErr } = await withTimeout(
+        supabase.auth.admin.createUser({ email, password: geciciSifre, email_confirm: true })
+      )
       if (!acErr && ac?.user?.id) uid = ac.user.id
-    } catch { /* admin API kapalıysa aşağıdaki upsert'e düşer */ }
+    } catch { /* admin API erişimi yoksa RPC yoluna bırakılır */ }
   }
-  if (!uid || String(uid).startsWith('y')) uid = cryptoRandomUid()
+
+  // Profil yazımı RLS'e takılabilir; en sağlam yol SECURITY DEFINER RPC.
+  if (!uid) {
+    return {
+      error: 'Hesap sunucuda oluşturulamadı. Proje kurulumu tamamlanmalı: ' +
+        '"npm run db:push" komutunu çalıştırın.'
+    }
+  }
 
   const { error } = await supabase.from('profiles').upsert({
-    id: uid, role: req.role, email, name: req.name, created_by: createdBy || null
+    id: uid,
+    role: req.role,
+    email,
+    name: req.name,
+    // Kullanıcı adı boş kalırsa "Bu kullanıcı adı bulunamadı" hatası verir
+    username: req.username || kullaniciAdiTuret(email, req.name),
+    created_by: createdBy || null
   })
   if (error) return { error: suMesaj(error.message) }
 
@@ -299,9 +330,17 @@ export async function decideRequest(req, onayla, createdBy) {
         .upsert({ parent_id: uid, child_id: child.id }, { onConflict: 'parent_id,child_id' })
     }
   }
-  if (sunucuTalebi) await supabase.from('kayit_istekleri').delete().eq('id', req.id)
-  yerelTalebiSil(req.id)
-  return { ok: true, durum: 'onaylandi' }
+  await supabase.from('kayit_istekleri').delete().eq('id', req.id)
+  // Yalnızca auth kullanıcısı YENİDEN oluşturulduysa geçici şifre verilir;
+  // kullanıcı zaten varsa hasta kendi şifresiyle girebilir (geciciSifre: null).
+  return {
+    ok: true,
+    durum: 'onaylandi',
+    uid,
+    email,
+    username: req.username || kullaniciAdiTuret(email, req.name),
+    geciciSifre: uid === req.user_id ? null : geciciSifre
+  }
 }
 
 /** Geriye uyumluluk: yalnızca onaylama */
@@ -309,17 +348,67 @@ export async function approveRequest(req, createdBy) {
   return decideRequest(req, true, createdBy)
 }
 
+/**
+ * Onaylanmış ama giriş yapamayan hastalar için hesap onarımı.
+ *
+ * SORUN: profil satırı var ama auth kaydı yok (ya da şifre bilinmiyor).
+ * Bu fonksiyon auth kullanıcısını bulur/oluşturur ve profil satırını
+ * e-postaya göre yeniden yazar. SQL gerektirmez.
+ *
+ * @param {string} email  hastanın e-postası
+ * @param {string} sifre  yeni/hatırlanabilir şifre (boşsa üretilir)
+ */
+export async function repairAccount(email, sifre, createdBy) {
+  if (!hasSupabase) return { error: 'Sunucuya bağlanılamadı.' }
+  email = String(email || '').trim().toLowerCase()
+  if (!email.includes('@')) return { error: 'Geçerli bir e-posta girin.' }
+  const yeniSifre = String(sifre || '').trim() || geciciSifreUret(email)
+  if (yeniSifre.length < 6) return { error: 'Şifre en az 6 karakter olmalı.' }
+
+  // 1) Profil var mı?
+  const { data: prof } = await withTimeout(
+    supabase.from('profiles').select('*').eq('email', email).maybeSingle()
+  )
+  if (!prof) {
+    return { error: 'Bu e-posta için profil kaydı yok. Önce kayıt talebini onaylayın.' }
+  }
+
+  // 2) Auth kullanıcısını oluştur/garantile
+  let uid = prof.id
+  let yeniHesap = false
+  try {
+    const { data: ac, error: acErr } = await withTimeout(
+      supabase.auth.admin.createUser({ email, password: yeniSifre, email_confirm: true })
+    )
+    if (!acErr && ac?.user?.id) { uid = ac.user.id; yeniHesap = true }
+  } catch { /* kullanıcı zaten varsa admin API hata verir — yoksay */ }
+
+  // 3) Profil satırını tamamla (username boşsa doldur)
+  const { error: upErr } = await supabase.from('profiles').upsert({
+    id: uid,
+    role: prof.role,
+    email,
+    name: prof.name,
+    username: prof.username || kullaniciAdiTuret(email, prof.name),
+    created_by: prof.created_by || createdBy || null
+  })
+  if (upErr) return { error: suMesaj(upErr.message) }
+
+  return {
+    ok: true,
+    yeniHesap,
+    uid,
+    username: prof.username || kullaniciAdiTuret(email, prof.name),
+    sifre: yeniSifre,
+    not: yeniHesap
+      ? 'Yeni giriş bilgileri oluşturuldu.'
+      : 'Auth kullanıcısı zaten vardı; profil tamamlandı. Şifre değişmediyse eski şifre geçerlidir.'
+  }
+}
+
 /** Geriye uyumluluk: reddetme */
 export async function rejectRequest(req) {
   return decideRequest(req, false)
-}
-
-function cryptoRandomUid() {
-  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID()
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = Math.floor(Math.random() * 16)
-    return (c === 'x' ? r : (r & 3) | 8).toString(16)
-  })
 }
 
 // Hekim panelinden profil tamamlama (Auth kullanıcısı panelden açıldıktan sonra)
@@ -345,14 +434,158 @@ function dataUrlToBlob(dataUrl) {
   return new Blob([arr], { type: mime })
 }
 
-export async function uploadImage(bucket, patientId, label, dataUrl) {
+/**
+ * Görsel yükler ve KAYIT TUTAR.
+ *
+ * VERİ KAYBI KURALI: Dosya yüklenince `medical_files` tablosuna bir satır
+ * yazılır (hangi hasta, hangi diş, ne zaman, kim yükledi, boyut, tür).
+ * Dosya adı tek başına bilgi taşımaz; silme/yeniden adlandırma/arşivleme
+ * işlemleri bu kayıt üzerinden yapılır. Kayıt yazılamazsa dosya SİLİNMEZ —
+ * önce uyarılır; veri kaybetmektense kayıtsız dosya kalmak yeğdir.
+ *
+ * @param {string} tur  'xray' | 'belge' | 'foto'
+ */
+export async function uploadFile(bucket, patientId, label, dataUrl, { tur = 'xray', tooth = null, not = '', category = '', createdBy } = {}) {
+  // Bakımdayken veri yazılmaz: yarım kalan dosya/kayıt oluşmaz
+  const bakimHatasi = bakimKontrol('Dosya yükleme')
+  if (bakimHatasi) return bakimHatasi
   if (!hasSupabase) return { error: 'Supabase bağlı değil, yerel kayıt kullanıldı.' }
-  const path = `${patientId}/${label}-${Date.now()}.png`
-  const { error } = await supabase.storage.from(bucket).upload(path, dataUrlToBlob(dataUrl), {
-    contentType: 'image/png', upsert: false
+
+  // Hasta mı yüklüyor hekim mi? Buna göre bildirim kime gider
+  const yukleyen = getSession()
+  const hastaYukledi = ['hasta', 'ebeveyn'].includes(yukleyen?.role)
+
+  // Dosya adı benzersiz olmalı: aynı dişe iki saniyede iki röntgen yüklenebilir
+  const zaman = new Date()
+  const damga = `${zaman.getTime()}-${Math.random().toString(36).slice(2, 7)}`
+  const uzanti = (dataUrl.split(';')[0] || '').includes('pdf') ? 'pdf' : 'png'
+  const path = `${patientId}/${label}-${damga}.${uzanti}`
+
+  const up = await supabase.storage.from(bucket).upload(path, dataUrlToBlob(dataUrl), {
+    contentType: uzanti === 'pdf' ? 'application/pdf' : 'image/png', upsert: false
   })
-  if (error) return { error: error.message }
-  return { ok: true, path }
+  if (up.error) return { error: up.error.message }
+
+  // Kayıt satırı: silme ve arşivleme buna göre yapılır
+  const satir = {
+    patient_id: patientId,
+    path,
+    bucket,
+    tur,
+    category: category || null,
+    label,
+    tooth,
+    not,
+    boyut: dataUrl.length,
+    olusturan: createdBy || null,
+    created_at: zaman.toISOString(),
+    arsiv: false
+  }
+  const { data: kayit, error: kErr } = await supabase.from('medical_files').insert(satir).select().single()
+  if (kErr) {
+    // Dosya yüklendi ama kayıt tutulamadı — KULLANICIYA BİLDİR, silme
+    return {
+      ok: true,
+      path,
+      kayitYok: true,
+      uyari: `Dosya yüklendi ancak kaydı tutulamadı (${kErr.message}). Dosya arşivlenemez; Supabase "medical_files" tablosu kurulmalı.`
+    }
+  }
+
+  // Hasta yüklediyse hekime bildir — muayene öncesi görülmeli
+  if (hastaYukledi) {
+    const hasta = await getPatient(patientId)
+    bildirimOlustur({
+      tur: tur === 'belge' ? 'belge' : 'foto',
+      title: `${hasta?.name || 'Hasta'} yeni ${tur === 'belge' ? 'belge' : 'görsel'} yükledi`,
+      body: tooth ? `${tooth} nolu diş · ${category || 'sınıflandırılmamış'}` : (not || 'Sınıflandırılmamış'),
+      hastaId: patientId
+    })
+  }
+  return { ok: true, path, kayit }
+}
+
+// Geriye uyumluluk: eski çağrılar çalışmaya devam eder
+export async function uploadImage(bucket, patientId, label, dataUrl) {
+  return uploadFile(bucket, patientId, label, dataUrl, { tur: 'xray' })
+}
+
+/** Hastanın TÜM dosyalarını (röntgen, belge, foto) listeler. */
+export async function listMedicalFiles(patientId, { arsiv = null, tur = null } = {}) {
+  if (!hasSupabase) {
+    const hepsi = load(keys.medicalFiles, []).filter((f) => String(f.patient_id) === String(patientId))
+    return hepsi.filter((f) => (arsiv === null ? true : !!f.arsiv === arsiv))
+      .filter((f) => (tur ? f.tur === tur : true))
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+  }
+  try {
+    let q = supabase.from('medical_files').select('*').eq('patient_id', patientId)
+    if (arsiv !== null) q = q.eq('arsiv', arsiv)
+    if (tur) q = q.eq('tur', tur)
+    const { data, error } = await withTimeout(q.order('created_at', { ascending: false }))
+    if (!error && data) return data
+  } catch { /* sunucuya ulaşılamadı */ }
+  // Yedek: tarayıcıdaki kayıtlar (SQL kurulmamışsa)
+  return load(keys.medicalFiles, [])
+    .filter((f) => String(f.patient_id) === String(patientId))
+    .filter((f) => (arsiv === null ? true : !!f.arsiv === arsiv))
+    .filter((f) => (tur ? f.tur === tur : true))
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+}
+
+/** Tek bir dosyanın imzalı bağlantısını üretir (1 saat geçerli). */
+export async function fileUrl(path) {
+  return signedPhotoUrl(path)
+}
+
+/**
+ * Dosya silinir: hem kayıt satırı hem depolamadaki dosya silinir.
+ * ÖNCE kayıt silinmez, dosya silinir; dosya silinemezse kayıt kalır —
+ * aksi hâlde kayıt var ama dosya yok olurdu (ölü kayıt).
+ */
+export async function deleteMedicalFile(kayit) {
+  const bakimHatasi = bakimKontrol('Dosya silme')
+  if (bakimHatasi) return bakimHatasi
+  if (!kayit?.path) return { error: 'Dosya kaydı bulunamadı.' }
+  if (hasSupabase) {
+    try {
+      const { error } = await supabase.storage.from(kayit.bucket || 'xrays').remove([kayit.path])
+      if (error) return { error: 'Dosya depolamadan silinemedi: ' + error.message }
+    } catch { /* depolama erişimi yoksa yalnız kayıt silinir */ }
+    const { error: kErr } = await supabase.from('medical_files').delete().eq('path', kayit.path)
+    if (kErr) return { error: kErr.message }
+    return { ok: true }
+  }
+  save(keys.medicalFiles, load(keys.medicalFiles, []).filter((f) => f.path !== kayit.path))
+  return { ok: true }
+}
+
+/** Arşiv durumunu değiştirir (arşiv = pasif kayıt, silmek DEĞİL). */
+export async function setFileArsiv(kayit, arsiv) {
+  const bakimHatasi = bakimKontrol('Arşiv değişikliği')
+  if (bakimHatasi) return bakimHatasi
+  if (!kayit?.path) return { error: 'Dosya kaydı bulunamadı.' }
+  if (hasSupabase) {
+    const { error } = await supabase.from('medical_files').update({ arsiv: !!arsiv }).eq('path', kayit.path)
+    if (error) return { error: error.message }
+    return { ok: true }
+  }
+  save(keys.medicalFiles, load(keys.medicalFiles, [])
+    .map((f) => (f.path === kayit.path ? { ...f, arsiv: !!arsiv } : f)))
+  return { ok: true }
+}
+
+/** Dosya sınıflandırmasını (kategori) günceller. */
+export async function setFileCategory(kayit, category) {
+  if (!kayit?.path) return { error: 'Dosya kaydı bulunamadı.' }
+  if (hasSupabase) {
+    const { error } = await supabase.from('medical_files').update({ category }).eq('path', kayit.path)
+    if (error) return { error: error.message }
+    return { ok: true }
+  }
+  save(keys.medicalFiles, load(keys.medicalFiles, [])
+    .map((f) => (f.path === kayit.path ? { ...f, category } : f)))
+  return { ok: true }
 }
 
 // Önce storage, yoksa yerel kayıt (yedek)
@@ -507,8 +740,10 @@ export const anamnesisApi = store('anamnesis')
 export const plansApi = store('treatment_plans')
 export const materialsApi = store('materials')
 export const labApi = store('lab_cases')
-export const pricesApi = store('price_items')
-export const invoicesApi = store('invoices')
+// NOT: pricesApi (price_items) ve invoicesApi (invoices) KALDIRILDI.
+// Bu proje devlet projesidir; devlet tarafından belirlenmiş bir ücret
+// listesi yoktur ve uygulamada ücret gösterilmez. Tablolar veritabanında
+// dursa da (veri kaybı olmasın diye) artık hiçbir yerden okunmaz/yazılmaz.
 export const notesApi = store('clinical_notes')
 export const eventsApi = store('doctor_events')
 export const intakeApi = store('intake_records')
@@ -526,23 +761,40 @@ export async function listAppointments() {
   return load(keys.appointments, [])
 }
 
-export async function insertAppointment({ name, contact, dept, complaint, apptDate, online }) {
+export async function insertAppointment({ name, contact, dept, complaint, apptDate, online, patientId }) {
   if (hasSupabase) {
     const row = {
       name, contact, dept: dept || 'genel-dis', complaint,
       appt_date: apptDate || null, status: 'yeni'
     }
+    if (patientId) row.patient_id = patientId
     // is_online kolonu yoksa (migration_v2 çalışmamışsa) onsuz tekrar dene
     let { error } = await supabase.from('appointments').insert({ ...row, is_online: !!online })
-    if (error && /is_online|appt_date/i.test(error.message || '')) {
+    if (error && /is_online|appt_date|patient_id/i.test(error.message || '')) {
       const retry = await supabase.from('appointments').insert({ name, contact, dept: row.dept, complaint, status: 'yeni' })
       error = retry.error
     }
-    return { error: error?.message }
+    if (error) return { error: error?.message }
+    // Hekime bildir: randevu talebi onay bekliyor
+    bildirimOlustur({
+      tur: 'randevu',
+      title: `${name} randevu talebi gönderdi`,
+      body: `${complaint || 'Şikâyet belirtilmedi'}${apptDate ? ` · ${String(apptDate).slice(0, 10)}` : ' · tarih bekleniyor'}`,
+      hastaId: patientId || null,
+      link: '/hekim?tab=randevu'
+    })
+    return {}
   }
   const list = load(keys.appointments, [])
   list.push({ id: Date.now(), name, contact, dept: dept || 'genel-dis', complaint, appt_date: apptDate || null, status: 'yeni', is_online: !!online, created_at: new Date().toISOString() })
   save(keys.appointments, list)
+  bildirimOlustur({
+    tur: 'randevu',
+    title: `${name} randevu talebi gönderdi`,
+    body: `${complaint || 'Şikâyet belirtilmedi'}${apptDate ? ` · ${String(apptDate).slice(0, 10)}` : ' · tarih bekleniyor'}`,
+    hastaId: patientId || null,
+    link: '/hekim?tab=randevu'
+  })
   return {}
 }
 
@@ -565,11 +817,29 @@ export async function approveAppointment(id, doctorId, dateStr) {
       const retry = await supabase.from('appointments').update({ status: 'onaylı', doctor_id: doctorId || null }).eq('id', id)
       error = retry.error
     }
-    return { error: error?.message }
+    if (error) return { error: error?.message }
+    randevuOnayBildirimi(id, dateStr)
+    return {}
   }
   const list = load(keys.appointments, []).map((a) => a.id === id ? { ...a, status: 'onaylı', doctor_id: doctorId, appt_date: dateStr || a.appt_date } : a)
   save(keys.appointments, list)
+  randevuOnayBildirimi(id, dateStr)
   return {}
+}
+
+/** Randevu onaylandı — hastaya bildirilir. */
+function randevuOnayBildirimi(id, dateStr) {
+  const a = load(keys.appointments, []).find((x) => String(x.id) === String(id))
+  if (!a) return
+  bildirimOlustur({
+    tur: 'randevu_bildirimi',
+    title: `Randevunuz onaylandı — ${a.name}`,
+    body: dateStr
+      ? `${String(dateStr).slice(0, 10)}${a.appt_time ? ` · ${a.appt_time}` : ''} tarihinde clinicamızda bekleriz.`
+      : 'Randevunuz onaylandı. Detaylı bilgi için hekiminizle iletişime geçin.',
+    hastaId: a.patient_id || null,
+    link: '/hastam'
+  })
 }
 
 export async function completeAppointment(id) {

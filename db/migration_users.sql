@@ -145,9 +145,13 @@ GRANT EXECUTE ON FUNCTION public.resolve_login_id(text) TO anon, authenticated;
 -- ------------------------------------------------------------
 -- 3) Süper admin kullanıcı adı ataması
 -- ------------------------------------------------------------
+-- Yalnızca BOŞSA atanır. Bu betik idempotent olmalıdır: daha önce şartsız
+-- UPDATE yazılıydı ve betik her çalıştırıldığında kullanıcının panelden
+-- değiştirdiği kullanıcı adını geri yazıyordu.
 UPDATE profiles
 SET username = 'resulyel'
-WHERE lower(email) = 'tcsametsari@gmail.com';
+WHERE lower(email) = 'tcsametsari@gmail.com'
+  AND (username IS NULL OR username = '');
 
 -- ------------------------------------------------------------
 -- 4) Kontrol

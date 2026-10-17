@@ -4,7 +4,7 @@
 // Piyasadaki "3D gülüş tasarımı" siteleri yalnızca SONUCU gösterir.
 // Bu bileşen karşılaştırmayı gösterir: tedavi olmazsam diş nasıl ilerler?
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { senaryolar, paraTL, maliyetMetni } from '../ai/prognos.js'
+import { senaryolar, seansMetni } from '../ai/prognos.js'
 import { disBilgisi, UST_SIRA, ALT_SIRA } from '../data/disAdlari.js'
 
 // Geçerli 32 diş (UST_SIRA ve ALT_SIRA zaten doğru FDI sırasıdır).
@@ -167,9 +167,9 @@ function SenaryoKarti({ s, aktif, onTikla, gecikmeli }) {
         <b>{s.baslik}</b>
         {s.acilMi && <span className="sim-acil"><Alert size={12} /> dikkat</span>}
       </div>
-      <div className="sim-kart-maliyet">
-        <span className="sim-maliyet">{maliyetMetni(s.maliyet)}</span>
-        <span className="sim-seans">{s.maliyet.seans} seans</span>
+      <div className="sim-kart-sure">
+        <span className="sim-seans">{seansMetni(s.seans)}</span>
+        <span className="sim-sure">{s.sure}</span>
       </div>
       <div className="sim-olcumler">
         <span className={`sim-olcum ${agirSinif}`}>
@@ -317,7 +317,7 @@ export function DisGelecekSimulatoru({
           <b>{s.baslik}:</b> {s.ozet}
         </p>
         <p className="muted">
-          Gereken işlemler: <b>{s.isler.join(' → ')}</b> · Toplam <b>{s.maliyet.seans} seans</b> · Yaklaşık süre <b>{s.sure}</b>
+          Gereken işlemler: <b>{s.isler.join(' → ')}</b> · Toplam <b>{seansMetni(s.seans)}</b> · Yaklaşık süre <b>{s.sure}</b>
         </p>
       </div>
 

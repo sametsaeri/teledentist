@@ -4,11 +4,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getSession } from '../services/store.js'
 import { ToothChart, ToothVisual } from '../components/ToothChart.jsx'
+import { HASTALIKLAR } from '../components/AnamnezForm.jsx'
+import { OnGorusmeAnamnez } from '../components/OnGorusmeAnamnez.jsx'
+import { onGorusmeTamamMi } from '../services/onGorusme.js'
+import { listBildirimler } from '../services/bildirim.js'
 import { Tooth3D, DisOzet, DURUM_RENK, Dis3DKutu } from '../components/Tooth3D.jsx'
 import { DisGelecekSimulatoru } from '../components/DisGelecek.jsx'
 import { disBilgisi } from '../data/disAdlari.js'
 import { toothEducation, recallForTooth } from '../ai/toothAi.js'
 import { suggestRecall } from '../ai/recall.js'
+import { Shield } from '../components/Icons.jsx'
 import {
   getPatient, getTeeth, updatePatient, getChildren, listAppointments,
   listPhotos, signedPhotoUrl, listHygiene, listAnxiety, anamnesisApi
@@ -22,7 +27,7 @@ import { reminderInfo } from './Portal.jsx'
 import { saglikPuani } from '../ai/saglikSkoru.js'
 import {
   PuanKarti, GunlukListe, BakimRehberi, AcilRehber,
-  GecmisZamanCizelgesi, RandevuHazirligi, HastaSoruFormu
+  GecmisZamanCizelgesi, RandevuHazirligi, RandevuGorusmeKarti, AnamnezOzet
 } from './PatientExtras.jsx'
 
 const EMPTY = {}
@@ -55,6 +60,39 @@ function toothSummary(teeth) {
   return out
 }
 
+/**
+ * Hekimin anamnez kaydından hastaya gösterilecek uyarıları üretir.
+ * Hasta veri GİRMEZ; yalnızca hekimin işaretlediği kritik durumları görür.
+ */
+function anamnezUyarilari(kayitlar) {
+  const liste = []
+  ;(kayitlar || []).forEach((k) => {
+    const sistemik = Array.isArray(k.sistemik) ? k.sistemik : []
+    const kritik = sistemik
+      .map((s) => HASTALIKLAR.find((h) => h.id === s))
+      .filter((h) => h?.riskli)
+    if (kritik.length) {
+      liste.push({
+        baslik: kritik.map((h) => h.ad).join(', '),
+        detay: 'Bu durum diş tedavinizi etkileyebilir. Tedavi öncesi hekiminize bildirin.'
+      })
+    }
+    if (k.alerjiler?.trim()) {
+      liste.push({
+        baslik: `Alerji: ${k.alerjiler}`,
+        detay: 'Tedavi sırasında kullanılacak ilaçlarda bu alerjiye dikkat edilmelidir.'
+      })
+    }
+    if (k.gebelik_durumu === 'Hamile') {
+      liste.push({
+        baslik: 'Gebelik',
+        detay: 'Gebelik döneminde röntgen ve bazı tedaviler ertelenebilir; hekiminize danışın.'
+      })
+    }
+  })
+  return liste
+}
+
 /* ================================================================== */
 export function PatientPanel() {
   const session = getSession()
@@ -75,6 +113,10 @@ export function PatientPanel() {
   const [info, setInfo] = useState({})
   const [msg, setMsg] = useState('')
   const [saving, setSaving] = useState(false)
+  // Ön değerlendirme asistanı
+  const [ogAcik, setOgAcik] = useState(false)
+  const [ogBasladi, setOgBasladi] = useState(false)
+  const [ogHekim, setOgHekim] = useState('')
 
   useEffect(() => {
     if (isParent && session?.id) {
@@ -98,6 +140,32 @@ export function PatientPanel() {
   }, [pid])
 
   useEffect(() => { listAppointments().then(setAppts) }, [])
+
+  /**
+   * TRIGGER: Hekim kayıt talebini ONAYLADIĞINDA bir "kabul" bildirimi düşer.
+   * Hasta panele ilk girdiğinde bu bildirim okunmamışsa ön değerlendirme
+   * formu otomatik açılır. Hekimin adı mesajdan alınır.
+   *
+   * ÖNEMLİ: Hekim onayı gelmeden bu akış başlamaz; hasta giriş yapabiliyorsa
+   * zaten onaylanmıştır (profil satırı ancak onayda oluşur).
+   */
+  useEffect(() => {
+    let iptal = false
+    if (!pid) return
+    listBildirimler({ sadeceOkunmamis: true, limit: 20 }).then((liste) => {
+      if (iptal) return
+      const kabul = liste.find((b) => b.kind === 'kabul')
+      if (!kabul) return
+      // Hekim adını başlıktan çıkar: "… — Dr. X"
+      const eslesme = String(kabul.title || '').match(/—\s*(.+)$/)
+      setOgHekim(eslesme ? eslesme[1].trim() : '')
+      // Zaten doldurulmuşsa tekrar açma
+      if (onGorusmeTamamMi(pid)) return
+      setOgAcik(true)
+      setOgBasladi(true)
+    })
+    return () => { iptal = true }
+  }, [pid])
 
   useEffect(() => {
     if (!pid) return
@@ -207,7 +275,7 @@ export function PatientPanel() {
   }
 
   const ri = reminderInfo(patient)
-  const critical = anamnesis.filter((a) => a.critical)
+  const critical = anamnezUyarilari(anamnesis)
 
   return (
     <div>
@@ -220,6 +288,35 @@ export function PatientPanel() {
         <span className="spacer" />
         <Link to="/video"><button className="btn-new"><Video size={16} /> Hekimimle Görüş</button></Link>
       </div>
+
+      {/* ---------- Ön değerlendirme (hekim onayı sonrası açılır) ---------- */}
+      {ogAcik && (
+        <OnGorusmeAnamnez
+          pid={pid}
+          hekimAdi={ogHekim}
+          zorunlu={false}
+          onBitti={() => { setOgAcik(false); setOgBasladi(true) }}
+          onKapat={() => setOgAcik(false)}
+        />
+      )}
+
+      {/* Tamamlanmamış ön değerlendirme varsa çağrı kartı gösterilir */}
+      {!ogAcik && !onGorusmeTamamMi(pid) && (
+        <div className="card">
+          <h3><Clipboard size={18} /> Ön Değerlendirme Formu</h3>
+          <p className="muted">
+            Hekiminiz muayene öncesinde sizinle konuşmak istiyor. Birkaç kısa soruya
+            yanıt verdiğinizde hekiminiz randevu ve tedavi planını daha doğru hazırlar.
+          </p>
+          <p className="og-disclaimer">
+            <Shield size={13} /> Bu bir ön değerlendirmedir; tanı koymaz ve reçete yazmaz.
+            Nihai kararı ve tedavi planını diş hekiminiz verir.
+          </p>
+          <button onClick={() => setOgAcik(true)}>
+            <Clipboard size={15} /> Ön Değerlendirmeyi Doldur
+          </button>
+        </div>
+      )}
 
       {/* ---------- Ebeveyn: çocuk seçimi ---------- */}
       {isParent && (
@@ -247,14 +344,14 @@ export function PatientPanel() {
         <div className="kpi"><b>{photos.length}</b><span>Gönderdiğim Fotoğraf</span></div>
       </div>
 
-      {/* ---------- Uyarılar ---------- */}
+      {/* ---------- Uyarılar (hekim anamnezinden) ---------- */}
       {critical.length > 0 && (
         <div className="card warn-card">
           <h3><Alert size={18} /> Dikkat: Bilmeniz Gerekenler</h3>
-          {critical.map((c) => (
-            <p key={c.id}><b>{c.title}</b> {c.detail}</p>
+          {critical.map((c, i) => (
+            <p key={i}><b>{c.baslik}</b> {c.detay}</p>
           ))}
-          <p className="muted">Bu bilgiler hekiminiz tarafından işaretlendi. Tedavi öncesi mutlaka bildirin.</p>
+          <p className="muted">Bu bilgiler hekiminiz tarafından kaydedildi. Tedavi öncesi mutlaka bildirin.</p>
         </div>
       )}
 
@@ -374,6 +471,17 @@ export function PatientPanel() {
         ))}
       </Card>
 
+      {/* ---------- Anamnez (hekim doldurur, hasta okur) ---------- */}
+      {anamnesis.length > 0 && (
+        <Card
+          icon={Clipboard}
+          title="Sağlık Geçmişim (Anamnez)"
+          desc="Bu bilgiler muayeneniz sırasında hekiminiz tarafından dolduruldu."
+        >
+          <AnamnezOzet kayitlar={anamnesis} />
+        </Card>
+      )}
+
       {/* ---------- Benim kayıtlarım ---------- */}
       <Card icon={Clipboard} title="Benim Kayıtlarım" desc="Test sonuçlarınız ve hekiminizin önerileri.">
         <div className="record-grid">
@@ -398,9 +506,8 @@ export function PatientPanel() {
           </div>
         </div>
         <div className="record-actions">
-          <Link to="/triyaj"><button className="ghost"><Alert size={15} /> Ağrı Anketi</button></Link>
-          <Link to="/hijyen"><button className="ghost"><Drop size={15} /> Hijyen Takibi</button></Link>
-          <Link to="/anksiyete"><button className="ghost"><Sparkle size={15} /> Kaygı Testi</button></Link>
+          <Link to="/randevu"><button className="ghost"><Calendar size={15} /> Randevu İste</button></Link>
+          <Link to="/video"><button className="ghost"><Video size={16} /> Hekimimle Görüş</button></Link>
         </div>
       </Card>
 
@@ -472,9 +579,13 @@ export function PatientPanel() {
         <RandevuHazirligi randevu={nextAppt} yas={puan.yas} />
       </Card>
 
-      {/* ---------- Soru / talep ---------- */}
-      <Card icon={FileText} title="Hekimime Soru Sor" desc="Yazdığınız talep hekiminizin paneline anında düşer.">
-        <HastaSoruFormu pid={pid} />
+      {/* ---------- Randevu ve görüşme (hasta panelinin ana eylemi) ---------- */}
+      <Card
+        icon={Calendar}
+        title="Randevu Al veya Hekiminizle Görüşün"
+        desc="Klinik verilerinizi hekiminiz doldurur; siz randevu ve görüşme için iki adımdasınız."
+      >
+        <RandevuGorusmeKarti sonrakiRandevu={nextAppt} />
       </Card>
 
       {/* ---------- Acil durum rehberi ---------- */}

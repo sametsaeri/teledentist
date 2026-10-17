@@ -1429,3 +1429,726 @@ button svg, .btn svg, .tab svg { vertical-align: -3px; }
 .auth-shell textarea {
   min-height: 58px; resize: vertical; font-family: inherit;
 }
+
+/* --- Anamnez: hekim formu --- */
+.hastalik-listesi {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 16px;
+}
+.hastalik-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 7px 13px; border-radius: 99px; cursor: pointer;
+  font-size: 12.5px; font-family: inherit;
+  border: 1px solid #c3d7e6; background: #fff; color: #4a6b88;
+  transition: all .15s ease;
+}
+.hastalik-chip:hover { border-color: #9fc6e3; background: #f8fbfe; }
+.hastalik-chip.secili {
+  background: #0b3d5f; color: #fff; border-color: #0b3d5f;
+}
+.hastalik-chip.riskli:not(.secili) {
+  border-color: #f0c36d; background: #fffaf0; color: #8a5a00;
+}
+.hastalik-chip.riskli.secili {
+  background: #b91c1c; border-color: #b91c1c; color: #fff;
+}
+
+/* --- Anamnez kayıt geçmişi --- */
+.kayit-listesi { display: grid; gap: 8px; }
+.kayit-satir {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  border: 1px solid var(--line); border-radius: 11px;
+  padding: 10px 13px; background: #fbfdff;
+}
+.kayit-satir > div { display: flex; align-items: center; gap: 7px; }
+.kayit-satir .muted { flex: 1; font-size: 12.5px; }
+
+/* --- Anamnez özeti (hasta paneli) --- */
+.anamnez-ozet { display: grid; gap: 12px; }
+.anamnez-ozet .record-box p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; }
+.anamnez-ozet .muted { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+
+/* --- Randevu + görüşme kartı (hasta paneli) --- */
+.randevu-gorusme { display: grid; gap: 12px; }
+.rg-satir {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap;
+  border: 1px solid var(--line); border-radius: 13px;
+  padding: 14px 16px; background: #f8fbfe;
+}
+.rg-satir > div { flex: 1; min-width: 200px; }
+.rg-satir b { display: block; color: #0b3d5f; font-size: 14.5px; margin-bottom: 3px; }
+.rg-satir p { margin: 0; font-size: 12.5px; line-height: 1.5; }
+.rg-satir .btn-new { flex: none; }
+.rg-not { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin: 0; }
+
+/* --- KVKK aydınlatma metni ve rıza kutusu --- */
+.kvkk-kutu {
+  display: grid; gap: 10px;
+  border: 1px solid #c3d7e6; border-radius: 13px;
+  padding: 14px; margin: 10px 0;
+  background: #f8fbfe;
+}
+.kvkk-baslik {
+  display: flex; align-items: center; gap: 7px;
+  color: #0b3d5f; font-size: 13.5px; flex-wrap: wrap;
+}
+.kvkk-surum {
+  margin-left: auto; font-size: 11px; color: #4a6b88;
+  border: 1px solid #c3d7e6; border-radius: 99px; padding: 1px 8px;
+}
+.kvkk-ac { justify-self: start; font-size: 12.5px; padding: 7px 14px; border-radius: 9px; }
+
+.kvkk-uyari {
+  display: flex; align-items: center; gap: 6px;
+  margin: 0; font-size: 12.5px; color: #8a5a00;
+  background: #fffaf0; border: 1px solid #f0c36d;
+  border-radius: 9px; padding: 8px 11px;
+}
+
+/* Metin kaydırılabilir: uzun aydınlatma formu taşmasın */
+.kvkk-metin {
+  max-height: 340px; overflow-y: auto;
+  border: 1px solid var(--line); border-radius: 11px;
+  padding: 14px 16px; background: #fff;
+  font-size: 13px; line-height: 1.65; color: #33506b;
+}
+.kvkk-metin h4 {
+  margin: 14px 0 5px; font-size: 13.5px; color: #0b3d5f;
+}
+.kvkk-metin h4:first-child { margin-top: 0; }
+.kvkk-metin p { margin: 0 0 8px; }
+.kvkk-metin ul { margin: 0 0 8px; padding-left: 20px; }
+.kvkk-metin li { margin-bottom: 3px; }
+.kvkk-metin-alt {
+  margin-top: 16px; padding-top: 13px;
+  border-top: 1px solid var(--line);
+  display: flex; justify-content: center;
+}
+.kvkk-okudum {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 18px; border-radius: 10px; cursor: pointer;
+  font-size: 13px; font-family: inherit;
+  background: #0b3d5f; color: #fff; border: 1px solid #0b3d5f;
+}
+.kvkk-okudum:hover { background: #0e4d76; }
+
+.kvkk-onay {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 12.5px; line-height: 1.6; color: #33506b;
+  cursor: pointer; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: #fff;
+}
+.kvkk-onay input { margin-top: 3px; width: 17px; height: 17px; flex: none; cursor: pointer; }
+.kvkk-onay.pasif { opacity: .55; cursor: not-allowed; }
+.kvkk-onay.pasif input { cursor: not-allowed; }
+
+/* Hekim panelinde rıza kanıtı rozeti */
+.kvkk-kanit {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; color: #0b6b45;
+  border: 1px solid #a8dcc4; border-radius: 99px; padding: 2px 9px;
+  background: #eefaf3;
+}
+
+/* --- Dosya arşivi (röntgen / belge) --- */
+.arsiv { display: grid; gap: 12px; }
+.arsiv-baslik { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.arsiv-baslik h4 { margin: 0; display: flex; align-items: center; gap: 7px; }
+.arsiv-baslik .muted { font-size: 12px; margin-left: auto; }
+
+.arsiv-yukle { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.arsiv-yukle .btn-file {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 9px; cursor: pointer; font-size: 12.5px;
+}
+.arsiv-yukle button {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 9px; cursor: pointer; font-size: 12.5px;
+}
+.arsiv-ara {
+  flex: 1; min-width: 140px; max-width: 260px;
+  padding: 8px 12px; border-radius: 9px; font-size: 12.5px;
+  border: 1px solid var(--line); font-family: inherit;
+}
+
+.arsiv-liste { display: grid; gap: 8px; }
+.arsiv-satir {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  border: 1px solid var(--line); border-radius: 11px;
+  padding: 11px 13px; background: #fff;
+}
+.arsiv-satir.arsivli { opacity: .68; background: #f7f9fb; border-style: dashed; }
+.arsiv-bilgi { display: grid; gap: 4px; flex: 1; min-width: 190px; }
+.arsiv-bilgi b { color: #0b3d5f; font-size: 13.5px; }
+.arsiv-bilgi .muted { font-size: 11.5px; }
+.arsiv-bilgi select {
+  margin-top: 3px; padding: 5px 8px; font-size: 12px;
+  border-radius: 7px; border: 1px solid var(--line); font-family: inherit;
+  max-width: 230px;
+}
+.arsiv-eylem { display: flex; gap: 6px; flex: none; flex-wrap: wrap; }
+.arsiv-eylem button {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; padding: 6px 11px; border-radius: 8px; cursor: pointer;
+  border: 1px solid #c3d7e6; background: #fff; color: #4a6b88;
+}
+.arsiv-eylem button:hover { border-color: #9fc6e3; background: #f8fbfe; }
+.arsiv-eylem button.danger { border-color: #f0c3c3; color: #b91c1c; }
+.arsiv-eylem button.danger:hover { background: #fef2f2; border-color: #eb5757; }
+
+.rontgen-onizleme { margin-bottom: 14px; }
+.rontgen-onizleme img { max-width: 100%; max-height: 320px; object-fit: contain; }
+
+.modal-gorsel { max-width: 900px; }
+.arsiv-gorsel { max-width: 100%; max-height: 65vh; object-fit: contain; display: block; margin: 12px auto; }
+.pdf-goster { width: 100%; height: 65vh; border: 1px solid var(--line); border-radius: 10px; margin: 12px 0; }
+.danger-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #b91c1c; color: #fff; border: 1px solid #b91c1c;
+  padding: 8px 14px; border-radius: 9px; cursor: pointer; font-size: 12.5px;
+  font-family: inherit;
+}
+.danger-btn:hover { background: #991b1b; }
+
+/* --- Bakım modu bandı --- */
+.bakim-bant {
+  display: flex; align-items: flex-start; gap: 11px;
+  background: #fff8e6; border-bottom: 1px solid #f0c36d;
+  padding: 13px 18px; color: #8a5a00;
+}
+.bakim-bant b { display: block; font-size: 14px; margin-bottom: 3px; }
+.bakim-bant p { margin: 0 0 3px; font-size: 12.5px; line-height: 1.55; }
+.bakim-bant .muted { color: #a5762b; font-size: 12px; }
+
+/* --- Bakım paneli --- */
+.bakim-durum {
+  display: flex; align-items: flex-start; gap: 10px;
+  border-radius: 11px; padding: 13px 15px; margin-bottom: 14px;
+}
+.bakim-durum.acik { background: #fff8e6; border: 1px solid #f0c36d; color: #8a5a00; }
+.bakim-durum p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; }
+.bakim-uyari {
+  display: flex; align-items: flex-start; gap: 6px;
+  font-size: 12px; margin: 14px 0 0; line-height: 1.5;
+}
+
+/* --- Klinik rapor (yazdırılabilir) --- */
+.rapor-sayfa { max-width: 980px; margin: 0 auto; }
+.rapor-arac {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.rapor-kart { background: #fff; }
+.rapor-baslik {
+  display: flex; align-items: center; gap: 16px;
+  border-bottom: 2px solid #0b3d5f; padding-bottom: 14px; margin-bottom: 18px;
+}
+.rapor-baslik h1 { margin: 0 0 3px; font-size: 21px; color: #0b3d5f; }
+.rapor-baslik p { margin: 0; font-size: 12.5px; }
+
+.rapor-bolum { margin-bottom: 22px; }
+.rapor-bolum h3 {
+  font-size: 14.5px; color: #0b3d5f; margin: 0 0 9px;
+  border-left: 3px solid #0b3d5f; padding-left: 9px;
+}
+.rapor-alt-baslik { font-size: 13px; color: #4a6b88; margin: 12px 0 6px; }
+.rapor-izgara {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 9px;
+}
+.rapor-alan { display: grid; gap: 2px; }
+.rapor-alan span { font-size: 11.5px; }
+.rapor-alan b { font-size: 13px; color: #0b3d5f; }
+.rapor-satir { margin: 0 0 6px; font-size: 13px; line-height: 1.55; }
+
+.rapor-uyari {
+  background: #fff4f4; border: 1px solid #eb5757; border-radius: 9px;
+  padding: 10px 13px; font-size: 12.5px; color: #b91c1c; margin: 0 0 11px;
+}
+
+.rapor-disler { display: grid; gap: 6px; }
+.rapor-dis {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  font-size: 12.5px; padding: 6px 10px;
+  border: 1px solid var(--line); border-radius: 8px; background: #fbfdff;
+}
+.rapor-dis b { color: #0b3d5f; min-width: 26px; }
+.rapor-egitim { font-size: 11.5px; }
+
+.rapor-tablo {
+  width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 8px;
+}
+.rapor-tablo th, .rapor-tablo td {
+  border: 1px solid var(--line); padding: 7px 10px; text-align: left;
+}
+.rapor-tablo th { background: #f2f7fb; color: #0b3d5f; font-weight: 600; }
+
+.rapor-notlar { margin: 0; padding-left: 20px; font-size: 12.5px; line-height: 1.6; }
+.rapor-notlar li { margin-bottom: 5px; }
+.rapor-kayit { font-size: 11.5px; margin: 6px 0 0; }
+
+.rapor-onam { font-size: 12.5px; line-height: 1.65; }
+.rapor-imza {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 26px; margin-top: 26px;
+}
+.rapor-imza > div { display: grid; gap: 5px; font-size: 12px; }
+.imza-cizgi { border-bottom: 1px solid #33506b; height: 34px; }
+
+/* Yazdırma: yalnız rapor basılır, menü ve araç çubuğu gizlenir */
+@media print {
+  .no-print, .panel-side, .panel-top, .footer, .bakim-bant { display: none !important; }
+  .panel-main, .panel { display: block !important; }
+  .rapor-kart {
+    border: none !important; box-shadow: none !important;
+    padding: 0 !important; margin: 0 !important;
+  }
+  .rapor-bolum { page-break-inside: avoid; }
+  .rapor-tablo { page-break-inside: auto; }
+  .rapor-tablo tr { page-break-inside: avoid; }
+  body { background: #fff; }
+}
+
+/* ============================================================
+   MOBİL UYUMLULUK
+   Hekim klinikte telefondan çalışır. Dokunma hedefi en az 44px olmalı
+   (Apple/Google kılavuz uyarısı); 38px altındaki hedefler yanlış dokunuş
+   ve kayıp veriye yol açar. Bu blok SADECE dar ekranları etkiler.
+   ============================================================ */
+
+/* --- Dokunma hedefleri: parmakla güvenilir tıklama --- */
+@media (max-width: 760px), (pointer: coarse) {
+  /* Küçük "tiny" butonlar klinikte kritik (onayla/sil/kapat) */
+  button.tiny,
+  .ghost.tiny,
+  button.tiny.danger,
+  .ghost.tiny.danger {
+    padding: 9px 13px;
+    font-size: 12.5px;
+    border-radius: 9px;
+    min-height: 40px;
+  }
+
+  /* Genel buton ve bağlantı tabanları */
+  .btn, .btn-primary, .btn-full, .btn-new, .tab, .drop-btn {
+    min-height: 46px;
+    padding: 12px 18px;
+    font-size: 14.5px;
+  }
+
+  /* Satır içi eylem butonları */
+  .row-actions button, .toolbar button, .modal-actions button {
+    min-height: 42px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+}
+
+/* --- Panel menüsü: mobilde yatay sarmalama işe yaramıyor --- */
+@media (max-width: 760px) {
+  /* Grubu alt alta okunur hale getir: yatay sarmalamada gizli kalan
+     menü öğeleri telefonda erişilemez hale geliyordu */
+  .panel-menu {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 3px;
+    width: 100%;
+  }
+  .menu-group { margin-bottom: 4px; width: 100%; }
+
+  /* Grup başlığı daha büyük dokunma alanı */
+  .menu-group-head {
+    padding: 12px 11px;
+    font-size: 14px;
+    min-height: 44px;
+    border-radius: 9px;
+  }
+
+  /* Mobilde bağlantılar sola yaslanır (30px girinti gereksiz) */
+  .menu-group-body a {
+    padding: 12px 12px 12px 30px;
+    font-size: 14px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Yatay menüde kaybolan rozet geri gelsin */
+  .menu-count { margin-left: auto; }
+
+  /* Üst bilgi çubuğu sarmalanabilsin */
+  .panel-top { flex-wrap: wrap; gap: 8px; padding-bottom: 8px; }
+  .panel-main main { padding: 16px 14px 30px; }
+
+  .panel-side { padding: 14px 12px; }
+  .panel-foot { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .panel-foot button, .panel-foot a { min-height: 40px; }
+}
+
+/* --- Form ızgaraları dar ekranda taşmasın --- */
+@media (max-width: 640px) {
+  /* auto-fit 240px dar ekranda yatay taşma yapıyordu */
+  .grid, .form-grid { grid-template-columns: 1fr; gap: 10px; }
+
+  /* KPI'lar 2'li daha okunur (tam dikey fazla yer kaplar) */
+  .kpi-row, .kpi-row.compact { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+  .form-grid label { font-size: 13.5px; }
+
+  /* Inputlar iOS'ta ~16px olmalı; aksi hâlde sayfa otomatik yakınlaştırılır */
+  input, select, textarea {
+    font-size: 16px !important;
+    min-height: 46px;
+  }
+  textarea { min-height: 96px; }
+  button, .tab { font-size: 14px; }
+}
+
+/* --- Tablolar yatay kaydırılır (taşma yerine) --- */
+@media (max-width: 760px) {
+  .rapor-tablo { display: block; overflow-x: auto; white-space: nowrap; }
+  .rapor-tablo::-webkit-scrollbar { height: 6px; }
+  .rapor-tablo::-webkit-scrollbar-thumb { background: #c3d7e6; border-radius: 3px; }
+  table { display: block; overflow-x: auto; max-width: 100%; }
+}
+
+/* --- Modal mobilde tam ekran olsun --- */
+@media (max-width: 640px) {
+  .modal-backdrop { padding: 0; align-items: stretch; }
+  .modal {
+    max-width: 100%;
+    border-radius: 0;
+    padding: 18px 16px 28px;
+    min-height: 100vh;
+  }
+  .modal-head h3 { font-size: 17px; }
+  .modal-actions { flex-wrap: wrap; }
+  .modal-actions button, .modal-actions a { flex: 1 1 140px; min-height: 46px; }
+
+  /* Görüntüleyici görselleri ekrana sığmalı */
+  .arsiv-gorsel { max-height: 52vh; }
+  .pdf-goster { height: 52vh; }
+}
+
+/* --- Arşiv satırları alt alta --- */
+@media (max-width: 760px) {
+  .arsiv-satir, .istek-row, .kayit-satir {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .arsiv-eylem, .istek-eylem { width: 100%; }
+  .arsiv-eylem button, .istek-eylem button {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 44px;
+  }
+  .arsiv-bilgi select { max-width: 100%; width: 100%; }
+  .arsiv-ara { max-width: 100%; }
+  .arsiv-yukle { flex-direction: column; align-items: stretch; }
+  .arsiv-yukle button, .arsiv-yukle .btn-file { justify-content: center; }
+
+  /* Randevu/görüşme kartı */
+  .rg-satir { flex-direction: column; align-items: stretch; }
+  .rg-satir .btn-new { width: 100%; justify-content: center; min-height: 48px; }
+}
+
+/* --- Anamnez formu: kutucuklar dokunulabilir olsun --- */
+@media (max-width: 640px) {
+  .hastalik-listesi { gap: 7px; }
+  .hastalik-chip {
+    padding: 10px 14px;
+    font-size: 13px;
+    min-height: 42px;
+  }
+}
+
+/* --- KVKK metni mobilde rahat okunsun --- */
+@media (max-width: 640px) {
+  .kvkk-kutu { padding: 12px; }
+  .kvkk-metin { max-height: 55vh; padding: 12px 14px; font-size: 14px; }
+  .kvkk-onay { padding: 12px; font-size: 13px; }
+  .kvkk-okudum { width: 100%; justify-content: center; min-height: 46px; }
+}
+
+/* --- Rapor: imza alanı alt alta --- */
+@media (max-width: 640px) {
+  .rapor-imza { grid-template-columns: 1fr; gap: 20px; }
+  .rapor-baslik { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .rapor-baslik h1 { font-size: 18px; }
+  .rapor-izgara { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+}
+
+/* --- Bakım bandı mobilde okunur kalsın --- */
+@media (max-width: 640px) {
+  .bakim-bant { padding: 12px 14px; }
+  .bakim-bant b { font-size: 13.5px; }
+  .bakim-bant p { font-size: 12.5px; }
+}
+
+/* ============================================================
+   ÖN DEĞERLENDİRME (PRE-ANAMNEZ) ASISTANI
+   Tasarım: sakin, güven veren, tek adım odaklı. Acil durumlar
+   kırmızı ve gürültülü — dikkat çekmesi gerekir.
+   ============================================================ */
+.og {
+  display: grid; gap: 14px;
+  border: 2px solid #0b3d5f; border-radius: 18px;
+  padding: 22px; background: #fff;
+  box-shadow: 0 10px 30px rgba(11,61,95,.12);
+  max-width: 640px; margin: 0 auto;
+}
+
+.og-baslik { display: flex; align-items: flex-start; gap: 12px; }
+.og-baslik h2 { margin: 0 0 2px; font-size: 19px; color: #0b3d5f; display: flex; align-items: center; gap: 8px; }
+.og-baslik p { margin: 0; font-size: 13px; }
+.og-sayac {
+  margin-left: auto; flex: none;
+  background: #e6f0f8; color: #0b3d5f;
+  font-size: 12.5px; font-weight: 700;
+  padding: 4px 11px; border-radius: 99px;
+}
+
+.og-ilerleme {
+  height: 6px; border-radius: 99px;
+  background: #e6f0f8; overflow: hidden;
+}
+.og-ilerleme span {
+  display: block; height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, #14b8a6, #0b3d5f);
+  transition: width .3s ease;
+}
+
+.og-kabul {
+  display: flex; align-items: flex-start; gap: 7px;
+  background: #f0fbf5; border: 1px solid #b9e8cf;
+  border-radius: 10px; padding: 10px 13px;
+  font-size: 12.5px; color: #0b6b45; margin: 0; line-height: 1.5;
+}
+
+.og-soru { display: grid; gap: 4px; }
+.og-soru-metin {
+  margin: 0; font-size: 16.5px; color: #0b3d5f;
+  font-weight: 600; line-height: 1.45;
+}
+.og-yardim { margin: 0; font-size: 13px; color: #5b7a94; line-height: 1.5; }
+
+.og-cevap { display: grid; gap: 12px; }
+.og-cevap textarea, .og-cevap input {
+  width: 100%; padding: 12px 14px; font-family: inherit;
+  font-size: 15px; border: 1px solid var(--line); border-radius: 11px;
+  resize: vertical;
+}
+.og-cevap textarea:focus, .og-cevap input:focus {
+  outline: 2px solid #14b8a6; outline-offset: 1px; border-color: #14b8a6;
+}
+
+.og-grup { display: grid; gap: 10px; }
+.og-etiket { font-size: 13px; font-weight: 600; color: #33587a; margin-top: 4px; }
+
+.og-secenekler { display: flex; flex-wrap: wrap; gap: 7px; }
+.og-secenek {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 15px; border-radius: 99px; cursor: pointer;
+  font-size: 13.5px; font-family: inherit;
+  border: 1px solid #c3d7e6; background: #fff; color: #4a6b88;
+  transition: all .15s ease; text-align: left;
+}
+.og-secenek:hover { border-color: #14b8a6; background: #f0fbf5; }
+.og-secenek.secili {
+  background: #0b3d5f; border-color: #0b3d5f; color: #fff; font-weight: 600;
+}
+.og-secenek.riskli:not(.secili) { border-color: #f0c36d; background: #fffaf0; color: #8a5a00; }
+.og-secenek.riskli.secili { background: #c2410c; border-color: #c2410c; color: #fff; }
+
+/* Tehlike seçenekleri: kırmızı ve uyarıcı */
+.og-secenek.tehlike { border-color: #fecaca; color: #991b1b; }
+.og-secenek.tehlike.secili, .og-secenek.tehlike-secili {
+  background: #b91c1c; border-color: #b91c1c; color: #fff; font-weight: 700;
+}
+.og-bos-kutu {
+  width: 15px; height: 15px; border-radius: 4px;
+  border: 1.5px solid currentColor; opacity: .5; flex: none;
+}
+
+.og-alerji { margin-top: 4px; }
+
+.og-ipucu {
+  display: flex; align-items: flex-start; gap: 6px;
+  font-size: 12.5px; color: #8a5a00; margin: 0;
+  background: #fffaf0; border: 1px solid #f0c36d;
+  border-radius: 9px; padding: 9px 12px; line-height: 1.5;
+}
+
+/* Acil kontrol açılır butonu */
+.og-acil-ac {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px; padding: 8px 13px; border-radius: 9px;
+  background: #fff; border: 1px dashed #f0c36d; color: #8a5a00;
+  cursor: pointer; font-family: inherit; justify-self: start;
+}
+.og-acil-kontrol {
+  display: grid; gap: 8px;
+  border: 1px solid #fecaca; border-radius: 12px;
+  padding: 13px; background: #fef4f4;
+}
+
+.og-alt { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.og-alt .spacer { flex: 1; }
+.og-alt button:disabled { opacity: .45; cursor: not-allowed; }
+
+.og-disclaimer {
+  display: flex; align-items: flex-start; gap: 6px;
+  margin: 0; font-size: 11.5px; color: #7d9ab3; line-height: 1.5;
+  border-top: 1px solid var(--line); padding-top: 11px;
+}
+
+/* --- ACİL DURUM EKRANI --- */
+.og-acil {
+  display: grid; gap: 13px;
+  border: 2px solid #b91c1c; border-radius: 18px;
+  padding: 26px; background: #fff5f5;
+  max-width: 640px; margin: 0 auto; text-align: left;
+}
+.og-acil-ikon {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: #fee2e2; color: #b91c1c;
+  display: flex; align-items: center; justify-content: center;
+}
+.og-acil h2 { margin: 0; font-size: 20px; color: #b91c1c; }
+.og-acil-metin { margin: 0; font-size: 14px; color: #7f1d1d; line-height: 1.6; }
+.og-acil-bayraklar { display: flex; flex-wrap: wrap; gap: 7px; }
+.og-acil-etiket {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #b91c1c; color: #fff;
+  padding: 6px 13px; border-radius: 99px; font-size: 13px; font-weight: 600;
+}
+.og-acil-kutu {
+  background: #fff; border: 1px solid #fecaca; border-radius: 12px;
+  padding: 14px 16px; font-size: 13.5px; color: #7f1d1d; line-height: 1.6;
+}
+.og-acil-kutu ol { margin: 8px 0 0; padding-left: 20px; }
+.og-acil-kutu li { margin-bottom: 5px; }
+.og-kural {
+  margin: 0; font-size: 12.5px; color: #991b1b; line-height: 1.55;
+  background: #fee2e2; border-radius: 10px; padding: 11px 13px;
+  display: flex; gap: 7px; align-items: flex-start;
+}
+
+/* --- TAMAMLANDI EKRANI --- */
+.og-tamam {
+  display: grid; gap: 12px; text-align: center; justify-items: center;
+  border: 2px solid #0b7a43; border-radius: 18px;
+  padding: 30px 24px; background: #f0fbf5;
+  max-width: 640px; margin: 0 auto;
+}
+.og-tamam-ikon {
+  width: 58px; height: 58px; border-radius: 50%;
+  background: #d8f5e6; color: #0b7a43;
+  display: flex; align-items: center; justify-content: center;
+}
+.og-tamam h2 { margin: 0; font-size: 19px; color: #0b7a43; }
+.og-tamam p { margin: 0; max-width: 460px; line-height: 1.6; }
+
+/* --- Mobil --- */
+@media (max-width: 640px) {
+  .og { padding: 16px 14px; border-radius: 15px; }
+  .og-baslik h2 { font-size: 17px; }
+  .og-soru-metin { font-size: 15.5px; }
+  .og-secenek { padding: 11px 14px; font-size: 13.5px; min-height: 44px; }
+  .og-alt { flex-direction: column; align-items: stretch; }
+  .og-alt .spacer { display: none; }
+  .og-alt button { width: 100%; justify-content: center; min-height: 48px; }
+  .og-acil { padding: 18px 15px; }
+  .og-acil h2 { font-size: 18px; }
+}
+
+/* --- Hasta paneli: kart butonları tam genişlik --- */
+@media (max-width: 640px) {
+  .record-actions { display: grid; grid-template-columns: 1fr; gap: 8px; width: 100%; }
+  .record-actions button, .record-actions a { width: 100%; justify-content: center; }
+  .record-actions a button { width: 100%; }
+
+  /* Yardım bağlantıları daha dokunulabilir */
+  .help-links a { padding: 13px 0; font-size: 14px; }
+
+  .photo-row { flex-direction: column; align-items: stretch; }
+}
+
+/* --- Hasta giriş / kayıt ekranı --- */
+@media (max-width: 640px) {
+  .auth-card { padding: 22px 18px; }
+  .auth-card input, .auth-card select, .auth-card textarea { min-height: 48px; }
+  .btn-full { min-height: 50px; font-size: 15px; }
+}
+
+/* ============================================================
+   BİLDİRİM MERKEZİ
+   Bildirim artık KAYDEDİLİR; okundu bilgisi tutulur ve geçmiş
+   sorgulanabilir. Önceden yalnız tarihten hesaplanıyordu.
+   ============================================================ */
+.bildirim-liste { display: grid; gap: 7px; }
+
+.bildirim-satir {
+  display: flex; align-items: stretch; gap: 6px;
+  border: 1px solid var(--line); border-radius: 11px;
+  background: #fff; overflow: hidden;
+  transition: border-color .15s ease;
+}
+.bildirim-satir:hover { border-color: #9fc6e3; }
+
+/* Okunmamış bildirim sol şerit ile belli olur */
+.bildirim-satir:not(.okunmus) {
+  border-left: 3px solid #0284c7;
+  background: #f8fbfe;
+}
+.bildirim-satir.okunmus { opacity: .68; }
+
+/* Öncelik rengi */
+.bildirim-satir.kritik:not(.okunmus) { border-left-color: #b91c1c; background: #fef4f4; }
+.bildirim-satir.yuksek:not(.okunmus) { border-left-color: #ea580c; background: #fff8f2; }
+
+.bildirim-ic {
+  display: flex; align-items: flex-start; gap: 11px;
+  flex: 1; padding: 11px 6px 11px 13px;
+  color: inherit; text-decoration: none;
+}
+.bildirim-ikon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; flex: none;
+  border-radius: 9px; background: #e6f0f8; color: #0b3d5f;
+}
+.bildirim-satir.kritik .bildirim-ikon { background: #fdecec; color: #b91c1c; }
+.bildirim-satir.yuksek .bildirim-ikon { background: #fff0e6; color: #c2410c; }
+
+.bildirim-metin { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.bildirim-metin b { font-size: 13.5px; color: #0b3d5f; line-height: 1.35; }
+.bildirim-metin .muted { font-size: 12px; line-height: 1.45; }
+.bildirim-zaman { font-size: 11px; color: #7d9ab3; margin-top: 2px; }
+
+.bildirim-nokta {
+  width: 8px; height: 8px; flex: none; align-self: center;
+  border-radius: 50%; background: #0284c7;
+}
+
+/* Zil menüsü başlığı ve alt bağlantı */
+.bell-baslik {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap; margin-bottom: 6px;
+}
+.bell-baslik h4 { margin: 0; }
+.bell-hepsi {
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  margin-top: 8px; padding: 9px;
+  border-top: 1px solid var(--line);
+  color: #0b3d5f; font-size: 12.5px; font-weight: 600;
+}
+
+/* Bildirimler mobilde tam genişlik ve dokunulabilir */
+@media (max-width: 760px) {
+  .bildirim-satir { flex-direction: column; }
+  .bildirim-ic { padding: 13px; }
+  .bildirim-satir > .ghost.tiny {
+    align-self: flex-end; margin: 0 9px 9px;
+  }
+  .bildirim-ikon { width: 36px; height: 36px; }
+}
