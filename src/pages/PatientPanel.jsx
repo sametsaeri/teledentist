@@ -16,11 +16,11 @@ import { suggestRecall } from '../ai/recall.js'
 import { Shield } from '../components/Icons.jsx'
 import {
   getPatient, getTeeth, updatePatient, getChildren, listAppointments,
-  listPhotos, signedPhotoUrl, listHygiene, listAnxiety, anamnesisApi
+  listPhotos, listHygiene, listAnxiety, anamnesisApi
 } from '../services/db.js'
 import { STATUS_TR } from '../data/teeth.js'
 import {
-  Tooth, Calendar, FileText, Save, Phone, User, MapPin, Heart, Bell,
+  Tooth, Calendar, FileText, Save, Phone, User, MapPin, Bell,
   Camera, Clipboard, Drop, Sparkle, Video, ChevronRight, Alert, CheckCircle, Clock, TrendingUp
 } from '../components/Icons.jsx'
 import { reminderInfo } from './Portal.jsx'
@@ -332,10 +332,10 @@ export function PatientPanel() {
 
       {/* ---------- Özet kutuları ---------- */}
       <div className="kpi-row">
-        <div className="kpi">
+        <Link to="/randevu" className="kpi kpi-btn">
           <b>{nextAppt ? String(nextAppt.appt_date).slice(5) : '—'}</b>
-          <span>Sonraki Randevu</span>
-        </div>
+          <span>{nextAppt ? 'Sonraki Randevu' : 'Randevu İste'}</span>
+        </Link>
         <div className={`kpi ${ri.left <= 0 ? 'warn' : ''}`}>
           <b>{ri.date ? String(ri.date).slice(5) : '—'}</b>
           <span>Önerilen Kontrol</span>
@@ -501,12 +501,11 @@ export function PatientPanel() {
             {anxiety[0] ? <p>{anxiety[0].total} / 25</p> : <p className="muted">Kayıt yok</p>}
           </div>
           <div className="record-box">
-            <b><Heart size={15} /> Son Kontrol</b>
+            <b><Clock size={15} /> Son Kontrol</b>
             <p>{patient.last_visit || 'Kayıt yok'}</p>
           </div>
         </div>
         <div className="record-actions">
-          <Link to="/randevu"><button className="ghost"><Calendar size={15} /> Randevu İste</button></Link>
           <Link to="/video"><button className="ghost"><Video size={16} /> Hekimimle Görüş</button></Link>
         </div>
       </Card>

@@ -181,7 +181,9 @@ export function BakimRehberi({ veri }) {
 /* ================================================================== */
 export function AcilRehber() {
   const [acik, setAcik] = useState(null)
-  const [telefon, setTelefon] = useState('')
+  const [telefon, setTelefon] = useState(() => {
+    try { return localStorage.getItem('td_klinik_tel') || '' } catch { return '' }
+  })
 
   return (
     <div className="acil-rehber">
@@ -195,7 +197,10 @@ export function AcilRehber() {
           <Phone size={15} /> Kliniğinizin telefonu
           <input
             value={telefon}
-            onChange={(e) => setTelefon(e.target.value)}
+            onChange={(e) => {
+              setTelefon(e.target.value)
+              try { localStorage.setItem('td_klinik_tel', e.target.value) } catch { /* yoksay */ }
+            }}
             placeholder="örn: 0462 377 20 00"
             inputMode="tel"
           />
@@ -206,6 +211,11 @@ export function AcilRehber() {
           </a>
         )}
         <p className="muted">Telefon numarası yalnızca tarayıcınızda saklanır, panele kaydedilmez.</p>
+        {telefon && (
+          <button className="ghost tiny" onClick={() => { setTelefon(''); try { localStorage.removeItem('td_klinik_tel') } catch { /* yoksay */ } }}>
+            Temizle
+          </button>
+        )}
       </div>
 
       <div className="acil-liste">
