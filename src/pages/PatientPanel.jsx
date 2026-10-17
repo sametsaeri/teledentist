@@ -16,7 +16,7 @@ import { suggestRecall } from '../ai/recall.js'
 import { Shield } from '../components/Icons.jsx'
 import {
   getPatient, getTeeth, updatePatient, getChildren, listAppointments,
-  listPhotos, listHygiene, listAnxiety, anamnesisApi
+  listPhotos, listHygiene, listAnxiety, anamnesisApi, plansApi
 } from '../services/db.js'
 import { STATUS_TR } from '../data/teeth.js'
 import {
@@ -110,6 +110,7 @@ export function PatientPanel() {
   const [anamnesis, setAnamnesis] = useState([])
   const [hygiene, setHygiene] = useState([])
   const [anxiety, setAnxiety] = useState([])
+  const [plans, setPlans] = useState([])
   const [info, setInfo] = useState({})
   const [msg, setMsg] = useState('')
   const [saving, setSaving] = useState(false)
@@ -176,6 +177,7 @@ export function PatientPanel() {
     anamnesisApi.list({ where: { patient_id: pid } }).then(setAnamnesis)
     listHygiene(pid).then(setHygiene)
     listAnxiety(pid).then(setAnxiety)
+    plansApi.list({ where: { patient_id: pid }, order: 'created_at', asc: false }).then(setPlans)
   }, [pid])
 
   const sel = teeth[selected] || { status: 'saglam', doctorNote: 'Kayıt yok.' }
@@ -470,6 +472,17 @@ export function PatientPanel() {
           </div>
         ))}
       </Card>
+
+      {/* ---------- Tedavi Planım ---------- */}
+      {plans.length > 0 && (
+        <Card
+          icon={Clipboard}
+          title="Tedavi Planım"
+          desc="Hekiminizin oluşturduğu tedavi planı; yapılan işlemler ve durumları."
+        >
+          <TedaviOzet planlar={plans} />
+        </Card>
+      )}
 
       {/* ---------- Anamnez (hekim doldurur, hasta okur) ---------- */}
       {anamnesis.length > 0 && (

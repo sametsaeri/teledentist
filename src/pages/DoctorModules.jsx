@@ -188,8 +188,7 @@ export function DemoSeeder({ onDone }) {
         </button>
       </div>
       <p className="muted">
-        Modülleri denemek için örnek klinik verisi ekler: malzeme stoğu, fiyat listesi,
-        laboratuvar takibi ve klinik günlük kayıtları.
+        Modülleri denemek için örnek klinik verisi ekler: klinik notları ve tedavi planı kayıtları.
       </p>
       {msg && <p className="muted">{msg}</p>}
     </div>
