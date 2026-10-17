@@ -112,6 +112,8 @@ function NewPatientForm({ onDone, onClose }) {
   const [form, setForm] = useState(emptyForm())
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
+  const [anamnezTamam, setAnamnezTamam] = useState(false)
+  const [pid, setPid] = useState(null)
 
   const save = async () => {
     setBusy(true); setMsg('')
@@ -134,7 +136,7 @@ function NewPatientForm({ onDone, onClose }) {
     setBusy(false)
     if (r.error) return setMsg(r.error)
     setMsg(`${form.name} hesabı açıldı.`)
-    onDone({ name: form.name, email: form.email, pass: form.pass })
+    onDone({ name: form.name, email: form.email, pass: form.pass, uid: r.uid })
   }
 
   return (
@@ -195,11 +197,25 @@ function NewPatientForm({ onDone, onClose }) {
         </label>
       </div>
 
-      {msg && <p className="muted">{msg}</p>}
       <div className="modal-actions">
         <button className="ghost" onClick={onClose}>Vazgeç</button>
-        <button onClick={save} disabled={busy}>{busy ? 'Kaydediliyor...' : <><Check size={15} /> Hesabı Oluştur</>}</button>
+        <button onClick={save} disabled={busy || !anamnezTamam}>
+          {busy ? 'Kaydediliyor...' : anamnezTamam ? <><Check size={15} /> Hesabı Oluştur</> : <><Alert size={15} /> Önce anamnezi tamamlayın</>}
+        </button>
       </div>
+
+      {/* Anamnez formu — hesap oluşturma butonu aktif olmadan önce doldurulmalı */}
+      {!anamnezTamam && (
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+          <h4 className="modal-sub"><Alert size={15} /> Anamnez (Sağlık Geçmişi)</h4>
+          <p className="muted">Hastanın sistemik hastalıkları, alerjileri, kullandığı ilaçlar ve gebelik durumu.</p>
+          <AnamnezForm
+            pid={pid || `temp_${form.email}`}
+            mesajGoster={setMsg}
+            onTamam={() => setAnamnezTamam(true)}
+          />
+        </div>
+      )}
     </>
   )
 }

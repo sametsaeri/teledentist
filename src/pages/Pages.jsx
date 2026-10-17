@@ -377,6 +377,7 @@ export function RegisterRequest() {
   const [phone, setPhone] = useState('')
   const [note, setNote] = useState('')
   const [kvkk, setKvkk] = useState(false)
+  const [anamnezTamam, setAnamnezTamam] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
   const [mesajEk, setMesajEk] = useState('')
@@ -441,8 +442,20 @@ export function RegisterRequest() {
       <p className="muted auth-not">
         Hesabınız talebiniz üzerine hekiminiz tarafından açılır. Şifrenizi kimseyle paylaşmayın.
       </p>
-      <button className="btn-full" onClick={submit} disabled={gonderiliyor || !kvkk}>
-        {gonderiliyor ? 'Gönderiliyor...' : kvkk ? t('reg_send') : 'Önce KVKK metnini onaylayın'}
+
+      {/* Anamnez formu — KVKK onaylandıktan sonra gösterilir */}
+      {kvkk && !anamnezTamam && (
+        <OnGorusmeAnamnez
+          pid={email}
+          hekimAdi=""
+          zorunlu={true}
+          onBitti={() => setAnamnezTamam(true)}
+          onKapat={() => setAnamnezTamam(false)}
+        />
+      )}
+
+      <button className="btn-full" onClick={submit} disabled={gonderiliyor || !kvkk || !anamnezTamam}>
+        {gonderiliyor ? 'Gönderiliyor...' : kvkk && anamnezTamam ? t('reg_send') : 'Önce KVKK ve ön değerlendirmeyi tamamlayın'}
       </button>
     </AuthShell>
   )
