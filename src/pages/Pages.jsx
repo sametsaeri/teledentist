@@ -398,6 +398,8 @@ export function RegisterRequest() {
       setMsg(t('reg_ok'))
       // Kullanıcı adını hemen göster: sonradan arayıp bulamamasın
       if (r.username) setMesajEk(`Giriş için kullanıcı adınız: ${r.username} (e-posta: ${email})`)
+      // Anamnez formu: hekim onayladığında gösterilecek, burada hatırlat
+      if (r.uid) setMesajEk((m) => m + '\n\nHekiminiz onayladığında ön değerlendirme formunu doldurmanız gerekecek.')
     } catch {
       setErr('Bağlantı sorunu oluştu. İnternetinizi kontrol edip tekrar deneyin.')
     } finally {

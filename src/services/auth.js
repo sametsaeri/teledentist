@@ -176,7 +176,8 @@ export async function registerRequest({ name, email, pass, role, childEmail, pho
         p_username: username,
         p_kvkk_onay: true,
         p_kvkk_surum: riza.kvkk_surum,
-        p_kvkk_zaman: riza.kvkk_zaman
+        p_kvkk_zaman: riza.kvkk_zaman,
+        p_kvkk_ip_notu: 'kayıt anındaki oturim'
       }),
       8000
     )
