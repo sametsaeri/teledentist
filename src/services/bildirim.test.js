@@ -175,8 +175,8 @@ describe('olay bağlantıları — hekime ulaşır', () => {
     const fs = await import('node:fs')
     const kod = fs.readFileSync('src/services/auth.js', 'utf8')
     const adet = (kod.match(/bildirimOlustur/g) || []).length
-    // Her iki yol (RPC ve yedek tablo yolu) bildirim üretmeli
-    expect(adet).toBeGreaterThanOrEqual(3)
+    // RPC yolunda bildirim üretilir (auth.signUp yolu kaldırıldı)
+    expect(adet).toBeGreaterThanOrEqual(1)
   })
 
   it('dosya yükleme bildirimi yalnız HASTA yüklüyorsa üretilir', async () => {

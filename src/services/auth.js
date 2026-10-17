@@ -202,42 +202,11 @@ export async function registerRequest({ name, email, pass, role, childEmail, pho
     }
   }
 
-  // 2) Yedek yol: signup açıksa doğrudan hesap + tabloya yaz
-  try {
-    const { data, error } = await zamanAsimli(
-      supabase.auth.signUp({ email, password: pass }),
-      8000
-    )
-    if (error) {
-      return { error: signupKapatliMesaji(error.message) }
-    }
-    const uid = data?.user?.id
-    if (!uid) return { error: 'Kayıt oluşturulamadı. Lütfen tekrar deneyin.' }
-
-    const { error: e2 } = await supabase.from('kayit_istekleri').insert({
-      user_id: uid,
-      email,
-      username,
-      name: name.trim(),
-      role,
-      child_email: childEmail || null,
-      phone: phone || null,
-      note: note || null,
-      // KVKK rıza kanıtı — hekim onaylarken de görünür
-      ...riza
-    })
-    if (e2) return { error: suMesaj(e2.message) }
-    // Hekimlere bildir: kayıt isteği oluştu
-    bildirimOlustur({
-      tur: 'kayit_talebi',
-      title: `${name.trim()} kayıt talebi gönderdi`,
-      body: `${email} · ${role === 'ebeveyn' ? 'Ebeveyn' : 'Hasta'}${phone ? ` · ${phone}` : ''}`,
-      link: '/hekim?tab=istek'
-    })
-    return { ok: true, uid, username, email }
-  } catch (e) {
-    return { error: 'Sunucuya ulaşılamadı. İnternetinizi kontrol edip tekrar deneyin.' }
-  }
+  // 2) Yedek yol: auth.signUp KALDIRILDI.
+  //    Supabase "email rate limit exceeded" hatası veriyordu.
+  //    RPC (register_patient_request) rate limit'e takılmaz ve signup kapalıyken de çalışır.
+  //    RPC başarısız olursa hata gösterilir.
+  return { error: 'Kayıt talebi gönderilemedi. Lütfen daha sonra tekrar deneyin veya klinik yönetimiyle iletişime geçin.' }
 }
 
 /**
