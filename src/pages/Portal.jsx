@@ -7,18 +7,18 @@ import { suggestRecall } from '../ai/recall.js'
 import { load, save, keys, getSession } from '../services/store.js'
 import { createUserByDoctor } from '../services/auth.js'
 import {
-  listPatients, getPatient, getTeeth, saveTooth, lastRecords, updatePatient, getChildren,
+  listPatients, getPatient, getTeeth, saveTooth, lastRecords, updatePatient,
   insertTriage, insertHygiene, insertAnxiety, listDoctors, listReferrals, referPatient,
-  listAppointments, approveAppointment, completeAppointment, listRequests, decideRequest, rejectRequest,
+  listAppointments, approveAppointment, completeAppointment, listRequests, decideRequest,
   repairAccount,
-  uploadImage, loadImage, setAppointmentOnline, listPhotos, listTriage, setPhotoNote, signedPhotoUrl,
-  plansApi, materialsApi, labApi, notesApi, getSetupStatus
+  loadImage, setAppointmentOnline, listPhotos, listTriage, setPhotoNote, signedPhotoUrl,
+  plansApi, notesApi, getSetupStatus, anamnesisApi
 } from '../services/db.js'
 import { triageScore } from '../services/clinical.js'
 import {
-  Logo, Chart, Users, Calendar, Send, Clipboard, Camera, FileText, Search, Plus, Check,
-  CheckCircle, Clock, Stethoscope, User, Save, X, Alert, Tooth, Lock, Phone, Bell, Chat,
-  ChevronLeft, ChevronRight, Video, Tag, Receipt, Notebook, TrendingUp, Shield
+  Chart, Users, Calendar, Send, Clipboard, Camera, FileText, Plus, Check,
+  CheckCircle, Clock, Stethoscope, User, Save, X, Alert, Tooth, Lock, Phone, Bell,
+  ChevronLeft, ChevronRight, Video, Notebook, TrendingUp, Shield
 } from '../components/Icons.jsx'
 import { Tooth3D } from '../components/Tooth3D.jsx'
 import { DisEditor } from '../components/Tooth3DEditor.jsx'
@@ -113,7 +113,7 @@ function NewPatientForm({ onDone, onClose }) {
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [anamnezTamam, setAnamnezTamam] = useState(false)
-  const [pid, setPid] = useState(null)
+  const [anamnezKayitId, setAnamnezKayitId] = useState(null)
 
   const save = async () => {
     setBusy(true); setMsg('')
@@ -135,6 +135,10 @@ function NewPatientForm({ onDone, onClose }) {
     })
     setBusy(false)
     if (r.error) return setMsg(r.error)
+    // Anamnez kaydını gerçek uid'e taşı (temp_email → uid)
+    if (anamnezKayitId && r.uid) {
+      await anamnesisApi.update(anamnezKayitId, { patient_id: r.uid })
+    }
     setMsg(`${form.name} hesabı açıldı.`)
     onDone({ name: form.name, email: form.email, pass: form.pass, uid: r.uid })
   }
@@ -210,9 +214,9 @@ function NewPatientForm({ onDone, onClose }) {
           <h4 className="modal-sub"><Alert size={15} /> Anamnez (Sağlık Geçmişi)</h4>
           <p className="muted">Hastanın sistemik hastalıkları, alerjileri, kullandığı ilaçlar ve gebelik durumu.</p>
           <AnamnezForm
-            pid={pid || `temp_${form.email}`}
+            pid={`temp_${form.email}`}
             mesajGoster={setMsg}
-            onTamam={() => setAnamnezTamam(true)}
+            onTamam={(satir) => { setAnamnezTamam(true); if (satir?.id) setAnamnezKayitId(satir.id) }}
           />
         </div>
       )}
@@ -264,18 +268,17 @@ export function DoctorList() {
   const [photos, setPhotos] = useState([])
   const [photoDraft, setPhotoDraft] = useState({})
   const [sortBy, setSortBy] = useState('ad')
-  const [clinic, setClinic] = useState({ plans: [], materials: [], lab: [], notes: [] })
+  const [clinic, setClinic] = useState({ plans: [], notes: [] })
   const [setup, setSetup] = useState(null)
   const me = getSession()
 
   useEffect(() => { getSetupStatus().then(setSetup) }, [])
 
   const loadClinic = async () => {
-    const [plans, materials, lab, notes] = await Promise.all([
-      plansApi.list(), materialsApi.list({ order: 'name', asc: true }), labApi.list(),
-      notesApi.list()
+    const [plans, notes] = await Promise.all([
+      plansApi.list(), notesApi.list()
     ])
-    setClinic({ plans, materials, lab, notes })
+    setClinic({ plans, notes })
   }
 
   const reload = () => {
@@ -404,8 +407,6 @@ export function DoctorList() {
             patients={patients}
             appts={appts}
             plans={clinic.plans}
-            materials={clinic.materials}
-            lab={clinic.lab}
             photos={photos}
           />
           <DemoSeeder onDone={loadClinic} />
@@ -770,7 +771,7 @@ export function DoctorList() {
               const res = await repairAccount(onarim.email, onarim.sifre, me?.id)
               if (res.error) { setOnarimSonuc({ hata: res.error }); return }
               setOnarimSonuc({
-                ad: res.username, email, sifre: res.sifre, not: res.not
+                ad: res.username, email: onarim.email, sifre: res.sifre, not: res.not
               })
               setOnarim({ email: '', sifre: '' })
               reload()
@@ -987,7 +988,7 @@ export function DoctorPatient() {
         <DisGelecekSimulatoru
           teeth={teeth}
           fdi={selected}
-          onSelect={setSelected}
+          onSec={setSelected}
           plaque={rec.hygiene !== 'kayıt yok' ? Number(rec.hygiene) : undefined}
           hekimModu
         />

@@ -182,7 +182,9 @@ export async function registerRequest({ name, email, pass, role, childEmail, pho
       8000
     )
     if (!error) {
-      // Hekimlere bildir: yeni kayıt talebi geldi
+      // RPC hata fırlatmadan ok:false dönebilir (ör. "zaten talep var") — gerçek sonucu oku
+      if (data && data.ok === false) return { error: suMesaj(data?.error) }
+      // Hekimlere bildir: yeni kayıt talebi geçti
       bildirimOlustur({
         tur: 'kayit_talebi',
         title: `${name.trim()} kayıt talebi gönderdi`,

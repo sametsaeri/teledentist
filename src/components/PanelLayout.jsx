@@ -6,9 +6,9 @@ import { BakimBanti } from './BakimPaneli.jsx'
 import { BildirimZil } from './BildirimMerkezi.jsx'
 import { okunmamisSayisi } from '../services/bildirim.js'
 import {
-  Logo, Shield, Stethoscope, Users, Clipboard, Drop, Sparkle, Camera, Video, Chat,
+  Logo, Shield, Stethoscope, Users, Clipboard, Sparkle, Camera, Video, Chat,
   Clock, User, LogOut, Globe, Bell, ChevronDown, Alert, Settings, Chart,
-  Tag, Receipt, FileText, Calendar
+  FileText, Calendar
 } from './Icons.jsx'
 
 // Hekim menüsü gruplara ayrılır; her grup açılır-kapanır listelenir.

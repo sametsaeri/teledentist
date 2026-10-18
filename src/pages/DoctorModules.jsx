@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getSession } from '../services/store.js'
 import {
-  anamnesisApi, plansApi, notesApi, eventsApi, listPatients
+  notesApi, eventsApi
 } from '../services/db.js'
 import { ISLEMLER } from '../ai/prognos.js'
 import { kontrolAraligi } from '../data/disAdlari.js'
 import {
-  Alert, Plus, Check, X, Clock, Clipboard, User, Flask,
+  Plus, Check, X, Clock, Clipboard, User, Flask,
   Camera, TrendingUp, Wrench, Calendar, Save, Users, Tooth, Notebook
 } from '../components/Icons.jsx'
 

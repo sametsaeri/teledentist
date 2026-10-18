@@ -181,7 +181,7 @@ export function OnGorusmeAnamnez({ pid, hekimAdi, zorunlu = false, onBitti, onKa
           </div>
         )}
 
-        {adim.tip === 'soru' && adim.id === 'agri' && <AgriSoruular cevaplar={cevaplar} guncelle={guncelle} />}
+        {adim.tip === 'soru' && adim.id === 'agri' && <AgriSorular cevaplar={cevaplar} guncelle={guncelle} />}
         {adim.tip === 'soru' && adim.id === 'ilac' && <IlacSorular cevaplar={cevaplar} guncelle={guncelle} />}
         {adim.tip === 'soru' && adim.id === 'bulasici' && <BulasiciSorular cevaplar={cevaplar} guncelle={guncelle} />}
 

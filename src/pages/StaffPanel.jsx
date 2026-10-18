@@ -9,8 +9,8 @@ import {
   insertAppointment, setAppointmentOnline, intakeApi, prepApi, insertTriage
 } from '../services/db.js'
 import {
-  Calendar, Users, Clock, Check, Phone, Clipboard, Alert, Plus, X,
-  Stethoscope, CheckCircle, Save, Bell, Search
+  Calendar, Users, Clock, Check, Phone, Clipboard, Plus, X,
+  Stethoscope, CheckCircle, Save, Bell
 } from '../components/Icons.jsx'
 
 const BRANCHES = ['genel-dis', 'restoratif', 'endodonti', 'periodonti', 'pedodonti', 'ortodonti', 'protez', 'agiz-cerrahi']
@@ -114,6 +114,7 @@ export function StaffPanel() {
     if (!prepPatient) return setMsg('Hasta seçin.')
     if (!prepText.trim()) return setMsg('Ön bilgilendirme metni yazın.')
     const p = patients.find((x) => x.id === prepPatient)
+    if (!p) return setMsg('Hasta bulunamadı, listeyi yenileyin.')
     const r = await prepApi.insert({ patient_id: p.id, patient_name: p.name, author_id: me?.id || null, text: prepText })
     setMsg(r.error || 'Ön bilgilendirme kaydedildi.')
     setPrepText('')

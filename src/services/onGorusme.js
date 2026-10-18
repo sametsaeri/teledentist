@@ -138,7 +138,7 @@ export const KIRMIZI_BAYRAKLAR = [
     soru: 'Diş eti kanamanızı durduramadınız mı?',
     acil: true,
     metinler: [
-      'kanama durmuyor', 'kanamayı durduram', 'kanıyı durduram', 'kanı durduram',
+      'kanama durmuyor', 'kanaması durmuyor', 'kanamayı durduram', 'kanıyı durduram', 'kanı durduram',
       'sürekli kanıyor', 'kan kaybı', 'kanama kontrol', 'durduramıyorum'
     ]
   }

@@ -86,7 +86,7 @@ export function formdanKayit(form, pid) {
 const toggle = (liste, id) =>
   liste.includes(id) ? liste.filter((x) => x !== id) : [...liste, id]
 
-export function AnamnezForm({ pid, mesajGoster }) {
+export function AnamnezForm({ pid, mesajGoster, onTamam }) {
   const [form, setForm] = useState(BOS_FORM)
   const [kayitlar, setKayitlar] = useState([])
   const [aktifId, setAktifId] = useState(null)
@@ -120,6 +120,7 @@ export function AnamnezForm({ pid, mesajGoster }) {
       : 'Anamnez kaydedildi.'
     setMsg(metin)
     mesajGoster?.(metin)
+    onTamam?.(satir)
     // Kritik durum varsa hekimin kendi paneline bildirim düşsün:
     // bir sonraki hasta için de hatırlatma olur
     if (riskli.length) {

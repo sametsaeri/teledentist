@@ -198,6 +198,8 @@ CREATE POLICY "belge_sil" ON storage.objects FOR DELETE
 -- RPC üzerinden gelen kayıtlar da rıza kanıtı taşısın diye
 -- fonksiyon güncelleniyor. Sunucu tarafında da kontrol edilir:
 -- rıza yoksa kayıt yazılmaz.
+-- NOT: auth.users'a INSERT yapılmaz; hesap hekim onayıyla
+-- decide_registration_request içinde açılır.
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.register_patient_request(
   p_email text,
@@ -210,63 +212,47 @@ CREATE OR REPLACE FUNCTION public.register_patient_request(
   p_username text DEFAULT NULL,
   p_kvkk_onay boolean DEFAULT false,
   p_kvkk_surum text DEFAULT '1.0',
-  p_kvkk_zaman timestamptz DEFAULT NULL
+  p_kvkk_zaman timestamptz DEFAULT NULL,
+  p_kvkk_ip_notu text DEFAULT 'kayıt anındaki oturum'
 )
-RETURNS jsonb
+RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
   v_uid uuid;
-  v_email text := lower(trim(p_email));
-  v_username text;
+  v_exists boolean;
 BEGIN
   -- KVKK: rıza olmadan kayıt talebi oluşturulmaz (md. 5/1, md. 3/6)
   IF COALESCE(p_kvkk_onay, false) = false THEN
-    RETURN jsonb_build_object('ok', false,
-      'error', 'KVKK aydınlatma metni onaylanmadan kayıt talebi olusturulamaz.');
+    RETURN json_build_object('error', 'KVKK aydınlatma metni onaylanmadan kayıt talebi olusturulamaz.');
   END IF;
 
-  IF v_email IS NULL OR v_email !~ '^[^@]+@[^@]+\.[^@]+$' THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'Gecersiz e-posta');
+  -- Duplicate kontrol
+  SELECT true INTO v_exists FROM kayit_istekleri WHERE lower(email) = lower(p_email);
+  IF v_exists THEN
+    RETURN json_build_object('error', 'Bu e-posta için zaten talep gönderilmiş.');
   END IF;
-
-  IF p_role NOT IN ('hasta','ebeveyn') THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'Kayit yalnizca hasta/ebeveyn icin.');
-  END IF;
-
-  IF EXISTS (SELECT 1 FROM kayit_istekleri WHERE email = v_email) THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'Bu e-posta icin zaten talep var.');
-  END IF;
-
-  -- Kullanıcı adı: verilmişse onu, yoksa e-postadan türet
-  v_username := COALESCE(
-    NULLIF(trim(p_username), ''),
-    lower(split_part(v_email, '@', 1))
-  );
-
-  -- Auth kullanıcısını oluştur (signup kapalı olsa da çalışır)
-  BEGIN
-    INSERT INTO auth.users (email, password, email_confirmed_at)
-    VALUES (v_email, p_password, now())
-    RETURNING id INTO v_uid;
-  EXCEPTION WHEN others THEN
-    -- Kullanıcı zaten varsa mevcut id'yi bul
-    SELECT id INTO v_uid FROM auth.users WHERE email = v_email LIMIT 1;
-  END;
 
   -- Talep satırı: KVKK kanıtı dahil
   INSERT INTO kayit_istekleri
     (user_id, email, username, name, role, child_email, phone, note,
-     kvkk_onay, kvkk_surum, kvkk_zaman)
+     kvkk_onay, kvkk_surum, kvkk_zaman, kvkk_ip_notu)
   VALUES
-    (v_uid, v_email, v_username, trim(p_name), p_role, p_child_email,
-     p_phone, p_note, true, COALESCE(p_kvkk_surum,'1.0'), COALESCE(p_kvkk_zaman, now()));
+    (NULL, lower(trim(p_email)), 
+     COALESCE(NULLIF(trim(p_username), ''), lower(split_part(lower(trim(p_email)), '@', 1))),
+     trim(p_name), p_role, p_child_email, p_phone, p_note,
+     true, COALESCE(p_kvkk_surum,'1.0'), COALESCE(p_kvkk_zaman, now()),
+     COALESCE(p_kvkk_ip_notu, 'kayıt anındaki oturum'))
+  RETURNING id INTO v_uid;
 
-  RETURN jsonb_build_object('ok', true, 'uid', v_uid, 'email', v_email, 'username', v_username);
+  RETURN json_build_object('uid', v_uid, 'email', lower(trim(p_email)), 
+    'username', COALESCE(NULLIF(trim(p_username), ''), lower(split_part(lower(trim(p_email)), '@', 1))));
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.register_patient_request(text,text,text,text,text,text,text,text,boolean,text,timestamptz,text) TO anon, authenticated;
 
 -- ============================================================
 -- 7) decide_registration_request — username da yazsın

@@ -28,14 +28,14 @@ export const TIP = {
   },
   kucukAzi: {
     ad: 'Küçük Azı (Sıra Dişi)',
-    ikon: 'kucukazi',
+    ikon: 'kucukAzi',
     yuzey: ['Çiğneme yüzeyi', 'Dış (bukkal)', 'İç (lingual)', 'Bitişik yüzey'],
     egitim: 'Küçük azılar iki köşelidir ve çiğneme başlangıcını üstlenir. Aralarındaki boşluğa yemek birikir ve çürük riski artar.',
     bakim: 'Aralarına diş ipi ya da arayüz fırçası ile temizlik şarttır.'
   },
   buyukAzi: {
     ad: 'Büyük Azı',
-    ikon: 'buyukazi',
+    ikon: 'buyukAzi',
     yuzey: ['Çiğneme yüzeyi', 'Dış (bukkal)', 'İç (lingual)', 'Ön (mesial)', 'Arka (distal)'],
     egitim: 'Büyük azılar dört köşelidir ve en çok çürüyen dişlerdir. Çürük genellikle çiğneme yüzeyinin çukurcuklarında başlar.',
     bakim: 'Çiğneme yüzeyindeki çukurcuklara özel arayüz fırçası önerilir. Diş ipi mutlaka kullanılmalıdır.'

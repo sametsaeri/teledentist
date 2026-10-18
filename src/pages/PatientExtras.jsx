@@ -7,11 +7,11 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  saglikPuani, bakimOnerileri, ACIL, GUNLUK_ADIMLAR, listeyiOku, listeyiYaz
+  bakimOnerileri, ACIL, GUNLUK_ADIMLAR, listeyiOku, listeyiYaz
 } from '../ai/saglikSkoru.js'
 import { HASTALIKLAR } from '../components/AnamnezForm.jsx'
 import {
-  Tooth, Sparkle, Alert, CheckCircle, Clipboard, Phone, Clock,
+  Sparkle, Alert, CheckCircle, Clipboard, Phone, Clock,
   ChevronRight, Camera, Drop, Shield, Info, Calendar, Video
 } from '../components/Icons.jsx'
 
@@ -21,9 +21,9 @@ import {
 export function PuanGostergesi({ puan }) {
   const yaricap = 54
   const cevre = 2 * Math.PI * yaricap
-  const dolu = (Math.max(0, Math.min(100, puan)) / 100) * cevre
+  const dolu = (Math.max(0, Math.min(100, Number(puan.toplam) || 0)) / 100) * cevre
   return (
-    <svg className="puan-gosterge" viewBox="0 0 140 140" width="140" height="140" role="img" aria-label={`Diş sağlığı puanı ${puan} / 100`}>
+    <svg className="puan-gosterge" viewBox="0 0 140 140" width="140" height="140" role="img" aria-label={`Diş sağlığı puanı ${puan.toplam} / 100`}>
       <circle cx="70" cy="70" r={yaricap} fill="none" stroke="#e8f0f7" strokeWidth="13" />
       <circle
         cx="70" cy="70" r={yaricap} fill="none"
@@ -391,7 +391,7 @@ export function RandevuHazirligi({ randevu, yas }) {
       </div>
       <p className="muted hazirlik-sure">
         <Clock size={14} />
-        {gunler > 0 ? `Randevunuza <b>${gunler} gün</b> kaldı.` : gunler === 0 ? 'Randevunuz bugün.' : 'Randevu tarihi geçmiş, panelinizden yeni randevu isteyin.'}
+        {gunler > 0 ? <>Randevunuza <b>{gunler} gün</b> kaldı.</> : gunler === 0 ? 'Randevunuz bugün.' : 'Randevu tarihi geçmiş, panelinizden yeni randevu isteyin.'}
       </p>
       <h4 className="modal-sub"><Clipboard size={15} /> Yanınızda bulundurun</h4>
       <ul className="hazirlik-liste">

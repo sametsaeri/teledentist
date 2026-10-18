@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getSession } from '../services/store.js'
-import { ToothChart, ToothVisual } from '../components/ToothChart.jsx'
 import { HASTALIKLAR } from '../components/AnamnezForm.jsx'
 import { OnGorusmeAnamnez } from '../components/OnGorusmeAnamnez.jsx'
 import { onGorusmeTamamMi } from '../services/onGorusme.js'
@@ -11,16 +10,15 @@ import { listBildirimler } from '../services/bildirim.js'
 import { Tooth3D, DisOzet, DURUM_RENK, Dis3DKutu } from '../components/Tooth3D.jsx'
 import { DisGelecekSimulatoru } from '../components/DisGelecek.jsx'
 import { disBilgisi } from '../data/disAdlari.js'
-import { toothEducation, recallForTooth } from '../ai/toothAi.js'
 import { suggestRecall } from '../ai/recall.js'
 import { Shield } from '../components/Icons.jsx'
 import {
   getPatient, getTeeth, updatePatient, getChildren, listAppointments,
-  listPhotos, listHygiene, listAnxiety, anamnesisApi, plansApi
+  listPhotos, listHygiene, listAnxiety, anamnesisApi, plansApi, signedPhotoUrl
 } from '../services/db.js'
 import { STATUS_TR } from '../data/teeth.js'
 import {
-  Tooth, Calendar, FileText, Save, Phone, User, MapPin, Bell,
+  Tooth, Calendar, FileText, Save, Phone, User, Bell,
   Camera, Clipboard, Drop, Sparkle, Video, ChevronRight, Alert, CheckCircle, Clock, TrendingUp
 } from '../components/Icons.jsx'
 import { reminderInfo } from './Portal.jsx'
@@ -632,4 +630,29 @@ function triageLast(rows) {
   if (!rows?.length) return null
   const t = [...rows].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0]
   return t
+}
+
+/** Hekimin oluşturduğu tedavi planının hasta görünümü (PatientPanel'de kullanılır). */
+function TedaviOzet({ planlar = [] }) {
+  const satirlar = [...(planlar || [])].sort((a, b) =>
+    String(b.created_at || b.date || '').localeCompare(String(a.created_at || a.date || ''))
+  )
+  if (!satirlar.length) return <p className="muted">Henüz tedavi planı kaydı yok.</p>
+  return (
+    <div className="plan-liste">
+      {satirlar.map((p, i) => (
+        <div className="appt-row" key={p.id || i}>
+          <div>
+            <strong>{p.islem_adi || p.islem || p.tedavi || 'İşlem belirtilmemiş'}</strong>
+            <p className="muted">
+              {p.seans ? `${p.seans} seans` : ''}
+              {p.status ? ` · Durum: ${p.status}` : ''}
+              {(p.date || p.created_at) ? ` · ${String(p.date || p.created_at).slice(0, 10)}` : ''}
+            </p>
+            {p.note && <p className="muted">{p.note}</p>}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
