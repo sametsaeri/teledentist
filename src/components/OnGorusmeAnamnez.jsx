@@ -34,10 +34,10 @@ export function OnGorusmeAnamnez({ pid, hekimAdi, zorunlu = false, onBitti, onKa
   /* --- Yanıtları güncelle + acil kontrol + otomatik kayıt --- */
   const guncelle = (yeni) => {
     const birlestirilmis = { ...cevaplar, ...yeni }
-    setCevaplar(birlestilmis)
-    cevabiKaydet(pid, birlestilmis)
+    setCevaplar(birlestirilmis)
+    cevabiKaydet(pid, birlestirilmis)
     // ACİL KONTROL: her yanıttan sonra
-    const bayraklar = kirmiziBayraklariBul(birlestilmis)
+    const bayraklar = kirmiziBayraklariBul(birlestirilmis)
     if (bayraklar.length) setAcil(bayraklar)
   }
 
