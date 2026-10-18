@@ -112,6 +112,12 @@ export function OnGorusmeAnamnez({ pid, hekimAdi, zorunlu = false, onBitti, onKa
     const v = cevaplar[a.id]
     if (a.tip === 'coklu') return (v || []).length > 0
     if (a.tip === 'uzunmetin') return String(v || '').trim().length > 3
+    // 'soru' tipi adımlarda cevaplar alt alanlara yazılır (agri_tur, ilac_isaret, bulasici_durum...)
+    if (a.tip === 'soru') {
+      if (a.id === 'agri') return !!(cevaplar.agri_tur || cevaplar.agri_sure || (cevaplar.agri_tetik || []).length || cevaplar.agri_gece || v)
+      if (a.id === 'ilac') return !!((cevaplar.ilac_isaret || []).length || cevaplar.ilac_not)
+      if (a.id === 'bulasici') return !!(cevaplar.bulasici_durum || v)
+    }
     return !!v
   }
 

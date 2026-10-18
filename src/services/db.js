@@ -267,7 +267,18 @@ export async function decideRequest(req, onayla, createdBy) {
           p_doctor_id: createdBy || null
         })
       )
-      if (!error && data) return { ok: true, durum: data?.durum || (onayla ? 'onaylandi' : 'reddedildi') }
+      if (!error && data) {
+        // RPC tüm anahtarları döndürür (sifre, username, email, uid) — Portal bunları gösterir
+        if (data.ok === false) return { error: suMesaj(data?.error) }
+        return {
+          ok: true,
+          durum: data?.durum || (onayla ? 'onaylandi' : 'reddedildi'),
+          uid: data?.uid || null,
+          email: data?.email || null,
+          username: data?.username || null,
+          geciciSifre: data?.sifre || null
+        }
+      }
       // RPC yoksa aşağıdaki manuel yola düş
       if (!rpcYok(error)) return { error: suMesaj(error?.message) }
     } catch (e) {

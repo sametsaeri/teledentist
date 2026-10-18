@@ -107,9 +107,9 @@ export const KIRMIZI_BAYRAKLAR = [
     soru: 'Nefes alırken güçlük çekiyor musunuz?',
     acil: true,
     metinler: [
-      'nefes darlığı', 'nefes alam', 'nefesim kesil', 'nefes al', 'güçlük çek',
-      'boğul', 'boğazım', 'mavi', 'dispne', 'stridor',
-      'hırıltı ile nefes', 'soluklan', 'hava çekem'
+      'nefes darlığı', 'nefes alam', 'nefesim kesil', 'nefes almakta', 'nefes almada',
+      'nefes dar', 'güçlük çek', 'dispne', 'stridor',
+      'boğuluyorum', 'boğazıma', 'soluklanam', 'hava çekem', 'nefesim dar'
     ]
   },
   {
@@ -118,8 +118,8 @@ export const KIRMIZI_BAYRAKLAR = [
     soru: 'Yüzünüzde veya boynunuzda hızla büyüyen bir şişlik var mı?',
     acil: true,
     metinler: [
-      'şişlik', 'şişmiş', 'şişiyor', 'şişer', 'battı', 'bastı',
-      'yüzüm', 'boynum', 'yanağımda şiş', 'kulak altımda', 'boyunlarımda'
+      'şişlik', 'şişti', 'şişmiş', 'şişiyor', 'şişer', 'yutamıyorum',
+      'yanağımda şiş', 'boynum şiş', 'yüzüm şiş', 'kulak altımda', 'boyunlarımda şiş'
     ]
   },
   {
@@ -128,8 +128,9 @@ export const KIRMIZI_BAYRAKLAR = [
     soru: 'Çenenize bir darbe aldınız mı veya çeneniz kilitli kaldı mı?',
     acil: true,
     metinler: [
-      'kırık', 'kırıldı', 'kırılma', 'kırılmış', 'darbe', 'çarpma', 'çarpış',
-      'kilitli', 'kilitlen', 'açamıyorum', 'ağzımı kapatamıyorum', 'çenem kalktı'
+      'çene kırık', 'çenem kırık', 'çene kırıldı', 'çenem kırıldı', 'çenem kırılma',
+      'darbe aldım', 'çarpma', 'çarpış', 'kilitli kaldı', 'kilitlen',
+      'ağzımı açamıyorum', 'ağzımı kapatamıyorum', 'çenem kalktı'
     ]
   },
   {
@@ -139,10 +140,29 @@ export const KIRMIZI_BAYRAKLAR = [
     acil: true,
     metinler: [
       'kanama durmuyor', 'kanaması durmuyor', 'kanamayı durduram', 'kanıyı durduram', 'kanı durduram',
-      'sürekli kanıyor', 'kan kaybı', 'kanama kontrol', 'durduramıyorum'
+      'sürekli kanıyor', 'kan kaybı', 'durduramıyorum'
     ]
   }
 ]
+
+/**
+ * "şişlik yok", "nefes darlığım yok" gibi OLUMSUZ cümleleri elemer.
+ * Hasta "şişlik yok" yazdığında acil bayrak kalkmamalı.
+ */
+function olumsuzEslesme(butunMetin, kelime) {
+  let bas = 0
+  while (true) {
+    const i = butunMetin.indexOf(kelime, bas)
+    if (i === -1) return false
+    const onceki = butunMetin.slice(Math.max(0, i - 24), i)
+    // Kelimenin hemen öncesinde olumsuzluk varsa bu eşleşmeyi atla
+    if (/(yok|olmayan|olmadı|olmadan|hiç|nekadar)\s*$/i.test(onceki)) {
+      bas = i + kelime.length
+      continue
+    }
+    return true
+  }
+}
 
 /** İlaçlar — riskli olanlar işaretlenir (tedavi öncesi hekim değerlendirmesi) */
 export const ILAC_RISKLERI = [
@@ -191,7 +211,8 @@ export function kirmiziBayraklariBul(cevaplar = {}) {
       continue
     }
     // 2) Serbest metin içinde kelime taraması (TÜM alanlar)
-    if (bayrak.metinler.some((m) => butunMetin.includes(m))) {
+    //    "şişlik yok" gibi olumsuz cümleler eleme yapılır
+    if (bayrak.metinler.some((m) => olumsuzEslesme(butunMetin, m))) {
       bulunan.push({ id: bayrak.id, ad: bayrak.ad })
     }
   }
