@@ -379,6 +379,17 @@ export function RegisterRequest() {
   const [note, setNote] = useState('')
   const [kvkk, setKvkk] = useState(false)
   const [anamnezTamam, setAnamnezTamam] = useState(false)
+  const [anamnezPid, setAnamnezPid] = useState(null)
+
+  // Anamnez açıldığında email'i pid olarak kilitle
+  useEffect(() => {
+    if (kvkk && !anamnezTamam && !anamnezPid) {
+      setAnamnezPid(email)
+    }
+    if (!kvkk) {
+      setAnamnezPid(null)
+    }
+  }, [kvkk, anamnezTamam, email])
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
   const [mesajEk, setMesajEk] = useState('')
@@ -447,11 +458,11 @@ export function RegisterRequest() {
       {/* Anamnez formu — KVKK onaylandıktan sonra gösterilir */}
       {kvkk && !anamnezTamam && (
         <OnGorusmeAnamnez
-          pid={email}
+          pid={anamnezPid || email}
           hekimAdi=""
           zorunlu={true}
-          onBitti={() => setAnamnezTamam(true)}
-          onKapat={() => setAnamnezTamam(false)}
+          onBitti={() => { setAnamnezTamam(true); setAnamnezPid(null) }}
+          onKapat={() => { setAnamnezTamam(false); setAnamnezPid(null) }}
         />
       )}
 
