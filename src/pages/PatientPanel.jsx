@@ -638,6 +638,33 @@ export function PatientPanel() {
         <RandevuHazirligi randevu={nextAppt} yas={puan.yas} />
       </Card>
 
+      {/* ---------- Online Görüşme Talebi ---------- */}
+      <Card
+        icon={Video}
+        title="Hekimimle Görüşme Talebi"
+        desc="Hekiminizle görüntülü görüşme yapmak için talep gönderin. Hekiminiz bildirimi alır ve görüşmeye katılabilir."
+      >
+        <div className="toolbar">
+          <button onClick={() => {
+            const room = 'r' + (pid || '') + '-' + Date.now().toString(36)
+            bildirimOlustur({
+              tur: 'gorusme',
+              title: `${patient?.name || 'Hasta'} — Görüşme Talebi`,
+              body: `Hasta görüntülü görüşme talep ediyor. Bildirime tıklayarak görüşmeye katılabilirsiniz.`,
+              hekimId: null,
+              hastaId: pid,
+              link: `/video?room=${room}`,
+              onem: 'yuksek'
+            })
+            setMsg('Görüşme talebi hekiminize gönderildi.')
+            window.open(`/video?room=${room}`, '_blank')
+          }}>
+            <Video size={15} /> Görüşme Talebi Gönder
+          </button>
+        </div>
+        {msg && <p className="muted">{msg}</p>}
+      </Card>
+
       {/* ---------- Randevu ve görüşme (hasta panelinin ana eylemi) ---------- */}
       <Card
         icon={Calendar}

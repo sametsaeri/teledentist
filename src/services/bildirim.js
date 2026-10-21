@@ -25,7 +25,8 @@ export const TURLER = {
   randevu_bildirimi: { ad: 'Randevu Onaylandı', onem: 'normal', ikon: 'randevu' },
   // Hekim kayıt talebini kabul etti — hasta ön değerlendirme formunu dolduracak
   kabul: { ad: 'Başvurunuz Onaylandı', onem: 'yuksek', ikon: 'kabul' },
-  bakim: { ad: 'Sistem Bakımı', onem: 'kritik', ikon: 'bakim' }
+  bakim: { ad: 'Sistem Bakımı', onem: 'kritik', ikon: 'bakim' },
+  gorusme: { ad: 'Görüşme Talebi', onem: 'yuksek', ikon: 'gorusme' }
 }
 
 /**
@@ -189,6 +190,7 @@ export function bildirimLinki(b) {
   if (b.kind === 'randevu') return '/hekim?tab=randevu'
   // Hekimin kabulü: hasta ön değerlendirme formunu dolduracak
   if (b.kind === 'kabul') return '/hastam'
+  if (b.kind === 'gorusme') return b.link || '/video'
   return '/hekim'
 }
 

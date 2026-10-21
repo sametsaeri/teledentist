@@ -19,6 +19,14 @@ export function VideoVisit() {
   const demoMode = !hasSupabase
 
   useEffect(() => { listAppointments().then(setAppts) }, [])
+  // URL'den oda kodu gelirse otomatik katıl
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const r = params.get('room')
+    if (r) {
+      setStarted(r)
+    }
+  }, [])
   const confirmed = appts.filter((a) => a.status === 'onaylı' && a.is_online)
 
   const join = (code) => {

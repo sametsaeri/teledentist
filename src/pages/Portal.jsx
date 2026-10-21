@@ -1206,6 +1206,34 @@ export function DoctorPatient() {
         />
       </div>
 
+      {/* ---------- Online Görüşme ---------- */}
+      <div className="card">
+        <h3><Video size={18} /> Online Görüşme</h3>
+        <p className="muted">
+          Hastayı görüntülü görüşmeye davet edin. Bildirim hasta paneline düşer,
+          hasta bildirime tıklayarak görüşmeye katılabilir.
+        </p>
+        <div className="toolbar">
+          <button onClick={() => {
+            const room = 'r' + id + '-' + Date.now().toString(36)
+            bildirimOlustur({
+              tur: 'gorusme',
+              title: `${patient?.name || 'Hasta'} — Görüşme Daveti`,
+              body: `Hekiminiz sizinle görüntülü görüşme yapmak istiyor. Bildirime tıklayarak görüşmeye katılabilirsiniz.`,
+              hastaId: id,
+              link: `/video?room=${room}`,
+              onem: 'yuksek'
+            })
+            setMMsg(`Görüşme daveti gönderildi. Oda kodu: ${room}`)
+            // Hekim de görüşmeye girebilir
+            window.open(`/video?room=${room}`, '_blank')
+          }}>
+            <Video size={15} /> Görüşme Başlat ve Davet Gönder
+          </button>
+        </div>
+        {mMsg && <p className="muted">{mMsg}</p>}
+      </div>
+
       <div className="card">
         <h3><Camera size={18} /> Röntgen ve Görüntü</h3>
         <p className="muted">
