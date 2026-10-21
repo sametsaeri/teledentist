@@ -9,7 +9,7 @@ import { createUserByDoctor } from '../services/auth.js'
 import {
   listPatients, getPatient, getTeeth, saveTooth, lastRecords, updatePatient,
   insertTriage, insertHygiene, insertAnxiety, listDoctors, listReferrals, referPatient,
-  listAppointments, approveAppointment, completeAppointment, listRequests, decideRequest,
+  listAppointments, insertAppointment, approveAppointment, completeAppointment, listRequests, decideRequest,
   repairAccount,
   loadImage, setAppointmentOnline, listPhotos, listTriage, setPhotoNote, signedPhotoUrl,
   plansApi, notesApi, getSetupStatus, anamnesisApi
@@ -879,12 +879,27 @@ export function DoctorPatient() {
   const [onamMetni, setOnamMetni] = useState('')
   const [onamNotu, setOnamNotu] = useState('')
   const [onamKaydedildi, setOnamKaydedildi] = useState(false)
+  const [randevuTarih, setRandevuTarih] = useState('')
+  const [randevuSaat, setRandevuSaat] = useState('')
+  const [randevuNot, setRandevuNot] = useState('')
+  const [randevuOnline, setRandevuOnline] = useState(false)
+  const [hastaRandevulari, setHastaRandevulari] = useState([])
+  const [kontrolTarihi, setKontrolTarihi] = useState('')
+  const [randevuMsg, setRandevuMsg] = useState('')
 
   useEffect(() => {
-    getPatient(id).then((p) => { setPatient(p || null); setInfo(p || {}); setFoto(p?.foto || null) })
+    getPatient(id).then((p) => { setPatient(p || null); setInfo(p || {}); setFoto(p?.foto || null); setKontrolTarihi(p?.last_visit || '') })
     getTeeth(id).then(setTeeth)
     lastRecords(id).then(setRec)
     listDoctors().then(setDoctors)
+    listAppointments().then((appts) => {
+      const nm = (patient?.name || '').toLowerCase()
+      const filtered = (appts || []).filter((a) =>
+        (a.patient_id && a.patient_id === id) ||
+        (!a.patient_id && (a.name || '').toLowerCase() === nm)
+      )
+      setHastaRandevulari(filtered)
+    })
   }, [id])
 
   useEffect(() => {
@@ -992,6 +1007,128 @@ export function DoctorPatient() {
         </div>
         <button onClick={saveInfo}><Save size={15} /> Bilgileri Kaydet</button>
         {mMsg && <p className="muted">{mMsg}</p>}
+      </div>
+
+      {/* ---------- Randevu ve Kontrol Takibi ---------- */}
+      <div className="card">
+        <h3><Calendar size={18} /> Randevu ve Kontrol Takibi</h3>
+        <p className="muted">
+          Hasta için randevu oluşturun ve sonraki kontrol tarihini ayarlayın.
+          Randevu onaylandığında hasta panelinde görünür.
+        </p>
+
+        {/* Yeni randevu oluşturma */}
+        <div className="grid form-grid" style={{ marginBottom: 12 }}>
+          <label>Randevu Tarihi
+            <input type="date" value={randevuTarih} onChange={(e) => setRandevuTarih(e.target.value)} />
+          </label>
+          <label>Saat
+            <input type="time" value={randevuSaat} onChange={(e) => setRandevuSaat(e.target.value)} />
+          </label>
+          <label style={{ gridColumn: '1 / -1' }}>Not / Şikâyet
+            <input value={randevuNot} onChange={(e) => setRandevuNot(e.target.value)} placeholder="örn: 16 nolu diş kontrolü" />
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="checkbox" checked={randevuOnline} onChange={(e) => setRandevuOnline(e.target.checked)} />
+            Online (görüntülü) görüşme
+          </label>
+        </div>
+        <div className="toolbar">
+          <button onClick={async () => {
+            if (!randevuTarih) { setRandevuMsg('Randevu tarihi seçin.'); return }
+            const r = await insertAppointment({
+              name: patient?.name || '',
+              contact: patient?.phone || '',
+              dept: 'genel-dis',
+              complaint: randevuNot || 'Kontrol randevusu',
+              apptDate: randevuTarih,
+              online: randevuOnline,
+              patientId: id
+            })
+            if (r.error) { setRandevuMsg(r.error); return }
+            setRandevuMsg('Randevu oluşturuldu ve hasta paneline düşürüldü.')
+            setRandevuTarih(''); setRandevuSaat(''); setRandevuNot(''); setRandevuOnline(false)
+            listAppointments().then((appts) => {
+              const nm = (patient?.name || '').toLowerCase()
+              const filtered = (appts || []).filter((a) =>
+                (a.patient_id && a.patient_id === id) ||
+                (!a.patient_id && (a.name || '').toLowerCase() === nm)
+              )
+              setHastaRandevulari(filtered)
+            })
+          }}>
+            <Calendar size={15} /> Randevu Oluştur
+          </button>
+        </div>
+        {randevuMsg && <p className="muted">{randevuMsg}</p>}
+
+        {/* Sonraki kontrol tarihi */}
+        <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+          <h4 style={{ margin: '0 0 8px' }}>Sonraki Kontrol Tarihi</h4>
+          <div className="toolbar">
+            <input type="date" value={kontrolTarihi} onChange={(e) => setKontrolTarihi(e.target.value)} />
+            <button className="ghost" onClick={async () => {
+              if (!kontrolTarihi) { setRandevuMsg('Kontrol tarihi seçin.'); return }
+              const r = await updatePatient(id, { last_visit: kontrolTarihi })
+              if (r.error) { setRandevuMsg(r.error); return }
+              setRandevuMsg('Sonraki kontrol tarihi ayarlandı.')
+              getPatient(id).then((p) => { setPatient(p || null); setInfo(p || {}) })
+            }}>
+              <Clock size={15} /> Kontrol Tarihi Kaydet
+            </button>
+          </div>
+          <p className="muted small">Hasta panelinde "Önerilen Kontrol" olarak görünür ve hatırlatma üretilir.</p>
+        </div>
+
+        {/* Mevcut randevular */}
+        {hastaRandevulari.length > 0 && (
+          <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+            <h4 style={{ margin: '0 0 8px' }}>Mevcut Randevular ({hastaRandevulari.length})</h4>
+            {hastaRandevulari.map((a) => (
+              <div className="appt-row" key={a.id}>
+                <div>
+                  <strong>{a.appt_date || 'Tarih bekleniyor'}</strong>
+                  {a.appt_time ? ` · ${a.appt_time}` : ''}
+                  <span className="badge">{a.status === 'yeni' ? 'Bekliyor' : a.status === 'onaylı' ? 'Onaylandı' : a.status === 'tamamlandı' ? 'Tamamlandı' : a.status}</span>
+                  {a.is_online && <span className="badge online">Online</span>}
+                  <p className="muted">{a.complaint}</p>
+                </div>
+                <div className="toolbar">
+                  {a.status === 'yeni' && (
+                    <button className="ghost tiny" onClick={async () => {
+                      const r = await approveAppointment(a.id, null, a.appt_date)
+                      if (r.error) { setRandevuMsg(r.error); return }
+                      setRandevuMsg('Randevu onaylandı.')
+                      listAppointments().then((appts) => {
+                        const nm = (patient?.name || '').toLowerCase()
+                        const filtered = (appts || []).filter((aa) =>
+                          (aa.patient_id && aa.patient_id === id) ||
+                          (!aa.patient_id && (aa.name || '').toLowerCase() === nm)
+                        )
+                        setHastaRandevulari(filtered)
+                      })
+                    }}>Onayla</button>
+                  )}
+                  {a.status !== 'tamamlandı' && (
+                    <button className="ghost tiny" onClick={async () => {
+                      const r = await completeAppointment(a.id)
+                      if (r.error) { setRandevuMsg(r.error); return }
+                      setRandevuMsg('Randevu tamamlandı.')
+                      listAppointments().then((appts) => {
+                        const nm = (patient?.name || '').toLowerCase()
+                        const filtered = (appts || []).filter((aa) =>
+                          (aa.patient_id && aa.patient_id === id) ||
+                          (!aa.patient_id && (aa.name || '').toLowerCase() === nm)
+                        )
+                        setHastaRandevulari(filtered)
+                      })
+                    }}>Tamamla</button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ---------- Anamnez: hekim doldurur, hasta doldurmaz ---------- */}
