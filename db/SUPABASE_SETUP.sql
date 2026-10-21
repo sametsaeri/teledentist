@@ -18,7 +18,7 @@
 
 
 -- ================================================================
--- BÖLÜM 1/14: 1) Temel şema (profil, diş, triyaj, hijyen, anksiyete, randevu)
+-- BÖLÜM 1/15: 1) Temel şema (profil, diş, triyaj, hijyen, anksiyete, randevu)
 -- Kaynak: db/supabase.sql
 -- ================================================================
 
@@ -116,7 +116,7 @@ INSERT INTO storage.buckets (id, name, public) VALUES ('xrays','xrays', false) O
 INSERT INTO storage.buckets (id, name, public) VALUES ('photos','photos', false) ON CONFLICT (id) DO NOTHING;
 
 -- ================================================================
--- BÖLÜM 2/14: 2) Roller (admin/hekim), branş, sevk tablosu
+-- BÖLÜM 2/15: 2) Roller (admin/hekim), branş, sevk tablosu
 -- Kaynak: db/migration_roles.sql
 -- ================================================================
 
@@ -156,7 +156,7 @@ DROP POLICY IF EXISTS "hekim_update" ON profiles;
 CREATE POLICY "hekim_update" ON profiles FOR UPDATE USING (is_hekim() OR is_admin());
 
 -- ================================================================
--- BÖLÜM 3/14: 3) Kayıt istekleri tablosu
+-- BÖLÜM 3/15: 3) Kayıt istekleri tablosu
 -- Kaynak: db/migration_signup.sql
 -- ================================================================
 
@@ -166,7 +166,7 @@ CREATE POLICY "hekim_update" ON profiles FOR UPDATE USING (is_hekim() OR is_admi
 
 CREATE TABLE IF NOT EXISTS kayit_istekleri (
   id BIGSERIAL PRIMARY KEY,
-  user_id UUID NOT NULL,
+  user_id UUID,
   email TEXT NOT NULL,
   name TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('hasta','ebeveyn')),
@@ -180,7 +180,165 @@ DROP POLICY IF EXISTS "istek_hekim" ON kayit_istekleri;
 CREATE POLICY "istek_hekim" ON kayit_istekleri FOR ALL USING (is_hekim() OR is_admin());
 
 -- ================================================================
--- BÖLÜM 4/14: 4) Detaylı hasta bilgileri, randevu tarihi/online, bildirim, konsültasyon
+-- BÖLÜM 4/15: 4) Kayıt talebi düzeltmesi (user_id NOT NULL kaldırılır)
+-- Kaynak: db/fix_kayit_istekleri.sql
+-- ================================================================
+
+-- ============================================================
+-- KAYIT AKIŞI DÜZELTMESİ — tek seferde çalıştır
+--
+-- Bulunan hatalar:
+--   1) kayit_istekleri'de username/kvkk_* sütunları yok → RPC 400
+--   2) user_id UUID NOT NULL ama talep anında uid yok → INSERT patlar
+--   3) status/decided_at/decided_by sütunları yok → onay/red yazılamaz
+--   4) decide_registration_request parametre tipi JS ile uyuşmuyor
+--
+-- Supabase SQL Editor'de ÇALIŞTIR.
+-- ============================================================
+
+-- 1) Eksik sütunlar
+ALTER TABLE kayit_istekleri ADD COLUMN IF NOT EXISTS username     TEXT;
+ALTER TABLE kayit_istekleri ADD COLUMN IF NOT EXISTS kvkk_onay    BOOLEAN DEFAULT false;
+ALTER TABLE kayit_istekleri ADD COLUMN IF NOT EXISTS kvkk_surum   TEXT DEFAULT '1.0';
+ALTER TABLE kayit_istekleri ADD COLUMN IF NOT EXISTS kvkk_zaman   TIMESTAMPTZ;
+ALTER TABLE kayit_istekleri ADD COLUMN IF NOT EXISTS kvkk_ip_notu TEXT DEFAULT 'kayıt anındaki oturum';
+ALTER TABLE kayit_istekleri ADD COLUMN IF NOT EXISTS status       TEXT DEFAULT 'bekliyor';
+ALTER TABLE kayit_istekleri ADD COLUMN IF NOT EXISTS decided_at   TIMESTAMPTZ;
+ALTER TABLE kayit_istekleri ADD COLUMN IF NOT EXISTS decided_by   UUID;
+
+-- 2) Talep anında hesap henüz yok → user_id boş kalabilmeli
+ALTER TABLE kayit_istekleri ALTER COLUMN user_id DROP NOT NULL;
+-- profiles.username da eklenmemiş olabilir (eski kurulumlar)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS username TEXT;
+
+-- 3) Kayıt talebi alıcı fonksiyon (JS: 12 parametre gönderir)
+CREATE OR REPLACE FUNCTION public.register_patient_request(
+  p_email TEXT, p_password TEXT, p_name TEXT, p_role TEXT,
+  p_child_email TEXT DEFAULT NULL, p_phone TEXT DEFAULT NULL,
+  p_note TEXT DEFAULT NULL, p_username TEXT DEFAULT NULL,
+  p_kvkk_onay BOOLEAN DEFAULT false, p_kvkk_surum TEXT DEFAULT '1.0',
+  p_kvkk_zaman TIMESTAMPTZ DEFAULT NULL,
+  p_kvkk_ip_notu TEXT DEFAULT 'kayıt anındaki oturum'
+) RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid UUID;
+  v_email TEXT := lower(trim(p_email));
+  v_username TEXT;
+BEGIN
+  IF COALESCE(p_kvkk_onay, false) = false THEN
+    RETURN json_build_object('ok', false,
+      'error', 'KVKK aydınlatma metni onaylanmadan kayıt talebi oluşturulamaz.');
+  END IF;
+
+  IF v_email IS NULL OR v_email !~ '^[^@]+@[^@]+\.[^@]+$' THEN
+    RETURN json_build_object('ok', false, 'error', 'Geçersiz e-posta adresi.');
+  END IF;
+
+  IF p_role NOT IN ('hasta', 'ebeveyn') THEN
+    RETURN json_build_object('ok', false, 'error', 'Kayıt yalnızca hasta/ebeveyn için olabilir.');
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM kayit_istekleri WHERE lower(email) = v_email AND status = 'bekliyor') THEN
+    RETURN json_build_object('ok', false, 'error', 'Bu e-posta için zaten talep gönderilmiş.');
+  END IF;
+
+  v_username := COALESCE(
+    NULLIF(trim(p_username), ''),
+    lower(split_part(v_email, '@', 1))
+  );
+
+  INSERT INTO kayit_istekleri
+    (user_id, email, username, name, role, child_email, phone, note,
+     kvkk_onay, kvkk_surum, kvkk_zaman, kvkk_ip_notu, status)
+  VALUES
+    (NULL, v_email, v_username, trim(p_name), p_role, p_child_email,
+     p_phone, p_note, true, COALESCE(p_kvkk_surum, '1.0'),
+     COALESCE(p_kvkk_zaman, now()), COALESCE(p_kvkk_ip_notu, 'kayıt anındaki oturum'),
+     'bekliyor')
+  RETURNING id INTO v_uid;
+
+  RETURN json_build_object('ok', true, 'uid', v_uid, 'email', v_email, 'username', v_username);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.register_patient_request(text,text,text,text,text,text,text,text,boolean,text,timestamptz,text)
+TO anon, authenticated;
+
+-- 4) Onay/red fonksiyonu — JS id'yi number gönderir (BIGSERIAL)
+DROP FUNCTION IF EXISTS public.decide_registration_request(bigint,boolean,uuid);
+CREATE OR REPLACE FUNCTION public.decide_registration_request(
+  p_request_id BIGINT, p_approve BOOLEAN, p_doctor_id UUID DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_req kayit_istekleri%ROWTYPE;
+  v_uid UUID;
+  v_pass TEXT;
+BEGIN
+  SELECT * INTO v_req FROM kayit_istekleri WHERE id = p_request_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN json_build_object('ok', false, 'error', 'Talep bulunamadı.');
+  END IF;
+  IF v_req.status IS NOT NULL AND v_req.status NOT IN ('bekliyor', '') THEN
+    RETURN json_build_object('ok', false, 'error', 'Bu talep zaten karara bağlanmış.');
+  END IF;
+
+  IF p_approve THEN
+    v_pass := substr(md5(random()::text), 1, 10) || 'Aa1';
+
+    -- Auth kullanıcısı yoksa oluştur (signup kapalı olsa da çalışır)
+    SELECT id INTO v_uid FROM auth.users WHERE lower(email) = lower(v_req.email) LIMIT 1;
+    IF v_uid IS NULL THEN
+      INSERT INTO auth.users (
+        instance_id, id, aud, role, email, encrypted_password,
+        email_confirmed_at, confirmation_token, email_change, email_change_token_new,
+        raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+      ) VALUES (
+        '00000000-0000-0000-0000-000000000000', gen_random_uuid(),
+        'authenticated', 'authenticated', lower(v_req.email),
+        extensions.crypt(v_pass, extensions.gen_salt('bf')),
+        now(), '', '', '',
+        '{"provider":"email","providers":["email"]}'::jsonb,
+        jsonb_build_object('name', v_req.name, 'role', v_req.role),
+        now(), now()
+      ) RETURNING id INTO v_uid;
+    END IF;
+
+    -- Profil satırı (varsa güncelle)
+    INSERT INTO profiles (id, email, name, role, username)
+    VALUES (v_uid, lower(v_req.email), v_req.name, v_req.role, v_req.username)
+    ON CONFLICT (id) DO UPDATE SET
+      name = EXCLUDED.name, role = EXCLUDED.role, username = EXCLUDED.username;
+
+    UPDATE kayit_istekleri
+      SET status = 'onaylı', user_id = v_uid, decided_at = now(), decided_by = p_doctor_id
+      WHERE id = p_request_id;
+
+    RETURN json_build_object('ok', true, 'durum', 'onaylandi', 'uid', v_uid,
+      'sifre', v_pass, 'email', v_req.email, 'username', v_req.username);
+  ELSE
+    UPDATE kayit_istekleri
+      SET status = 'reddedildi', decided_at = now(), decided_by = p_doctor_id
+      WHERE id = p_request_id;
+    RETURN json_build_object('ok', true, 'durum', 'reddedildi');
+  END IF;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.decide_registration_request(bigint, boolean, uuid)
+TO anon, authenticated;
+
+SELECT 'KURULUM TAMAM' AS sonuc;
+
+-- ================================================================
+-- BÖLÜM 5/15: 4) Detaylı hasta bilgileri, randevu tarihi/online, bildirim, konsültasyon
 -- Kaynak: db/migration_v2.sql
 -- ================================================================
 
@@ -252,6 +410,7 @@ CREATE POLICY "notes_rw" ON clinical_notes FOR ALL USING (is_hekim() OR is_admin
 -- ---------- 5. Randevu politikaları ----------
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "appt_all" ON appointments;
+DROP POLICY IF EXISTS "appt_read" ON appointments;
 CREATE POLICY "appt_read" ON appointments FOR SELECT USING (true);
 DROP POLICY IF EXISTS "appt_write" ON appointments;
 CREATE POLICY "appt_write" ON appointments FOR INSERT WITH CHECK (true);
@@ -267,7 +426,7 @@ UPDATE profiles SET role = 'admin', name = 'Dt. Resul Yel'
 WHERE email = 'tcsametsari@gmail.com' AND role <> 'admin';
 
 -- ================================================================
--- BÖLÜM 5/14: 5) Kullanıcı adıyla giriş + kayıt kapalıyken hesap açma
+-- BÖLÜM 6/15: 5) Kullanıcı adıyla giriş + kayıt kapalıyken hesap açma
 -- Kaynak: db/migration_users.sql
 -- ================================================================
 
@@ -418,9 +577,9 @@ GRANT EXECUTE ON FUNCTION public.resolve_login_id(text) TO anon, authenticated;
 -- ------------------------------------------------------------
 -- 3) Süper admin kullanıcı adı ataması
 -- ------------------------------------------------------------
--- Yalnızca BOŞSA atanır: bu dosya idempotent çalıştırılabilir olmalıdır.
--- Şartsız yazım, panelden değiştirilen kullanıcı adını her kurulumda geri
--- alıyor ve kullanıcıyı "kullanıcı adı bulunamadı" hatasına düşürüyordu.
+-- Yalnızca BOŞSA atanır. Bu betik idempotent olmalıdır: daha önce şartsız
+-- UPDATE yazılıydı ve betik her çalıştırıldığında kullanıcının panelden
+-- değiştirdiği kullanıcı adını geri yazıyordu.
 UPDATE profiles
 SET username = 'resulyel'
 WHERE lower(email) = 'tcsametsari@gmail.com'
@@ -432,7 +591,7 @@ WHERE lower(email) = 'tcsametsari@gmail.com'
 SELECT id, email, username, name, role, branch FROM profiles ORDER BY created_at DESC;
 
 -- ================================================================
--- BÖLÜM 6/14: 6) Süper admin: şifre atama + tüm kullanıcı verisini düzenleme
+-- BÖLÜM 7/15: 6) Süper admin: şifre atama + tüm kullanıcı verisini düzenleme
 -- Kaynak: db/migration_admin_manage.sql
 -- ================================================================
 
@@ -577,7 +736,7 @@ WHERE n.nspname = 'public'
 ORDER BY p.proname;
 
 -- ================================================================
--- BÖLÜM 7/14: 7) Röntgen ve fotoğraf depolama (Supabase Storage)
+-- BÖLÜM 8/15: 7) Röntgen ve fotoğraf depolama (Supabase Storage)
 -- Kaynak: db/migration_storage.sql
 -- ================================================================
 
@@ -639,7 +798,7 @@ CREATE POLICY "photos_delete" ON storage.objects FOR DELETE
   USING ( bucket_id = 'photos' AND (public.is_hekim() OR public.is_admin()) );
 
 -- ================================================================
--- BÖLÜM 8/14: 8) Ağız fotoğrafları tablosu (Storage kayıtları)
+-- BÖLÜM 9/15: 8) Ağız fotoğrafları tablosu (Storage kayıtları)
 -- Kaynak: db/migration_photos.sql
 -- ================================================================
 
@@ -685,7 +844,7 @@ CREATE POLICY "photos_delete" ON photos FOR DELETE
   USING (is_hekim() OR is_admin());
 
 -- ================================================================
--- BÖLÜM 9/14: 9) Klinik modülleri: anamnez, tedavi planı, envanter, laboratuvar, fiyat, tahakkuk
+-- BÖLÜM 10/15: 9) Klinik modülleri: anamnez, tedavi planı, envanter, laboratuvar, fiyat, tahakkuk
 -- Kaynak: db/migration_clinic.sql
 -- ================================================================
 
@@ -695,7 +854,7 @@ CREATE POLICY "photos_delete" ON photos FOR DELETE
 --   2) treatment_plans  : tedavi planı (aşamalı, fiyatlı)
 --   3) materials        : klinik malzeme envanteri + son kullanma
 --   4) lab_cases        : laboratuvar takibi (protez, zirkonyum...)
---   5) price_items      : tedavi fiyat listesi
+--   5) (price_items kaldırıldı — devlet projesi, belirlenmiş ücret yok)
 --   6) invoices         : tahakkuk ve bakiye
 --   7) profiles'a anamnez özeti alanları
 -- IDEMPOTENT — veri silinmez.
@@ -784,60 +943,27 @@ DROP POLICY IF EXISTS "lab_rw" ON lab_cases;
 CREATE POLICY "lab_rw" ON lab_cases FOR ALL
   USING (is_hekim() OR is_admin()) WITH CHECK (is_hekim() OR is_admin());
 
--- ---------- 5) FİYAT LİSTESİ ----------
-CREATE TABLE IF NOT EXISTS price_items (
-  id BIGSERIAL PRIMARY KEY,
-  code TEXT DEFAULT '',
-  name TEXT NOT NULL,
-  category TEXT DEFAULT 'tedavi',
-  price NUMERIC DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE price_items ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "prices_rw" ON price_items;
-CREATE POLICY "prices_rw" ON price_items FOR ALL
-  USING (is_hekim() OR is_admin()) WITH CHECK (is_hekim() OR is_admin());
-
--- ---------- 6) TAHAKKUK / BAKİYE ----------
-CREATE TABLE IF NOT EXISTS invoices (
-  id BIGSERIAL PRIMARY KEY,
-  patient_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  patient_name TEXT DEFAULT '',
-  item TEXT NOT NULL,
-  amount NUMERIC DEFAULT 0,
-  paid NUMERIC DEFAULT 0,
-  due_date DATE,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS invoices_patient_idx ON invoices (patient_id, created_at DESC);
-
-ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "invoices_rw" ON invoices;
-CREATE POLICY "invoices_rw" ON invoices FOR ALL
-  USING (is_hekim() OR is_admin() OR patient_id = auth.uid())
-  WITH CHECK (is_hekim() OR is_admin() OR patient_id = auth.uid());
-
--- ---------- Örnek fiyat listesi (tek seferlik, silinmez) ----------
-INSERT INTO price_items (code, name, category, price)
-SELECT * FROM (VALUES
-  ('D01','Dijital diş hekimliği muayenesi','muayene',750),
-  ('D02','Dijital röntgen (periapikal)','görüntüleme',350),
-  ('D03','Panoramik röntgen','görüntüleme',700),
-  ('F01','Kompozit dolgu (tek yüzey)','restoratif',1400),
-  ('F02','Amalgam dolgu (tek yüzey)','restoratif',1100),
-  ('K01','Kanal tedavisi (tek kök)','endodonti',4500),
-  ('K02','Kanal tedavisi (çok kök)','endodonti',6500),
-  ('T01','Diş taşı temizliği','temizlik','var'),
-  ('T02','Ofis tipi beyazlatma','estetik',12000),
-  ('P01','Sabit protez (tek üye)','protez',18000),
-  ('P02','İmplant (yerli)','implant',22000),
-  ('O01','Ortodontik muayene','ortodonti',1000)
-) AS v(code, name, category, price)
-WHERE NOT EXISTS (SELECT 1 FROM price_items LIMIT 1);
+-- ============================================================
+-- 5-6) FİYAT LİSTESİ VE TAHAKKUK/BAKİYE — KALDIRILDI
+--
+-- Bu proje DEVLET PROJESİDİR. Devlet tarafından belirlenmiş bir
+-- ücret/fiyat listesi YOKTUR. Bu nedenle price_items ve invoices
+-- tabloları bu dosyada OLUŞTURULMAZ ve örnek fiyat verisi EKLENMEZ.
+--
+-- ÖNCEKİ SÜRÜM NOTU: Daha önce burada 12 kalemlik örnek fiyat listesi
+-- ve hasta bakiye/tahakkuk tablosu vardı. Bunlar kaldırıldı:
+--   - Devlet tarafından belirlenmemiş ücretleri göstermek yanıltıcıdır
+--   - Hasta hesabı/tahsilat takibi bu projenin kapsamında değildir
+--   - Ülkemizde sağlık hizmeti fiyatlandırması düzenlemeyle belirlenir;
+--     uygulama kendi fiyat listesi tutarak çelişki yaratabilir
+--
+-- Daha önce kurulmuş veritabanlarında bu tablolar ARŞİVDE kalır;
+-- onları silmiyoruz çünkü içlerinde geçmiş veri olabilir. Uygulama
+-- artık bu tabloları hiç okumuyor ve yazmıyor.
+-- ============================================================
 
 -- ================================================================
--- BÖLÜM 10/14: 10) Hekim kişisel takvimi (etkinlik ve görevler)
+-- BÖLÜM 11/15: 10) Hekim kişisel takvimi (etkinlik ve görevler)
 -- Kaynak: db/migration_events.sql
 -- ================================================================
 
@@ -873,7 +999,7 @@ DROP POLICY IF EXISTS "events_read_all" ON doctor_events;
 CREATE POLICY "events_read_all" ON doctor_events FOR SELECT USING (is_hekim() OR is_admin());
 
 -- ================================================================
--- BÖLÜM 11/14: 11) Sekreter ve diş teknisyeni rolleri + yardımcı tablolar
+-- BÖLÜM 12/15: 11) Sekreter ve diş teknisyeni rolleri + yardımcı tablolar
 -- Kaynak: db/migration_staff.sql
 -- ================================================================
 
@@ -945,7 +1071,7 @@ CREATE POLICY "prep_rw" ON prep_notes FOR ALL
   USING (is_staff()) WITH CHECK (is_staff());
 
 -- ================================================================
--- BÖLÜM 12/14: 12) Kurulum durumu fonksiyonu (uygulama bunu okur)
+-- BÖLÜM 13/15: 12) Kurulum durumu fonksiyonu (uygulama bunu okur)
 -- Kaynak: db/setup_status.sql
 -- ================================================================
 
@@ -1058,7 +1184,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.setup_status() TO authenticated, anon;
 
 -- ================================================================
--- BÖLÜM 13/14: 13) Süper admin hesabını admin yapar
+-- BÖLÜM 14/15: 13) Süper admin hesabını admin yapar
 -- Kaynak: db/fix_admin.sql
 -- ================================================================
 
@@ -1103,7 +1229,7 @@ WHERE lower(email) = 'tcsametsari@gmail.com';
 -- sonra bu dosyayı TEKRAR çalıştır.
 
 -- ================================================================
--- BÖLÜM 14/14: 14) Eski demo hekim kayıtlarını temizler
+-- BÖLÜM 15/15: 14) Eski demo hekim kayıtlarını temizler
 -- Kaynak: db/fix_demo_doctor.sql
 -- ================================================================
 

@@ -8,6 +8,7 @@ import { Triage, Hygiene, Anxiety, PhotoReview, Report } from './pages/Clinical.
 import { Satisfaction, Education, Reminders, Campaigns, Consultation, Faq } from './pages/Extra.jsx'
 import { VideoVisit } from './pages/VideoVisit.jsx'
 import { ERandevu } from './pages/ERandevu.jsx'
+import { RontgenArsivi } from './pages/RontgenArsivi.jsx'
 import { AdminPanel } from './pages/Admin.jsx'
 import { AccountSettings } from './pages/Account.jsx'
 import { StaffPanel } from './pages/StaffPanel.jsx'
@@ -73,7 +74,7 @@ export default function App() {
         <Route path="/hekim-girisi" element={<DoctorLogin />} />
         <Route path="/admin" element={<AdminLogin />} />
         <Route path="/personel-girisi" element={<StaffLogin />} />
-        <Route path="/kayit" element={<RegisterRequest />} />
+        {/* /kayit (dışarıdan kayıt talebi) kaldırıldı — sadece hekim hasta kaydı yapabilir */}
         <Route path="/giris" element={<Navigate to="/danisan-girisi" replace />} />
 
         {/* --- Danışan paneli --- */}
@@ -84,6 +85,7 @@ export default function App() {
         <Route path="/hekim/hasta/:id" element={<Panel roles={['hekim']}><DoctorPatient /></Panel>} />
         <Route path="/rapor/:id" element={<Panel roles={['hekim']}><ReportWrapper /></Panel>} />
         <Route path="/konsultasyon" element={<Panel roles={['hekim']}><Consultation /></Panel>} />
+        <Route path="/hekim/rontgen-arşivi" element={<Panel roles={['hekim', 'admin']}><RontgenArsivi /></Panel>} />
 
         {/* --- Süper admin paneli --- */}
         <Route path="/admin/panel" element={<Panel roles={['admin']}><AdminPanel /></Panel>} />
@@ -91,7 +93,7 @@ export default function App() {
         <Route path="/hesap" element={<Panel roles={['admin', 'hekim', 'hasta', 'ebeveyn', 'sekreter', 'teknisyen']}><AccountSettings /></Panel>} />
 
         {/* --- Yalnızca hasta formları (hekim bunları doldurmaz) --- */}
-        <Route path="/triyaj" element={<Panel roles={['hasta', 'ebeveyn']}><Triage /></Panel>} />
+        {/* /triyaj kaldırıldı — triyaj hekim panelinde doldurulur */}
         <Route path="/hijyen" element={<Panel roles={['hasta', 'ebeveyn']}><Hygiene /></Panel>} />
         <Route path="/anksiyete" element={<Panel roles={['hasta', 'ebeveyn']}><Anxiety /></Panel>} />
         <Route path="/on-degerlendirme" element={<Panel roles={['hasta', 'ebeveyn']}><PhotoReview /></Panel>} />

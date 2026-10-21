@@ -9,7 +9,7 @@ import { insertAppointment } from '../services/db.js'
 import {
   Logo, User, Stethoscope, Shield, Calendar, Phone, Book, Help, Cap,
   CheckCircle, Alert, Clipboard, FileText, Bell, Clock, Camera, Video,
-  DeptRestorative, DeptEndo, DeptPerio, DeptPedo
+  DeptPedo
 } from '../components/Icons.jsx'
 
 export function Home() {
@@ -19,15 +19,15 @@ export function Home() {
   const titleWords = String(t('home_title')).split(' ')
   const features = [
     { Icon: Stethoscope, t: 'Online muayene', d: 'Kamera ve sesli görüşme ile uzak hasta desteği' },
-    { Icon: Calendar, t: 'Randevu ve takvim', d: 'Onaylanan randevu hekim takvimine düşer' },
-    { Icon: Bell, t: 'Akıllı hatırlatma', d: 'Hastanın seçtiği gün sayısı kadar önceden uyarı' },
+    { Icon: Calendar, t: 'Randevu ve takvim', d: 'Hekim tarafından onaylanan randevular' },
+    { Icon: Bell, t: 'Akıllı hatırlatma', d: 'Kontrol ve takip randevu hatırlatmaları' },
     { Icon: Shield, t: 'KVKK uyumlu', d: 'Rol bazlı erişim, veri silinmez, kayıt altında' }
   ]
   const photos = [
     { src: '/img/clinic-smile.jpg', t: 'Klinik ortamında hasta ve hekim', s: 'Dijital ortamda da güvenli iletişim' },
     { src: '/img/clinic-prep.jpg', t: 'Hazırlık ve hijyen', s: 'Her adım kayıt altında' },
     { src: '/img/modern-dentistry.jpg', t: 'Modern diş hekimliği', s: 'Uzaktan değerlendirme desteği' },
-    { src: '/img/dental-team.jpg', t: 'Diş hekimliği ekibi', s: 'Kırsal kesimde göçer klinik modeli' }
+    { src: '/img/dental-team.jpg', t: 'Diş hekimliği ekibi', s: 'Çocuk ve özel bakım gereksinimli hastalar için' }
   ]
 
   return (
@@ -36,13 +36,19 @@ export function Home() {
         {/* ---------- GİRİŞ ---------- */}
         <div className="landing-hero">
           <div>
-            <div className="landing-badge"><Cap size={15} /> KTÜ Diş Hekimliği Fakültesi</div>
+            <div className="landing-badge"><Cap size={15} /> KTÜ Diş Hekimliği Fakültesi — Pedodonti</div>
             <h1 className="landing-title">
               {titleWords.map((w, i) => (
                 <span className="word" key={i} style={{ animationDelay: `${i * 90}ms` }}>{w}&nbsp;</span>
               ))}
             </h1>
             <p className="landing-sub">{t('home_desc')}</p>
+
+            <a href="/teledentistry" style={{ textDecoration: 'none', color: 'inherit', display: 'inline-block', marginBottom: 12 }}>
+              <span className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <Book size={17} /> Teledentistry Nedir?
+              </span>
+            </a>
 
             <div className="landing-cta">
               <Link to="/e-randevu"><span className="btn btn-primary"><Calendar size={17} /> {t('home_cta1')}</span></Link>
@@ -102,14 +108,16 @@ export function Home() {
 
         <Reveal>
           <div className="card">
-            <h2><Stethoscope size={22} /> {t('dept_title')}</h2>
+            <h2><Stethoscope size={22} /> Pedodonti — Çocuk Diş Hekimliği</h2>
+            <p className="muted">
+              Çocuklar, Down sendromlu bireyler ve özel bakım gereksinimi olan hastalar için
+              diş sağlığı hizmetleri, randevu takibi, uzaktan değerlendirme ve kontrol
+              randevusu yönetimi tek panelde.
+            </p>
             <div className="grid">
-              <div className="dept-mini"><DeptRestorative size={20} /><b>{t('dept_rest')}</b><p className="muted">{t('dept_rest_d')}</p></div>
-              <div className="dept-mini"><DeptEndo size={20} /><b>{t('dept_endo')}</b><p className="muted">{t('dept_endo_d')}</p></div>
-              <div className="dept-mini"><DeptPerio size={20} /><b>{t('dept_perio')}</b><p className="muted">{t('dept_perio_d')}</p></div>
-              <div className="dept-mini"><DeptPedo size={20} /><b>{t('dept_pedo')}</b><p className="muted">{t('dept_pedo_d')}</p></div>
+              <div className="dept-mini"><DeptPedo size={20} /><b>Pedodonti</b><p className="muted">Çocuk diş sağlığı ve özel bakım.</p></div>
             </div>
-            <p><Link to="/e-randevu"><button><Calendar size={16} /> {t('dept_cta')}</button></Link></p>
+            <p><Link to="/e-randevu"><button><Calendar size={16} /> Randevu Al</button></Link></p>
           </div>
         </Reveal>
 
@@ -160,9 +168,8 @@ export function About() {
       ))}
       <Reveal>
         <div className="card toolbar">
-          <Link to="/triyaj"><button><Clipboard size={16} /> {t('about_try')}</button></Link>
+          <Link to="/e-randevu"><button><Calendar size={16} /> {t('about_erd')}</button></Link>
           <Link to="/egitim"><button className="ghost"><Cap size={16} /> {t('about_edu')}</button></Link>
-          <Link to="/e-randevu"><button className="ghost"><Calendar size={16} /> {t('about_erd')}</button></Link>
         </div>
       </Reveal>
     </div>
@@ -277,7 +284,7 @@ function LoginForm({ roles, to, register }) {
       <input placeholder={t('login_pass')} type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="current-password" />
       {err && <p className="auth-err"><Alert size={15} /> {err}</p>}
       <button className="btn-full" onClick={doLogin} disabled={busy}>{busy ? t('login_busy') : t('login_go')}</button>
-      {register && <p className="muted"><Link to="/kayit">{t('login_no_account')}</Link></p>}
+      {/* Dışarıdan kayıt talebi kaldırıldı — sadece hekim hasta kaydı yapabilir */}
     </>
   )
 }
@@ -293,7 +300,7 @@ export function PatientLogin() {
       sub={t('login_patient_s')}
       footer={<Link to="/hekim-girisi"><Stethoscope size={16} /> {t('login_doctor_btn')}</Link>}
     >
-      <LoginForm roles={['hasta', 'ebeveyn']} to="/hastam" register />
+      <LoginForm roles={['hasta', 'ebeveyn']} to="/hastam" />
       <button
         className="ghost tiny"
         onClick={() => setYardim(!yardim)}

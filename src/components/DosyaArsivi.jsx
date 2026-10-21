@@ -51,6 +51,9 @@ export function DosyaArsivi({ pid, tooth = null, tur = 'xray', baslik = 'Dosyala
   const [onayBekleyen, setOnayBekleyen] = useState(null)
   const [izleme, setIzleme] = useState(null)
   const [ara, setAra] = useState('')
+  const [klasor, setKlasor] = useState('tumu')
+  const [yeniKlasor, setYeniKlasor] = useState('')
+  const [klasorler, setKlasorler] = useState(() => load('td_klasorler', ['genel', 'rontgen', 'tomografi']))
 
   const yenile = () => listMedicalFiles(pid, { arsiv: arsivGoster }).then(setDosyalar)
   useEffect(() => { yenile() }, [pid, arsivGoster])
@@ -76,7 +79,8 @@ export function DosyaArsivi({ pid, tooth = null, tur = 'xray', baslik = 'Dosyala
         tur,
         tooth,
         category: tur === 'xray' ? 'radyoloji' : null,
-        createdBy: getSession()?.id || null
+        createdBy: getSession()?.id || null,
+        folder: klasor === 'tumu' ? 'genel' : klasor
       })
 
       if (sonuc.hata) {
@@ -150,14 +154,21 @@ export function DosyaArsivi({ pid, tooth = null, tur = 'xray', baslik = 'Dosyala
     setIzleme({ ...kayit, url })
   }
 
+  const klasorOf = (d) => {
+    const parcalar = String(d.path || '').split('/')
+    return parcalar.length >= 3 ? parcalar[1] : 'genel'
+  }
   const q = ara.toLowerCase()
-  const liste = dosyalar.filter((d) =>
-    !q ||
-    String(d.label).toLowerCase().includes(q) ||
-    String(d.category || '').toLowerCase().includes(q) ||
-    (KATEGORI_ADI[d.category] || '').toLowerCase().includes(q) ||
-    (d.not || '').toLowerCase().includes(q)
-  )
+  const liste = dosyalar.filter((d) => {
+    if (klasor !== 'tumu' && klasorOf(d) !== klasor) return false
+    if (!q) return true
+    return (
+      String(d.label).toLowerCase().includes(q) ||
+      String(d.category || '').toLowerCase().includes(q) ||
+      (KATEGORI_ADI[d.category] || '').toLowerCase().includes(q) ||
+      String(d.note || d.not || '').toLowerCase().includes(q)
+    )
+  })
 
   const toplamBoyut = dosyalar.reduce((s, d) => s + (d.boyut || 0), 0)
 
@@ -169,6 +180,31 @@ export function DosyaArsivi({ pid, tooth = null, tur = 'xray', baslik = 'Dosyala
           {toplamBoyut > 0 ? `${(toplamBoyut / 1024 / 1024).toFixed(1)} MB · ` : ''}
           {arsivGoster ? 'Arşivdeki dosyalar' : 'Aktif dosyalar'}
         </span>
+      </div>
+
+      {/* Klasör seçici — birden fazla klasöre ayırma */}
+      <div className="arsiv-klasorler" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+        <button className={`ghost ${klasor === 'tumu' ? 'active' : ''}`} onClick={() => setKlasor('tumu')}>Tümü</button>
+        {klasorler.map((k) => (
+          <button key={k} className={`ghost ${klasor === k ? 'active' : ''}`} onClick={() => setKlasor(k)}>{k}</button>
+        ))}
+        <input
+          placeholder="Yeni klasör"
+          value={yeniKlasor}
+          onChange={(e) => setYeniKlasor(e.target.value)}
+          style={{ width: 120 }}
+        />
+        <button className="ghost" onClick={() => {
+          const ad = yeniKlasor.trim()
+          if (!ad) return
+          if (!klasorler.includes(ad)) {
+            const yeni = [...klasorler, ad]
+            setKlasorler(yeni)
+            save('td_klasorler', yeni)
+          }
+          setKlasor(ad)
+          setYeniKlasor('')
+        }}>Klasör Oluştur</button>
       </div>
 
       {/* Yükleme */}

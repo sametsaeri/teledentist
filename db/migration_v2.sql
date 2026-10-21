@@ -66,6 +66,7 @@ CREATE POLICY "notes_rw" ON clinical_notes FOR ALL USING (is_hekim() OR is_admin
 -- ---------- 5. Randevu politikaları ----------
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "appt_all" ON appointments;
+DROP POLICY IF EXISTS "appt_read" ON appointments;
 CREATE POLICY "appt_read" ON appointments FOR SELECT USING (true);
 DROP POLICY IF EXISTS "appt_write" ON appointments;
 CREATE POLICY "appt_write" ON appointments FOR INSERT WITH CHECK (true);

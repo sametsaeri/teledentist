@@ -19,6 +19,8 @@ const BRANCH_TR = {
   periodonti: 'Periodontoloji', pedodonti: 'Pedodonti', ortodonti: 'Ortodonti',
   protez: 'Protez', 'agiz-cerrahi': 'Ağız ve Çene Cerrahisi'
 }
+const METHOD_TR = { 'yuz-yuze': 'Yüz yüze', telefon: 'Telefon', 'hasta-girdisi': 'Hasta girdisi' }
+
 const ROLE_LABEL = { sekreter: 'Sekreter', teknisyen: 'Diş Teknisyeni', hekim: 'Hekim', admin: 'Süper Admin' }
 
 function Card({ icon: Icon, title, desc, children }) {
@@ -318,5 +320,3 @@ export function StaffPanel() {
     </div>
   )
 }
-
-const METHOD_TR = { 'yuz-yuze': 'Yüz yüze', telefon: 'Telefon', 'hasta-girdisi': 'Hasta girdisi' }

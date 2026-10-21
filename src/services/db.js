@@ -257,6 +257,11 @@ export async function decideRequest(req, onayla, createdBy) {
     return { error: 'Talep kaydı sunucuda bulunamadı. Sayfayı yenileyip tekrar deneyin.' }
   }
 
+  // createdBy veritabanındaki UUID kolonuna (p_doctor_id / created_by) yazılır.
+  // Yerel demo verilerinde "6" gibi bir sayı gelebilir; uuid değilse null gönder.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const yukleyenId = createdBy && UUID_RE.test(String(createdBy)) ? createdBy : null
+
   const sunucuTalebi = req && req.id !== undefined && req.id !== null
   if (sunucuTalebi) {
     try {
@@ -264,7 +269,7 @@ export async function decideRequest(req, onayla, createdBy) {
         supabase.rpc('decide_registration_request', {
           p_request_id: Number(req.id),
           p_approve: !!onayla,
-          p_doctor_id: createdBy || null
+          p_doctor_id: yukleyenId
         })
       )
       if (!error && data) {
@@ -329,7 +334,7 @@ export async function decideRequest(req, onayla, createdBy) {
     name: req.name,
     // Kullanıcı adı boş kalırsa "Bu kullanıcı adı bulunamadı" hatası verir
     username: req.username || kullaniciAdiTuret(email, req.name),
-    created_by: createdBy || null
+    created_by: yukleyenId
   })
   if (error) return { error: suMesaj(error.message) }
 
@@ -456,7 +461,7 @@ function dataUrlToBlob(dataUrl) {
  *
  * @param {string} tur  'xray' | 'belge' | 'foto'
  */
-export async function uploadFile(bucket, patientId, label, dataUrl, { tur = 'xray', tooth = null, not = '', category = '', createdBy } = {}) {
+export async function uploadFile(bucket, patientId, label, dataUrl, { tur = 'xray', tooth = null, not = '', note = '', category = '', createdBy, folder = '', klasor = '' } = {}) {
   // Bakımdayken veri yazılmaz: yarım kalan dosya/kayıt oluşmaz
   const bakimHatasi = bakimKontrol('Dosya yükleme')
   if (bakimHatasi) return bakimHatasi
@@ -470,7 +475,11 @@ export async function uploadFile(bucket, patientId, label, dataUrl, { tur = 'xra
   const zaman = new Date()
   const damga = `${zaman.getTime()}-${Math.random().toString(36).slice(2, 7)}`
   const uzanti = (dataUrl.split(';')[0] || '').includes('pdf') ? 'pdf' : 'png'
-  const path = `${patientId}/${label}-${damga}.${uzanti}`
+  // Birden fazla klasör desteği: dosya seçilen klasörün altına yazılır.
+  const klasorAdi = String(folder || klasor || '').trim().replace(/[^a-zA-Z0-9_\-]/g, '')
+  const path = klasorAdi
+    ? `${patientId}/${klasorAdi}/${label}-${damga}.${uzanti}`
+    : `${patientId}/${label}-${damga}.${uzanti}`
 
   const up = await supabase.storage.from(bucket).upload(path, dataUrlToBlob(dataUrl), {
     contentType: uzanti === 'pdf' ? 'application/pdf' : 'image/png', upsert: false
@@ -478,7 +487,8 @@ export async function uploadFile(bucket, patientId, label, dataUrl, { tur = 'xra
   if (up.error) return { error: up.error.message }
 
   // Kayıt satırı: silme ve arşivleme buna göre yapılır
-  const satir = {
+  const notDegeri = note || not || ''
+  const satirTemel = {
     patient_id: patientId,
     path,
     bucket,
@@ -486,13 +496,32 @@ export async function uploadFile(bucket, patientId, label, dataUrl, { tur = 'xra
     category: category || null,
     label,
     tooth,
-    not,
     boyut: dataUrl.length,
     olusturan: createdBy || null,
     created_at: zaman.toISOString(),
     arsiv: false
   }
-  const { data: kayit, error: kErr } = await supabase.from('medical_files').insert(satir).select().single()
+  // 'not' SQL'de ayrılmış (reserved) bir kelimedir; bazı şemalarda
+  // 'note' veya 'notlar' kolonu bulunur. Hangi kolon varsa ona yazmak için
+  // sırasıyla deneriz — şema uyumsuzluğunda kayıt başarısız olmaz.
+  const kolonAdaylari = ['note', 'not', 'notlar']
+  let kayit = null
+  let kErr = null
+  for (const kolon of kolonAdaylari) {
+    const deneme = { ...satirTemel, [kolon]: notDegeri }
+    const res = await supabase.from('medical_files').insert(deneme).select().single()
+    kayit = res.data
+    kErr = res.error
+    if (!kErr) break
+    // Kolon yoksa (schema cache) bir sonraki adayı dene
+    if (!/column|schema cache|does not exist/i.test(String(kErr?.message || ''))) break
+  }
+  // Hiçbir note kolonu yoksa notsuz yaz
+  if (kErr && /column|schema cache|does not exist/i.test(String(kErr?.message || ''))) {
+    const res = await supabase.from('medical_files').insert(satirTemel).select().single()
+    kayit = res.data
+    kErr = res.error
+  }
   if (kErr) {
     // Dosya yüklendi ama kayıt tutulamadı — KULLANICIYA BİLDİR, silme
     return {
@@ -509,7 +538,7 @@ export async function uploadFile(bucket, patientId, label, dataUrl, { tur = 'xra
     bildirimOlustur({
       tur: tur === 'belge' ? 'belge' : 'foto',
       title: `${hasta?.name || 'Hasta'} yeni ${tur === 'belge' ? 'belge' : 'görsel'} yükledi`,
-      body: tooth ? `${tooth} nolu diş · ${category || 'sınıflandırılmamış'}` : (not || 'Sınıflandırılmamış'),
+      body: tooth ? `${tooth} nolu diş · ${category || 'sınıflandırılmamış'}` : (notDegeri || 'Sınıflandırılmamış'),
       hastaId: patientId
     })
   }

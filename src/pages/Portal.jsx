@@ -20,7 +20,6 @@ import {
   CheckCircle, Clock, Stethoscope, User, Save, X, Alert, Tooth, Lock, Phone, Bell,
   ChevronLeft, ChevronRight, Video, Notebook, TrendingUp, Shield
 } from '../components/Icons.jsx'
-import { Tooth3D } from '../components/Tooth3D.jsx'
 import { DisEditor } from '../components/Tooth3DEditor.jsx'
 import { DisGelecekSimulatoru } from '../components/DisGelecek.jsx'
 import { AnamnezForm } from '../components/AnamnezForm.jsx'
@@ -876,12 +875,27 @@ export function DoctorPatient() {
   const [doctors, setDoctors] = useState([])
   const [refDoc, setRefDoc] = useState('')
   const [info, setInfo] = useState({})
+  const [onamMetni, setOnamMetni] = useState('')
+  const [onamNotu, setOnamNotu] = useState('')
+  const [onamKaydedildi, setOnamKaydedildi] = useState(false)
 
   useEffect(() => {
     getPatient(id).then((p) => { setPatient(p || null); setInfo(p || {}) })
     getTeeth(id).then(setTeeth)
     lastRecords(id).then(setRec)
     listDoctors().then(setDoctors)
+  }, [id])
+
+  useEffect(() => {
+    const r = localStorage.getItem(`onam_raporu_${id}`)
+    if (r) {
+      try {
+        const j = JSON.parse(r)
+        setOnamMetni(j.metni || '')
+        setOnamNotu(j.notu || '')
+        setOnamKaydedildi(true)
+      } catch {}
+    }
   }, [id])
 
   const sel = teeth[selected] || { status: 'saglam', treatment: '-', date: '-', doctorNote: 'Kayıt yok.' }
@@ -963,11 +977,10 @@ export function DoctorPatient() {
           Modeli döndürün, dişin üzerine gelerek durumunu görün, tıklayarak seçin
           ve aşağıdaki editörden bilgi girin.
         </p>
-        <Tooth3D
+        <ToothChart
           teeth={teeth}
           selected={selected}
           onSelect={setSelected}
-          baslik="Hekim diş haritası"
         />
         <DisEditor
           pid={id}
@@ -976,21 +989,6 @@ export function DoctorPatient() {
           onSelect={setSelected}
           onKaydedildi={() => getTeeth(id).then(setTeeth)}
           mesajGoster={setMMsg}
-        />
-      </div>
-
-      <div className="card">
-        <h3><TrendingUp size={18} /> Diş Geleceği Simülatörü</h3>
-        <p className="muted">
-          Hastayla birlikte ekrandan inceleyin: tedavi şimdi mi, altı ay sonra mı,
-          yoksa hiç mi? Simülasyon klinik ilerleme kurallarına dayanır.
-        </p>
-        <DisGelecekSimulatoru
-          teeth={teeth}
-          fdi={selected}
-          onSec={setSelected}
-          plaque={rec.hygiene !== 'kayıt yok' ? Number(rec.hygiene) : undefined}
-          hekimModu
         />
       </div>
 
@@ -1033,9 +1031,41 @@ export function DoctorPatient() {
       </div>
 
       <div className="card">
-        <h3><FileText size={18} /> Rapor / Onam</h3>
+        <h3><FileText size={18} /> Detaylı Onam Raporu</h3>
+        <p className="muted">
+          Hasta randevu görüşmesine geldiğinde hekim tarafından detaylı onam raporu doldurulur.
+          Bu rapor hasta kaydına eklenir ve hasta işlemlerine başlamadan önce onay alınır.
+        </p>
+        <div className="grid form-grid">
+          <label>Hasta Adı<input readOnly value={patient?.name || ''} /></label>
+          <label>TC<input readOnly value={patient?.tc_no || ''} /></label>
+          <label>Onay Tarihi<input type="date" defaultValue={new Date().toISOString().slice(0, 10)} readOnly /></label>
+        </div>
+        <label style={{ gridColumn: '1 / -1' }}>Onam Metni / Açıklama<textarea rows="3" value={onamMetni} onChange={(e) => setOnamMetni(e.target.value)} placeholder="Hastaya verilen onam bilgisi, işlem kapsamı ve riskler..." /></label>
+        <label style={{ gridColumn: '1 / -1' }}>Hekim Notu<textarea rows="2" value={onamNotu} onChange={(e) => setOnamNotu(e.target.value)} placeholder="Ek notlar..." /></label>
+        <div style={{ marginTop: 12 }}>
+          <button onClick={() => {
+            const rapor = {
+              hastaId: id,
+              hastaAd: patient?.name,
+              tc: patient?.tc_no,
+              tarih: new Date().toISOString().slice(0, 10),
+              metni: onamMetni,
+              notu: onamNotu,
+              hekimId: getSession()?.id
+            }
+            localStorage.setItem(`onam_raporu_${id}`, JSON.stringify(rapor))
+            setOnamKaydedildi(true)
+            setMMsg('Detaylı onam raporu kaydedildi.')
+          }}><Save size={15} /> Onam Raporunu Kaydet</button>
+          {onamKaydedildi && <span className="muted"> ✓ Kaydedildi</span>}
+        </div>
+        {mMsg && <p className="muted">{mMsg}</p>}
+      </div>
+      <div className="card">
+        <h3><FileText size={18} /> Yazdırılabilir Rapor</h3>
         <p className="muted">AI kontrol önerisi: {recall.nextVisit} ({recall.months} ay)</p>
-        <Link to={`/rapor/${id}`}><button><FileText size={15} /> Yazdırılabilir Rapor</button></Link>
+        <Link to={`/rapor/${id}`}><button><FileText size={15} /> Raporu Görüntüle</button></Link>
       </div>
     </div>
   )

@@ -6,12 +6,10 @@ import { getSession } from '../services/store.js'
 import { HASTALIKLAR } from '../components/AnamnezForm.jsx'
 import { OnGorusmeAnamnez } from '../components/OnGorusmeAnamnez.jsx'
 import { onGorusmeTamamMi } from '../services/onGorusme.js'
-import { listBildirimler } from '../services/bildirim.js'
-import { Tooth3D, DisOzet, DURUM_RENK, Dis3DKutu } from '../components/Tooth3D.jsx'
-import { DisGelecekSimulatoru } from '../components/DisGelecek.jsx'
+import { listBildirimler, bildirimOlustur } from '../services/bildirim.js'
+import { ToothChart, ToothVisual } from '../components/ToothChart.jsx'
 import { disBilgisi } from '../data/disAdlari.js'
 import { suggestRecall } from '../ai/recall.js'
-import { Shield } from '../components/Icons.jsx'
 import {
   getPatient, getTeeth, updatePatient, getChildren, listAppointments,
   listPhotos, listHygiene, listAnxiety, anamnesisApi, plansApi, signedPhotoUrl
@@ -19,8 +17,9 @@ import {
 import { STATUS_TR } from '../data/teeth.js'
 import {
   Tooth, Calendar, FileText, Save, Phone, User, Bell,
-  Camera, Clipboard, Drop, Sparkle, Video, ChevronRight, Alert, CheckCircle, Clock, TrendingUp
+  Camera, Clipboard, Drop, Sparkle, Video, ChevronRight, Alert, CheckCircle, Clock, TrendingUp, Check, Refresh
 } from '../components/Icons.jsx'
+import { Shield } from '../components/Icons.jsx'
 import { reminderInfo } from './Portal.jsx'
 import { saglikPuani } from '../ai/saglikSkoru.js'
 import {
@@ -112,6 +111,11 @@ export function PatientPanel() {
   const [info, setInfo] = useState({})
   const [msg, setMsg] = useState('')
   const [saving, setSaving] = useState(false)
+  const [onay, setOnay] = useState(false)
+  const [onayVerildi, setOnayVerildi] = useState(false)
+  const [acilDurum, setAcilDurum] = useState(false)
+  const [undoBackup, setUndoBackup] = useState(null)
+  const [showUndo, setShowUndo] = useState(false)
   // Ön değerlendirme asistanı
   const [ogAcik, setOgAcik] = useState(false)
   const [ogBasladi, setOgBasladi] = useState(false)
@@ -134,8 +138,15 @@ export function PatientPanel() {
       setPatient(p || null)
       setInfo(p || {})
       setTeeth(t || {})
+      setAcilDurum(!!(p && p.acil_durum))
       setLoading(false)
     })
+  }, [pid])
+
+  useEffect(() => {
+    if (!pid) return
+    const kayit = localStorage.getItem(`tedavi_onay_${pid}`)
+    if (kayit === '1') setOnayVerildi(true)
   }, [pid])
 
   useEffect(() => { listAppointments().then(setAppts) }, [])
@@ -220,17 +231,33 @@ export function PatientPanel() {
 
   const saveInfo = async () => {
     setSaving(true); setMsg('')
+    // Yedekle: geri alma (undo) için mevcut veriyi sakla
+    setUndoBackup({ ...patient })
+    setShowUndo(true)
     const patch = {
       phone: info.phone, address: info.address, city: info.city, district: info.district,
       blood: info.blood, birth_date: info.birth_date, gender: info.gender,
       insurance: info.insurance, school: info.school, occupation: info.occupation,
-      near_name: info.near_name, near_phone: info.near_phone, near_relation: info.near_relation
+      near_name: info.near_name, near_phone: info.near_phone, near_relation: info.near_relation,
+      acil_durum: acilDurum ? true : false
     }
-    Object.keys(patch).forEach((k) => { if (patch[k] === undefined) delete patch[k] })
+    Object.keys(patch).forEach((k) => { if (patch[k] === undefined || patch[k] === '') delete patch[k] })
     const r = await updatePatient(pid, patch)
     setMsg(r.error || 'Bilgileriniz kaydedildi.')
     setSaving(false)
-    if (!r.error) getPatient(pid).then(setPatient)
+    if (!r.error) {
+      getPatient(pid).then((p) => { setPatient(p || null); setInfo(p || {}) })
+      setTimeout(() => setShowUndo(false), 10000)
+    }
+  }
+
+  const geriAl = () => {
+    if (!undoBackup) return
+    setPatient(undoBackup)
+    setInfo(undoBackup)
+    setAcilDurum(!!undoBackup.acil_durum)
+    setShowUndo(false)
+    setMsg('İşlem geri alındı. Eski bilgiler Geri yüklendi.')
   }
 
   /* ---------------- Yükleniyor ---------------- */
@@ -279,6 +306,40 @@ export function PatientPanel() {
 
   return (
     <div>
+      {/* ---------- Tedavi Onamı (en üste, hasta başlamadan önce onay alınır) ---------- */}
+      {!onayVerildi && (
+        <>
+          <div className="panel-hero"><h1><Shield size={22} /> Tedavi Onamı</h1></div>
+          <div className="card warn-card">
+            <h3><Alert size={18} /> Tedavi Onamı Gerekli</h3>
+            <p className="muted">
+              Muayene ve tedavi işlemlerine başlamadan önce lütfen onayınızı verin.
+              Onay vermeden diğer işlemler (3B dişler, randevu, fotoğraf, görüşme vb.) görünmez.
+            </p>
+            <div style={{ margin: '16px 0' }}>
+              <label style={{ display: 'flex', alignItems: 'start', gap: 10, fontSize: '15px', lineHeight: '1.6' }}>
+                <input
+                  type="checkbox"
+                  checked={onay}
+                  onChange={(e) => setOnay(e.target.checked)}
+                  style={{ marginTop: '4px' }}
+                />
+                Tedavi onamını veriyorum. Sağlık bilgilerimi diş hekimimle paylaşmayı ve muayene sürecine katılmayı kabul ediyorum.
+              </label>
+            </div>
+            <button
+              disabled={!onay}
+              onClick={() => {
+                setOnayVerildi(true)
+                localStorage.setItem(`tedavi_onay_${pid}`, '1')
+              }}
+              className="btn-new"
+            >
+              <Check size={15} /> Onay Ver ve Devam Et
+            </button>
+          </div>
+        </>
+      )}
       {/* ---------- Üst başlık ---------- */}
       <div className="panel-hero">
         <div>
@@ -386,33 +447,16 @@ export function PatientPanel() {
           {Object.keys(summary).length === 0 && <span className="muted">Henüz diş kaydı yok.</span>}
         </div>
 
-        <Tooth3D
+        <ToothChart
           teeth={teeth}
           selected={selected}
           onSelect={setSelected}
-          autoRotate={false}
-          baslik="Benim dişlerim"
         />
 
         {/* Seçili dişin ayrıntısı — dokunmatik cihazlar için de erişilebilir */}
         <div className="tooth-detail">
-          <DisOzet fdi={selected} kayit={sel} />
+          <ToothVisual no={selected} status={sel?.status || 'saglam'} />
         </div>
-      </Card>
-
-      {/* ---------- Diş Geleceği Simülatörü ---------- */}
-      <Card
-        icon={TrendingUp}
-        title="Dişimin Geleceği"
-        desc="Tedavi olsam, geciktirirsem veya hiç müdahale etmezsem dişime ne olur? Üç senaryoyu karşılaştırın."
-      >
-        <DisGelecekSimulatoru
-          teeth={teeth}
-          fdi={simDis}
-          onSec={setSimDis}
-          plaque={hygiene[0]?.plaque}
-          yas={puan.yas}
-        />
       </Card>
 
       {/* ---------- Diş rehberi ---------- */}
@@ -422,7 +466,9 @@ export function PatientPanel() {
             const b = disBilgisi(t === 'kesici' ? 11 : t === 'kanin' ? 13 : t === 'kucukAzi' ? 14 : 16)
             return (
               <div className="dis-rehber-kart" key={t}>
-                <Dis3DKutu tip={t} no={b.no} durum={DURUM_RENK.saglam} />
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0b3d5f', minWidth: 48, textAlign: 'center' }}>
+                  {b.no}
+                </div>
                 <div>
                   <b>{b.tip.ad}</b>
                   <p className="muted">{b.tip.egitim}</p>
@@ -552,9 +598,46 @@ export function PatientPanel() {
           </label>
         </div>
 
-        <button onClick={saveInfo} disabled={saving}>
-          <Save size={15} /> {saving ? 'Kaydediliyor...' : 'Bilgilerimi Kaydet'}
-        </button>
+        {/* ---------- Acil Durum İşareti ---------- */}
+        <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+          <label style={{ display: 'flex', alignItems: 'start', gap: 10, fontSize: '15px', lineHeight: '1.6' }}>
+            <input
+              type="checkbox"
+              checked={acilDurum}
+              onChange={(e) => setAcilDurum(e.target.checked)}
+              style={{ marginTop: '4px' }}
+            />
+            <strong>Acil durum işareti:</strong> Bu işaretleme hekime acil durum bildirimi gönderir.
+          </label>
+          {acilDurum && (
+            <button
+              onClick={() => {
+                bildirimOlustur?.({
+                  tur: 'acil',
+                  title: `Acil Durum — ${patient?.name}`,
+                  body: 'Hasta acil durum işaretini aktif etti. Derhal hekimle iletişime geçin.',
+                  hastaId: pid
+                })
+                setMsg('Hekime acil durum bildirimi gönderildi.')
+              }}
+              className="btn-new"
+              disabled={!pid}
+            >
+              <Alert size={15} /> Hekime Bildir
+            </button>
+          )}
+        </div>
+
+        <div style={{ marginTop: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button onClick={saveInfo} disabled={saving}>
+            <Save size={15} /> {saving ? 'Kaydediliyor...' : 'Bilgilerimi Kaydet'}
+          </button>
+          {showUndo && (
+            <button onClick={geriAl} className="ghost" style={{ color: '#b91c1c' }}>
+              <Refresh size={15} /> Geri Al
+            </button>
+          )}
+        </div>
         {msg && <p className="muted">{msg}</p>}
       </Card>
 

@@ -37,8 +37,9 @@ const BOS_FORM = {
   gecmis_hastaliklar: '',
   gecmis_ameliyatlar: '',
   aile_saglik: '',
-  sigara: '',
-  alkol: '',
+  abur_cubur: '',
+  sekerli_gida_gece: '',
+  dis_fircalama: '',
   gebelik_durumu: '',
   aik: '',
   dis_gecmisi: '',
@@ -68,8 +69,9 @@ export function formdanKayit(form, pid) {
     gecmis_hastaliklar: form.gecmis_hastaliklar || '',
     gecmis_ameliyatlar: form.gecmis_ameliyatlar || '',
     aile_saglik: form.aile_saglik || '',
-    sigara: form.sigara || '',
-    alkol: form.alkol || '',
+    abur_cubur: form.abur_cubur || '',
+    sekerli_gida_gece: form.sekerli_gida_gece || '',
+    dis_fircalama: form.dis_fircalama || '',
     gebelik_durumu: form.gebelik_durumu || '',
     aik: form.aik || '',
     dis_gecmisi: form.dis_gecmisi || '',
@@ -199,16 +201,24 @@ export function AnamnezForm({ pid, mesajGoster, onTamam }) {
         <label>Devam Eden Ağız Bakımı (AİK)
           <input value={form.aik} onChange={set('aik')} placeholder="Ağız bakımı alışkanlıkları" />
         </label>
-        <label>Sigara
-          <select value={form.sigara} onChange={set('sigara')}>
+        <label>Aburcubur / Sağlıksız Atıştırmalık
+          <select value={form.abur_cubur} onChange={set('abur_cubur')}>
             <option value="">Seç</option><option value="Yok">Yok</option>
             <option value="Ara sıra">Ara sıra</option><option value="Günlük">Günlük</option>
+            <option value="Sık">Sık</option>
           </select>
         </label>
-        <label>Alkol
-          <select value={form.alkol} onChange={set('alkol')}>
+        <label>Gece Yatmadan Önce Şekerli Gıda
+          <select value={form.sekerli_gida_gece} onChange={set('sekerli_gida_gece')}>
             <option value="">Seç</option><option value="Yok">Yok</option>
-            <option value="Ara sıra">Ara sıra</option><option value="Düzenli">Düzenli</option>
+            <option value="Ara sıra">Ara sıra</option><option value="Her gece">Her gece</option>
+          </select>
+        </label>
+        <label>Diş Fırçalama Alışkanlığı
+          <select value={form.dis_fircalama} onChange={set('dis_fircalama')}>
+            <option value="">Seç</option><option value="Yok">Yok</option>
+            <option value="Ara sıra">Ara sıra</option><option value="Günde 1 kez">Günde 1 kez</option>
+            <option value="Günde 2+ kez">Günde 2+ kez</option>
           </select>
         </label>
         <label>Gebelik Durumu

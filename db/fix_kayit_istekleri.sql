@@ -83,9 +83,10 @@ GRANT EXECUTE ON FUNCTION public.register_patient_request(text,text,text,text,te
 TO anon, authenticated;
 
 -- 4) Onay/red fonksiyonu — JS id'yi number gönderir (BIGSERIAL)
+DROP FUNCTION IF EXISTS public.decide_registration_request(bigint,boolean,uuid);
 CREATE OR REPLACE FUNCTION public.decide_registration_request(
   p_request_id BIGINT, p_approve BOOLEAN, p_doctor_id UUID DEFAULT NULL
-) RETURNS JSON
+) RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public

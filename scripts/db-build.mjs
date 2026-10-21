@@ -13,6 +13,7 @@ const FILES = [
   ['supabase.sql',            '1) Temel şema (profil, diş, triyaj, hijyen, anksiyete, randevu)'],
   ['migration_roles.sql',     '2) Roller (admin/hekim), branş, sevk tablosu'],
   ['migration_signup.sql',    '3) Kayıt istekleri tablosu'],
+  ['fix_kayit_istekleri.sql', '4) Kayıt talebi düzeltmesi (user_id NOT NULL kaldırılır)'],
   ['migration_v2.sql',        '4) Detaylı hasta bilgileri, randevu tarihi/online, bildirim, konsültasyon'],
   ['migration_users.sql',     '5) Kullanıcı adıyla giriş + kayıt kapalıyken hesap açma'],
   ['migration_admin_manage.sql', '6) Süper admin: şifre atama + tüm kullanıcı verisini düzenleme'],

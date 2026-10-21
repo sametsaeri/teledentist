@@ -173,7 +173,8 @@ function SenaryoKarti({ s, aktif, onTikla, gecikmeli }) {
       </div>
       <div className="sim-olcumler">
         <span className={`sim-olcum ${agirSinif}`}>
-          Ağrı <b>%{s.agirPuan}</b>
+          Risk <b>{agirSinif === 'dusuk' ? 'Düşük' : agirSinif === 'orta' ? 'Orta' : 'Yüksek'}</b>
+          <span className="sim-agir-puan">· %{s.agirPuan}</span>
         </span>
         <span className="sim-olcum kayip">
           Diş kaybı <b>%{s.kayipRiski}</b>

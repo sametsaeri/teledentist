@@ -16,6 +16,7 @@ export function VideoVisit() {
   const [started, setStarted] = useState('')
   const [err, setErr] = useState('')
   const [appts, setAppts] = useState([])
+  const demoMode = !hasSupabase
 
   useEffect(() => { listAppointments().then(setAppts) }, [])
   const confirmed = appts.filter((a) => a.status === 'onaylı' && a.is_online)
@@ -23,7 +24,6 @@ export function VideoVisit() {
   const join = (code) => {
     const clean = String(code || '').trim()
     if (!clean) return setErr('Oda kodu girin.')
-    if (!hasSupabase) return setErr('Online görüşme için sunucu bağlantısı gerekli.')
     setErr('')
     setStarted(clean)
   }
@@ -43,6 +43,18 @@ export function VideoVisit() {
               <Video size={15} /> {a.name} — {a.appt_date}
             </button>
           ))}
+        </div>
+      )}
+
+      {demoMode && (
+        <div className="card warn-card">
+          <h3><Alert size={16} /> Test / Demo Modu Aktif</h3>
+          <p className="muted">
+            Supabase ortamı yapılandırılmadığı için online görüşme <b>test modunda</b> çalışıyor.
+            Kamera/mikrofon erişimi ve arayüzü test edebilirsiniz. Gerçek iki taraflı görüntülü
+            görüşme için <code>VITE_SUPABASE_URL</code> ve <code>VITE_SUPABASE_ANON_KEY</code>
+            ortam değişkenlerini tanımlayıp uygulamayı yeniden başlatın.
+          </p>
         </div>
       )}
 
@@ -72,6 +84,7 @@ function CallRoom({ room, user, onLeave }) {
   const [camOff, setCamOff] = useState(false)
   const [copied, setCopied] = useState(false)
   const [logs, setLogs] = useState([])
+  const [demo, setDemo] = useState(!hasSupabase)
   const note = (t) => setLogs((l) => [...l.slice(-6), t])
 
   useEffect(() => {
@@ -85,9 +98,16 @@ function CallRoom({ room, user, onLeave }) {
         if (!alive) { s.getTracks().forEach((t) => t.stop()); return }
         streamRef.current = s
         if (localVideo.current) localVideo.current.srcObject = s
-        setStatus('karşı taraf bekleniyor')
+        setStatus(demo ? 'test modu — karşı taraf bekleniyor' : 'karşı taraf bekleniyor')
       } catch {
         setStatus('kamera/mikrofon izni verilmedi')
+        return
+      }
+
+      // Supabase yoksa test modunda kal, gerçek bağlantıyı deneme
+      if (!hasSupabase) {
+        setStatus('test modu aktif — gerçek görüşme için Supabase yapılandırılmalı')
+        note('Demo modu: WebRTC sinyalleştirme simüle ediliyor')
         return
       }
 
@@ -172,7 +192,9 @@ function CallRoom({ room, user, onLeave }) {
       alive = false
       if (poll) clearInterval(poll)
       try { pcRef.current?.close() } catch {}
-      try { chanRef.current && supabase.removeChannel(chanRef.current) } catch {}
+      if (hasSupabase) {
+        try { chanRef.current && supabase.removeChannel(chanRef.current) } catch {}
+      }
       try { streamRef.current?.getTracks().forEach((t) => t.stop()) } catch {}
     }
   }, [room, user.id])
@@ -201,7 +223,7 @@ function CallRoom({ room, user, onLeave }) {
     <div>
       <div className="panel-hero">
         <div>
-          <h1><Video size={24} /> Online Görüşme</h1>
+          <h1><Video size={24} /> Online Görüşme {demo && <span className="badge warn">TEST MODU</span>}</h1>
           <p className="muted">Oda kodu: <b>{room}</b> — {status}</p>
         </div>
         <span className="spacer" />

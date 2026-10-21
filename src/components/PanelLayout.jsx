@@ -8,7 +8,7 @@ import { okunmamisSayisi } from '../services/bildirim.js'
 import {
   Logo, Shield, Stethoscope, Users, Clipboard, Sparkle, Camera, Video, Chat,
   Clock, User, LogOut, Globe, Bell, ChevronDown, Alert, Settings, Chart,
-  FileText, Calendar
+  FileText, Calendar, Box
 } from './Icons.jsx'
 
 // Hekim menüsü gruplara ayrılır; her grup açılır-kapanır listelenir.
@@ -36,17 +36,13 @@ const MENU_GROUPS = {
     {
       label: 'Değerlendirme', Icon: Sparkle, items: [
         ['/hekim?tab=triyaj', Sparkle, 'Triyaj ve Sevk'],
-        ['/hekim?tab=foto', Camera, 'Hasta Fotoğrafları']
+        ['/hekim?tab=foto', Camera, 'Hasta Fotoğrafları'],
+        ['/hekim/rontgen-arşivi', Box, 'Röntgen Arşivi', 'foto']
       ]
     },
     {
       label: 'Tedavi', Icon: Calendar, items: [
         ['/hekim?tab=sure', Clock, 'Tedavi Süreleri']
-      ]
-    },
-    {
-      label: 'Kayıtlar', Icon: FileText, items: [
-        ['/hekim?tab=istek', FileText, 'Kayıt İstekleri', 'istek']
       ]
     },
     {

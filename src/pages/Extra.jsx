@@ -70,23 +70,6 @@ export function Education() {
   )
 }
 
-// Video konsültasyon (Jitsi gömülü, hibrit model)
-export function VideoVisit() {
-  const [room, setRoom] = useState('teledentist-gorusme')
-  const [started, setStarted] = useState(false)
-  return (
-    <div>
-      <h1>Video Konsültasyon (Hibrit Model)</h1>
-      <div className="card">
-        <p className="muted">Gerçek randevu öncesi uzaktan ön görüşme. Oda adı verip başlatın.</p>
-        <input value={room} onChange={(e) => setRoom(e.target.value.replace(/[^a-zA-Z0-9-]/g, ''))} />{' '}
-        {!started ? <button onClick={() => setStarted(true)}>Görüşmeyi Başlat</button> : <button className="ghost" onClick={() => setStarted(false)}>Kapat</button>}
-      </div>
-      {started && <div className="card"><iframe title="video" src={`https://meet.jit.si/${room}`} style={{ width: '100%', height: 480, border: 0, borderRadius: 12 }} allow="camera; microphone; fullscreen" /></div>}
-    </div>
-  )
-}
-
 // Hatırlatma merkezi (SMS/mail soyut, şimdi kuyruk UI)
 export function Reminders() {
   const [to, setTo] = useState('')

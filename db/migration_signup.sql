@@ -4,7 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS kayit_istekleri (
   id BIGSERIAL PRIMARY KEY,
-  user_id UUID NOT NULL,
+  user_id UUID,
   email TEXT NOT NULL,
   name TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('hasta','ebeveyn')),

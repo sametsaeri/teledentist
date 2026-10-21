@@ -269,6 +269,7 @@ export function Tooth3D({
   const [yaklaslik, setYaklaslik] = useState(1)
   const [kaydiriliyor, setKaydiriliyor] = useState(false)
   const sahneRef = useRef(null)
+  const fsRef = useRef(null)
   const surukleme = useRef({ aktif: false, x: 0, y: 0, baslangicRy: 0, baslangicRx: 0, hareket: 0 })
   const otoRef = useRef(oto)
   otoRef.current = oto
@@ -309,6 +310,17 @@ export function Tooth3D({
   const bitir = useCallback(() => {
     surukleme.current.aktif = false
     setKaydiriliyor(false)
+  }, [])
+
+  /* tam ekran aç/kapat */
+  const toggleFullscreen = useCallback(() => {
+    const el = fsRef.current
+    if (!el) return
+    if (!document.fullscreenElement) {
+      el.requestFullscreen().catch(() => {})
+    } else {
+      document.exitFullscreen().catch(() => {})
+    }
   }, [])
 
   /* tekerlek = yakınlaştırma */
@@ -382,14 +394,23 @@ export function Tooth3D({
   }
 
   return (
-    <div className="dis3d">
+    <div className="dis3d" ref={fsRef}>
       <div className="dis3d-araclar">
         <span className="muted">
-          {baslik ? `${baslik} · ` : ''}3B diş modeli — döndürmek için sürükleyin, yakınlaştırmak için tekerleği kullanın
+          {baslik ? `${baslik} · ` : ''}3B diş modeli — sürükleyerek döndürün, tekerlek veya büyüt/küçült düğmeleriyle yakınlaştırın
         </span>
         <div className="dis3d-arac-dugmeler">
           <button className={oto ? '' : 'ghost'} onClick={() => setOto((o) => !o)} aria-pressed={oto}>
             {oto ? '⏸ Otomatik dönmeyi durdur' : '▶ Otomatik döndür'}
+          </button>
+          <button className="ghost" onClick={() => setYaklaslik((z) => Math.min(1.7, z + 0.15))} title="Büyüt">
+            <span style={{ fontWeight: 'bold' }}>+</span> Büyüt
+          </button>
+          <button className="ghost" onClick={() => setYaklaslik((z) => Math.max(0.65, z - 0.15))} title="Küçült">
+            <span style={{ fontWeight: 'bold' }}>−</span> Küçült
+          </button>
+          <button className="ghost" onClick={toggleFullscreen} title="Tam boyut ekran">
+            Tam Ekran
           </button>
           <button className="ghost" onClick={() => { setRx(24); setRy(-14); setYaklaslik(1) }}>↺ Görünümü sıfırla</button>
         </div>

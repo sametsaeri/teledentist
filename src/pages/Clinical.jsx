@@ -307,7 +307,9 @@ export function Report({ patientId }) {
               <SatirSatir etiket="Aile sağlık öyküsü" deger={anam.aile_saglik || 'Belirtilmedi'} />
               <SatirSatir etiket="Diş hekimliği geçmişi" deger={anam.dis_gecmisi || 'Belirtilmedi'} />
               <SatirSatir etiket="Şikâyet" deger={anam.agri_ozeti || 'Belirtilmedi'} />
-              <SatirSatir etiket="Sigara / Alkol" deger={[anam.sigara, anam.alkol].filter(Boolean).join(' / ') || 'Belirtilmedi'} />
+              <SatirSatir etiket="Aburcubur / Atıştırmalık" deger={anam.abur_cubur || 'Belirtilmedi'} />
+              <SatirSatir etiket="Gece Şekerli Gıda" deger={anam.sekerli_gida_gece || 'Belirtilmedi'} />
+              <SatirSatir etiket="Diş Fırçalama Alışkanlığı" deger={anam.dis_fircalama || 'Belirtilmedi'} />
               {anam.gebelik_durumu && <SatirSatir etiket="Gebelik" deger={anam.gebelik_durumu} />}
               {anam.notlar && <SatirSatir etiket="Hekim notu" deger={anam.notlar} />}
               <p className="muted rapor-kayit">

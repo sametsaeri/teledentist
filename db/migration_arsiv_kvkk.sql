@@ -87,7 +87,11 @@ CREATE TABLE IF NOT EXISTS medical_files (
   category TEXT,                      -- radyoloji | tani | tedavi | sozelmes | laboratuvar | odeme | kimlik | diger
   label TEXT,                         -- tooth16 vb.
   tooth INTEGER,                      -- FDI diş numarası
-  not TEXT DEFAULT '',
+  "not" TEXT DEFAULT '',              -- eski şema (ayrilmis kelime, tirnakli)
+  note TEXT DEFAULT '',               -- yeni şema (ayrilmis olmayan)
+  notlar TEXT DEFAULT '',             -- yedek kolon adı
+  klasor TEXT DEFAULT 'genel',        -- birden fazla klasör desteği
+  folder TEXT DEFAULT 'genel',        -- birden fazla klasör desteği (İngilizce)
   boyut INTEGER DEFAULT 0,
   olusturan UUID REFERENCES profiles(id),
   arsiv BOOLEAN DEFAULT false,        -- true = arşivde (SİLİNMEZ, gizlenir)
@@ -96,6 +100,13 @@ CREATE TABLE IF NOT EXISTS medical_files (
 
 CREATE INDEX IF NOT EXISTS medical_files_patient_idx ON medical_files (patient_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS medical_files_arsiv_idx ON medical_files (patient_id, arsiv);
+
+-- Eski şemalarda eksik kolonları ekle (idempotent)
+ALTER TABLE medical_files ADD COLUMN IF NOT EXISTS "not" TEXT DEFAULT '';
+ALTER TABLE medical_files ADD COLUMN IF NOT EXISTS note TEXT DEFAULT '';
+ALTER TABLE medical_files ADD COLUMN IF NOT EXISTS notlar TEXT DEFAULT '';
+ALTER TABLE medical_files ADD COLUMN IF NOT EXISTS klasor TEXT DEFAULT 'genel';
+ALTER TABLE medical_files ADD COLUMN IF NOT EXISTS folder TEXT DEFAULT 'genel';
 
 ALTER TABLE medical_files ENABLE ROW LEVEL SECURITY;
 
