@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DEPARTMENTS } from '../data/departments.js'
+
+// Sadece Pedodonti bölümü gösterilecek
+const PEDO_DEPARTMENTS = DEPARTMENTS.filter((d) => d.id === 'pedodonti')
 import { listDoctors } from '../services/db.js'
 import { Tooth as ToothIcon } from '../components/Icons.jsx'
 
@@ -27,7 +30,7 @@ export function ERandevu() {
         <div>
           <h1>E-RANDEVULARA GİRİŞ</h1>
           <p>Tedavi randevularınızı kolayca oluşturmak için <strong>E-Randevu</strong> sistemimizi kullanabilirsiniz.</p>
-          <p className="muted">Kapsam: yalnızca diş hekimliği bölümleri.</p>
+          <p className="muted">Kapsam: Pedodonti (Çocuk Diş Hekimliği).</p>
         </div>
         <div className="trust-badge">
           <b>HIZLI<br />KOLAY<br />GÜVENİLİR</b>
@@ -35,7 +38,7 @@ export function ERandevu() {
       </div>
 
       <div className="dept-grid">
-        {DEPARTMENTS.map((d) => (
+        {PEDO_DEPARTMENTS.map((d) => (
           <div className="dept-card" key={d.id}>
             <div className="dept-visual" style={{ borderTopColor: d.color }}>
               <ToothIcon size={34} color={d.color} />
