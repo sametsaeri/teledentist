@@ -12,7 +12,8 @@ import { disBilgisi } from '../data/disAdlari.js'
 import { suggestRecall } from '../ai/recall.js'
 import {
   getPatient, getTeeth, updatePatient, getChildren, listAppointments,
-  listPhotos, listHygiene, listAnxiety, anamnesisApi, plansApi, signedPhotoUrl
+  listPhotos, listHygiene, listAnxiety, anamnesisApi, plansApi, signedPhotoUrl,
+  listDoctors
 } from '../services/db.js'
 import { STATUS_TR } from '../data/teeth.js'
 import {
@@ -28,6 +29,8 @@ import {
 } from './PatientExtras.jsx'
 
 const EMPTY = {}
+// Yalnız sunucuda (Supabase) kayıtlı kullanıcılara bildirim gönderilebilir
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /* --- Küçük yardımcılar --- */
 function Card({ icon: Icon, title, desc, children, action }) {
@@ -121,6 +124,9 @@ export function PatientPanel() {
   const [ogAcik, setOgAcik] = useState(false)
   const [ogBasladi, setOgBasladi] = useState(false)
   const [ogHekim, setOgHekim] = useState('')
+  // Görüşme talebi: hastanın görüşme isteyeceği hekimi seçer
+  const [hekimler, setHekimler] = useState([])
+  const [secilenHekim, setSecilenHekim] = useState('')
 
   useEffect(() => {
     if (isParent && session?.id) {
@@ -144,6 +150,26 @@ export function PatientPanel() {
       setLoading(false)
     })
   }, [pid])
+
+  // Hekim listesi + varsayılan: hastayı kaydeden hekim (created_by)
+  useEffect(() => {
+    listDoctors().then((h) => {
+      const liste = h || []
+      setHekimler(liste)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!patient) return
+    // Kaydeden hekim listede varsa varsayılan seç; yoksa ilk hekim
+    if (!secilenHekim) {
+      if (patient.created_by && hekimler.some((x) => x.id === patient.created_by)) {
+        setSecilenHekim(patient.created_by)
+      } else if (hekimler.length) {
+        setSecilenHekim(hekimler[0].id)
+      }
+    }
+  }, [patient, hekimler])
 
   useEffect(() => {
     if (!pid) return
@@ -642,26 +668,46 @@ export function PatientPanel() {
       <Card
         icon={Video}
         title="Hekimimle Görüşme Talebi"
-        desc="Hekiminizle görüntülü görüşme yapmak için talep gönderin. Hekiminiz bildirimi alır ve görüşmeye katılabilir."
+        desc="Görüşme isteyeceğiniz hekimi seçin; hekime onay bildirimi gider. Hekim bildirime tıklayarak görüşmeye katılır."
       >
-        <div className="toolbar">
-          <button onClick={() => {
-            const room = 'r' + (pid || '') + '-' + Date.now().toString(36)
-            bildirimOlustur({
-              tur: 'gorusme',
-              title: `${patient?.name || 'Hasta'} — Görüşme Talebi`,
-              body: `Hasta görüntülü görüşme talep ediyor. Bildirime tıklayarak görüşmeye katılabilirsiniz.`,
-              hekimId: null,
-              hastaId: pid,
-              link: `/video?room=${room}`,
-              onem: 'yuksek'
-            })
-            setMsg('Görüşme talebi hekiminize gönderildi.')
-            window.open(`/video?room=${room}`, '_blank')
-          }}>
-            <Video size={15} /> Görüşme Talebi Gönder
-          </button>
-        </div>
+        {!(UUID_RE.test(String(pid || ''))) && !isParent && (
+          <p className="auth-err"><Alert size={14} /> Hesabınız sunucuda kayıtlı değil. Görüşme talebi için hekiminizin hesabınızı açması gerekir.</p>
+        )}
+        {hekimler.length === 0 ? (
+          <p className="muted">Sistemde kayıtlı hekim yok — paneliniz açıldığında hekiminiz görüşme başlatabilir.</p>
+        ) : (
+          <div className="toolbar">
+            <select value={secilenHekim} onChange={(e) => setSecilenHekim(e.target.value)} aria-label="Görüşme isteyeceğiniz hekim">
+              <option value="">Hekim seçin...</option>
+              {hekimler.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name || 'Hekim'}{patient?.created_by === h.id ? ' (kayıt hekiminiz)' : ''}
+                </option>
+              ))}
+            </select>
+            <button
+              disabled={!secilenHekim || !(UUID_RE.test(String(pid || '')))}
+              onClick={() => {
+                const hekim = hekimler.find((x) => x.id === secilenHekim)
+                if (!hekim) return setMsg('Önce hekim seçin.')
+                const room = 'r' + (pid || '') + '-' + Date.now().toString(36)
+                bildirimOlustur({
+                  tur: 'gorusme',
+                  title: `${patient?.name || 'Hasta'} — Görüşme Talebi`,
+                  body: 'Hasta görüntülü görüşme istiyor. Onaylamak ve görüşmeye katılmak için bildirime tıklayın.',
+                  hekimId: hekim.id,
+                  hastaId: pid,
+                  link: `/video?room=${room}`,
+                  onem: 'yuksek'
+                })
+                setMsg(`Görüşme talebi ${hekim.name || 'hekime'} gönderildi; onay bildirimini aldığında katılacaktır.`)
+                window.open(`/video?room=${room}`, '_blank')
+              }}
+            >
+              <Video size={15} /> Görüşme Talebi Gönder
+            </button>
+          </div>
+        )}
         {msg && <p className="muted">{msg}</p>}
       </Card>
 

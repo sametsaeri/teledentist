@@ -17,31 +17,26 @@ const MENU_GROUPS = {
   hekim: [
     {
       label: 'Genel', Icon: Chart, items: [
-        ['/hekim', Stethoscope, 'Genel Bakış'],
-        ['/hekim?tab=gunluk', Clock, 'Günlük Akış']
+        ['/hekim', Stethoscope, 'Genel Bakış']
       ]
     },
     {
       label: 'Hastalar', Icon: Users, items: [
         ['/hekim?tab=hastalar', Users, 'Hastalarım'],
+        ['/hekim/rontgen-arşivi', Box, 'Röntgen Arşivi'],
         ['/hekim?tab=gunluk-not', Clipboard, 'Klinik Günlük']
       ]
     },
     {
       label: 'Randevu', Icon: Calendar, items: [
         ['/hekim?tab=yaklasan', Calendar, 'Yaklaşan Randevular'],
-        ['/hekim?tab=takvim', Clock, 'Takvim'],
-        ['/hekim?tab=randevu', Clipboard, 'Randevu Talepleri', 'randevu']
+        ['/hekim?tab=randevu', Clipboard, 'Randevu Talepleri', 'randevu'],
+        ['/hekim?tab=takvim', Clock, 'Takvim']
       ]
     },
     {
-      label: 'Değerlendirme', Icon: Sparkle, items: [
+      label: 'Tedavi', Icon: Sparkle, items: [
         ['/hekim?tab=triyaj', Sparkle, 'Triyaj ve Sevk'],
-        ['/hekim/rontgen-arşivi', Box, 'Röntgen Arşivi']
-      ]
-    },
-    {
-      label: 'Tedavi', Icon: Calendar, items: [
         ['/hekim?tab=sure', Clock, 'Tedavi Süreleri']
       ]
     },
@@ -49,7 +44,6 @@ const MENU_GROUPS = {
       label: 'İletişim', Icon: Chat, items: [
         ['/bildirimler', Bell, 'Bildirimler', 'bildirim'],
         ['/video', Video, 'Online Görüşme'],
-        ['/hatirlatma', Bell, 'Hatırlatmalar'],
         ['/konsultasyon', Chat, 'Konsültasyon']
       ]
     },

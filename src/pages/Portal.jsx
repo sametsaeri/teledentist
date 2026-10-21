@@ -9,7 +9,7 @@ import { createUserByDoctor } from '../services/auth.js'
 import {
   listPatients, getPatient, getTeeth, saveTooth, lastRecords, updatePatient,
   insertTriage, insertHygiene, insertAnxiety, listDoctors, listReferrals, referPatient,
-  listAppointments, insertAppointment, approveAppointment, completeAppointment, listRequests, decideRequest,
+  listAppointments, insertAppointment, approveAppointment, completeAppointment,
   repairAccount,
   loadImage, setAppointmentOnline, listPhotos, listTriage, setPhotoNote, signedPhotoUrl,
   plansApi, notesApi, getSetupStatus, anamnesisApi
@@ -26,11 +26,15 @@ import { AnamnezForm } from '../components/AnamnezForm.jsx'
 import { DosyaArsivi } from '../components/DosyaArsivi.jsx'
 import { bildirimOlustur } from '../services/bildirim.js'
 import { kabulMesaji } from '../services/onGorusme.js'
+import { KVKK_SURUM } from '../components/KvkkOnay.jsx'
 import {
   DailyFlow, TedaviSureleri, ClinicJournal, ClinicStats, DemoSeeder, DoctorSchedule
 } from './DoctorModules.jsx'
 
 function xrayKey(pid, tooth) { return `${pid}_${tooth}` }
+
+// Yalnız sunucuda (Supabase) kayıtlı kullanıcılara bildirim gönderilebilir
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // Sonraki kontrol tarihi (son muayeneden 3 ay sonra) ve kalan gün.
 // Hatırlatma, kalan gün <= hastanın seçtiği hatırlatma günü olduğunda tetiklenir.
@@ -77,18 +81,7 @@ const TABS = [
   { id: 'triyaj', label: 'Triyaj ve Sevk', Icon: Clipboard, desc: 'Hasta triyaj kayıtları ve hekimler arası sevk.' },
   { id: 'foto', label: 'Hasta Fotoğrafları', Icon: Camera, desc: 'Hastanın gönderdiği fotoğrafları değerlendirin ve yorumlayın.' },
   { id: 'sure', label: 'Tedavi Süreleri', Icon: Clock, desc: 'İşlem süreleri, seans sayısı ve kontrol aralıkları.' },
-  { id: 'istek', label: 'Kayıt İstekleri', Icon: FileText, desc: 'Hasta kayıt taleplerini onaylayın.' },
   { id: 'yaklasan', label: 'Yaklaşan Randevular', Icon: Calendar, desc: 'Yaklaşan randevu ve kontrol tarihleri.' }
-]
-
-// Menüyü konulara göre gruplandır
-const GROUPS = [
-  { label: 'Genel', items: ['ozet', 'gunluk'] },
-  { label: 'Klinik', items: ['hastalar', 'gunluk-not'] },
-  { label: 'Planlama', items: ['randevu', 'takvim'] },
-  { label: 'Değerlendirme', items: ['triyaj', 'foto'] },
-  { label: 'Planlama', items: ['sure'] },
-  { label: 'Kayıtlar', items: ['istek'] }
 ]
 
 function Modal({ title, sub, onClose, children }) {
@@ -139,6 +132,17 @@ function NewPatientForm({ onDone, onClose }) {
     if (anamnezKayitId && r.uid) {
       await anamnesisApi.update(anamnezKayitId, { patient_id: r.uid })
     }
+    // KABUL BİLDİRİMİ: hesap açılan hasta paneline ilk girdiğinde ön
+    // değerlendirme formunu dolduracak. Hekimin adı mesajda yer alır.
+    const me = getSession()
+    bildirimOlustur({
+      tur: 'kabul',
+      title: `Başvurunuz onaylandı — ${me?.name || 'hekim'}`,
+      body: kabulMesaji(me?.name),
+      hekimId: me?.id || null,
+      hastaId: r.uid || null,
+      link: '/hastam'
+    })
     setMsg(`${form.name} hesabı açıldı.`)
     onDone({ name: form.name, email: form.email, pass: form.pass, uid: r.uid })
   }
@@ -250,17 +254,13 @@ export function DoctorList() {
   const [all, setAll] = useState([])
   const [doctors, setDoctors] = useState([])
   const [refs, setRefs] = useState([])
-  const [requests, setRequests] = useState([])
   const [appts, setAppts] = useState([])
   const [refTo, setRefTo] = useState({})
   const [msg, setMsg] = useState('')
-  const [istekHata, setIstekHata] = useState(false)
   const [refMsg, setRefMsg] = useState('')
   const [form, setForm] = useState(emptyForm())
   const [approveDate, setApproveDate] = useState({})
   const [showNew, setShowNew] = useState(false)
-  // Onay sonrası verilen giriş bilgileri — hekim hastaya iletir
-  const [verilen, setVerilen] = useState(null)
   // "Giriş yapamıyor" aracı
   const [onarim, setOnarim] = useState({ email: '', sifre: '' })
   const [onarimSonuc, setOnarimSonuc] = useState(null)
@@ -285,7 +285,6 @@ export function DoctorList() {
     listPatients().then(setAll)
     listDoctors().then(setDoctors)
     listReferrals().then(setRefs)
-    listRequests().then(setRequests)
     listAppointments().then(setAppts)
     listTriage().then(setTriage)
     loadPhotos()
@@ -384,7 +383,6 @@ export function DoctorList() {
         <button className="kpi kpi-btn" onClick={() => setTab('randevu')}><b className={pending.length ? 'alert-num' : ''}>{pending.length}</b><span>Bekleyen Randevu Talebi</span></button>
         <button className="kpi kpi-btn" onClick={() => setTab('takvim')}><b>{approved.length}</b><span>Onaylı Randevu</span></button>
         <button className="kpi kpi-btn" onClick={() => setTab('triyaj')}><b>{triage.length}</b><span>Triyaj Kaydı</span></button>
-        <button className="kpi kpi-btn" onClick={() => setTab('istek')}><b className={requests.length ? 'alert-num' : ''}>{requests.length}</b><span>Kayıt İsteği</span></button>
       </div>
 
       {/* ---------------- GENEL BAKIŞ ---------------- */}
@@ -478,6 +476,51 @@ export function DoctorList() {
               </div>
             )
           })}
+
+          {/* Giriş yapamayan hastalar için onarım aracı */}
+          <div className="card edit-panel">
+            <h4><User size={15} /> "Hesabı bulunamadı" sorunu mu var?</h4>
+            <p className="muted">
+              Hasta "Bu kullanıcı adı bulunamadı" veya şifre hatası alıyorsa e-postasını
+              yazın; hesabı tek tuşla onarıp yeni giriş bilgisi üretin.
+            </p>
+            <div className="grid form-grid">
+              <label>Hasta e-postası *
+                <input
+                  value={onarim.email}
+                  onChange={(e) => setOnarim({ ...onarim, email: e.target.value })}
+                  placeholder="hastakayit1@ornek.com"
+                />
+              </label>
+              <label>Yeni şifre (boşsa otomatik üretilir)
+                <input
+                  value={onarim.sifre}
+                  onChange={(e) => setOnarim({ ...onarim, sifre: e.target.value })}
+                  placeholder="en az 6 karakter"
+                />
+              </label>
+            </div>
+            <button onClick={async () => {
+              setOnarimSonuc(null)
+              const res = await repairAccount(onarim.email, onarim.sifre, me?.id)
+              if (res.error) { setOnarimSonuc({ hata: res.error }); return }
+              setOnarimSonuc({
+                ad: res.username, email: onarim.email, sifre: res.sifre, not: res.not
+              })
+              setOnarim({ email: '', sifre: '' })
+              reload()
+            }}><CheckCircle size={15} /> Hesabı Onar</button>
+            {onarimSonuc?.hata && <p className="auth-err"><Alert size={15} /> {onarimSonuc.hata}</p>}
+            {onarimSonuc && !onarimSonuc.hata && (
+              <div className="msg ok">
+                <p><b>{onarimSonuc.ad}</b> için giriş bilgileri hazır:</p>
+                <p>Kullanıcı adı: <b>{onarimSonuc.ad}</b></p>
+                <p>E-posta: <b>{onarimSonuc.email}</b></p>
+                <p>Şifre: <b>{onarimSonuc.sifre}</b></p>
+                <p className="muted">{onarimSonuc.not}</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -614,181 +657,6 @@ export function DoctorList() {
         </div>
       )}
 
-      {/* ---------------- KAYIT İSTEKLERİ ---------------- */}
-      {tab === 'istek' && (
-        <div className="card">
-          <h3><Clipboard size={18} /> Gelen Kayıt İstekleri ({requests.length})</h3>
-          <p className="muted">
-            Hastaların <Link to="/kayit">kayıt isteği</Link> formundan gönderdiği başvurular burada listelenir.
-            Onayladığınızda hesap açılır ve hasta kendi paneline girebilir.
-          </p>
-
-          {requests.length === 0 && (
-            <div className="empty-state">
-              <p className="muted">Şu anda bekleyen kayıt isteği yok.</p>
-              <p className="muted">
-                Hasta kaydı yalnızca talep üzerinden yapılır. Hastanın formu doldurması gerekir;
-                adres: <b>/kayit</b>. Bu sayfayı yeni bir sekmede test edebilirsiniz.
-              </p>
-              <div className="kurulum-notu">
-                <Alert size={15} />
-                <p>
-                  <b>Talep gelmiyorsa:</b> Supabase projenizde
-                  <b> Authentication → Sign In / Providers → Email → "Allow new users to sign up"</b>
-                  anahtarı kapalıdır. Hasta kaydı hiçbir yere yazılamaz.
-                  <br />
-                  Çözüm: anahtarı açın <b>veya</b> proje kökünde <code>npm run db:push</code> çalıştırın.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Kurulum uyarısı: talep geliyor ama onaylanamıyorsa sebebi budur */}
-          {istekHata && (
-            <p className="auth-err"><Alert size={15} /> {msg}</p>
-          )}
-
-          {requests.map((r) => (
-            <div className="istek-row" key={r.id}>
-              <div className="istek-bilgi">
-                <p>
-                  <strong>{r.name}</strong>
-                  <span className="badge">{r.role === 'ebeveyn' ? 'Ebeveyn' : 'Hasta'}</span>
-                  {String(r.id).startsWith('y') && <span className="badge warn">tarayıcı kaydı</span>}
-                </p>
-                <p className="muted">
-                  {r.email}
-                  {r.username ? ` · kullanıcı adı: ${r.username}` : ''}
-                  {r.phone ? ` · ${r.phone}` : ''}
-                  {r.created_at ? ` · ${String(r.created_at).slice(0, 10)}` : ''}
-                </p>
-                {r.child_email && <p className="muted">Çocuk: {r.child_email}</p>}
-                {r.note && <p className="muted">Not: {r.note}</p>}
-                {r.kvkk_onay
-                  ? (
-                    <p className="kvkk-kanit">
-                      <Shield size={12} /> KVKK rızası alındı · metin v{r.kvkk_surum || '1.0'}
-                      {r.kvkk_zaman ? ` · ${String(r.kvkk_zaman).slice(0, 16).replace('T', ' ')}` : ''}
-                    </p>
-                  )
-                  : <p className="muted">KVKK onayı kaydı bulunmuyor — talebi onaylamadan önce doğrulayın.</p>}
-              </div>
-              <div className="istek-eylem">
-                <button onClick={async () => {
-                  const res = await decideRequest(r, true, me?.id)
-                  setIstekHata(!!res.error)
-                  if (res.error) { setMsg(res.error); return }
-                  // Hesap yeni oluşturulduysa giriş bilgisini hekime göster
-                  if (res.geciciSifre) {
-                    setVerilen({ name: r.name, email: res.email || r.email, username: res.username, sifre: res.geciciSifre })
-                    setMsg(`${r.name} onaylandı. Aşağıdaki giriş bilgisini hastaya iletin.`)
-                  } else {
-                    setVerilen(null)
-                    setMsg(`${r.name} onaylandı — hesabı açıldı. Hasta kendi şifresiyle girebilir.`)
-                  }
-                  // KABUL BİLDİRİMİ: hasta paneline girince ön değerlendirme
-                  // formunu dolduracak. Hekimin adı mesajda yer alır.
-                  bildirimOlustur({
-                    tur: 'kabul',
-                    title: `Başvurunuz onaylandı — ${me?.name || 'hekim'}`,
-                    body: kabulMesaji(me?.name),
-                    hekimId: me?.id || null,
-                    hastaId: res.uid || null,
-                    link: '/hastam'
-                  })
-                  reload()
-                }}><Check size={15} /> Onayla</button>
-                <button
-                  className="ghost"
-                  onClick={async () => {
-                    const res = await decideRequest(r, false)
-                    setIstekHata(!!res.error)
-                    setMsg(res.error || `${r.name} talebi reddedildi.`)
-                    reload()
-                  }}
-                ><X size={15} /> Reddet</button>
-              </div>
-            </div>
-          ))}
-          {msg && !istekHata && <p className="msg ok">{msg}</p>}
-
-          {/* Onayda üretilen giriş bilgisi — hekim bunu hastaya iletir */}
-          {verilen && (
-            <div className="card edit-panel">
-              <h4><Lock size={15} /> {verilen.name} — giriş bilgileri</h4>
-              <p className="muted">
-                Hesap yeni açıldığı için geçici şifre üretildi. Bu bilgileri hastaya iletin;
-                hasta giriş yaptıktan sonra şifresini değiştirebilir.
-              </p>
-              <div className="grid form-grid">
-                <label>Kullanıcı adı<input readOnly value={verilen.username || ''} /></label>
-                <label>E-posta<input readOnly value={verilen.email || ''} /></label>
-                <label>Geçici şifre<input readOnly value={verilen.sifre || ''} /></label>
-              </div>
-              <div className="toolbar">
-                <button
-                  className="ghost"
-                  onClick={() => setVerilen(null)}
-                >Kapat</button>
-                <button
-                  className="ghost"
-                  onClick={() => {
-                    const metin = `${verilen.name} için TeleDentist giriş bilgileriniz:\n` +
-                      `Kullanıcı adı: ${verilen.username}\nE-posta: ${verilen.email}\n` +
-                      `Geçici şifre: ${verilen.sifre}\nGiriş sonrası şifrenizi değiştirin.`
-                    navigator.clipboard?.writeText(metin)
-                  }}
-                >Bilgileri Kopyala</button>
-              </div>
-            </div>
-          )}
-
-          {/* Giriş yapamayan hastalar için onarım aracı */}
-          <div className="card edit-panel">
-            <h4><User size={15} /> "Hesabı bulunamadı" sorunu mu var?</h4>
-            <p className="muted">
-              Hasta "Bu kullanıcı adı bulunamadı" veya şifre hatası alıyorsa e-postasını
-              yazın; hesabı tek tuşla onarıp yeni giriş bilgisi üretin.
-            </p>
-            <div className="grid form-grid">
-              <label>Hasta e-postası *
-                <input
-                  value={onarim.email}
-                  onChange={(e) => setOnarim({ ...onarim, email: e.target.value })}
-                  placeholder="hastakayit1@ornek.com"
-                />
-              </label>
-              <label>Yeni şifre (boşsa otomatik üretilir)
-                <input
-                  value={onarim.sifre}
-                  onChange={(e) => setOnarim({ ...onarim, sifre: e.target.value })}
-                  placeholder="en az 6 karakter"
-                />
-              </label>
-            </div>
-            <button onClick={async () => {
-              setOnarimSonuc(null)
-              const res = await repairAccount(onarim.email, onarim.sifre, me?.id)
-              if (res.error) { setOnarimSonuc({ hata: res.error }); return }
-              setOnarimSonuc({
-                ad: res.username, email: onarim.email, sifre: res.sifre, not: res.not
-              })
-              setOnarim({ email: '', sifre: '' })
-              reload()
-            }}><CheckCircle size={15} /> Hesabı Onar</button>
-            {onarimSonuc?.hata && <p className="auth-err"><Alert size={15} /> {onarimSonuc.hata}</p>}
-            {onarimSonuc && !onarimSonuc.hata && (
-              <div className="msg ok">
-                <p><b>{onarimSonuc.ad}</b> için giriş bilgileri hazır:</p>
-                <p>Kullanıcı adı: <b>{onarimSonuc.ad}</b></p>
-                <p>E-posta: <b>{onarimSonuc.email}</b></p>
-                <p>Şifre: <b>{onarimSonuc.sifre}</b></p>
-                <p className="muted">{onarimSonuc.not}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ---------------- YAKLAŞAN RANDEVULAR ---------------- */}
       {tab === 'yaklasan' && (
@@ -1210,27 +1078,32 @@ export function DoctorPatient() {
       <div className="card">
         <h3><Video size={18} /> Online Görüşme</h3>
         <p className="muted">
-          Hastayı görüntülü görüşmeye davet edin. Bildirim hasta paneline düşer,
-          hasta bildirime tıklayarak görüşmeye katılabilir.
+          Açtığınız hastaya görüntülü görüşme daveti gönderin. Onay bildirimi hasta
+          paneline düşer; hasta bildirime tıklayarak görüşmeye katılır.
         </p>
-        <div className="toolbar">
-          <button onClick={() => {
-            const room = 'r' + id + '-' + Date.now().toString(36)
-            bildirimOlustur({
-              tur: 'gorusme',
-              title: `${patient?.name || 'Hasta'} — Görüşme Daveti`,
-              body: `Hekiminiz sizinle görüntülü görüşme yapmak istiyor. Bildirime tıklayarak görüşmeye katılabilirsiniz.`,
-              hastaId: id,
-              link: `/video?room=${room}`,
-              onem: 'yuksek'
-            })
-            setMMsg(`Görüşme daveti gönderildi. Oda kodu: ${room}`)
-            // Hekim de görüşmeye girebilir
-            window.open(`/video?room=${room}`, '_blank')
-          }}>
-            <Video size={15} /> Görüşme Başlat ve Davet Gönder
-          </button>
-        </div>
+        {!(UUID_RE.test(String(id || ''))) ? (
+          <p className="auth-err"><Alert size={14} /> Bu hasta henüz sunucuda kayıtlı değil. "Yeni Hasta Ekle" ile hesabını açın; davet sonrasında gönderilebilir.</p>
+        ) : (
+          <div className="toolbar">
+            <button onClick={() => {
+              const room = 'r' + id + '-' + Date.now().toString(36)
+              bildirimOlustur({
+                tur: 'gorusme',
+                title: `${patient?.name || 'Hasta'} — Görüşme Daveti`,
+                body: 'Hekiminiz görüntülü görüşme daveti gönderdi. Onaylamak ve görüşmeye katılmak için bildirime tıklayın.',
+                hekimId: me?.id || null,
+                hastaId: id,
+                link: `/video?room=${room}`,
+                onem: 'yuksek'
+              })
+              setMMsg(`Görüşme daveti gönderildi. Oda kodu: ${room}`)
+              // Hekim de görüşmeye girebilir
+              window.open(`/video?room=${room}`, '_blank')
+            }}>
+              <Video size={15} /> Görüşme Başlat ve Davet Gönder
+            </button>
+          </div>
+        )}
         {mMsg && <p className="muted">{mMsg}</p>}
       </div>
 
@@ -1294,13 +1167,19 @@ export function DoctorPatient() {
               tarih: new Date().toISOString().slice(0, 10),
               metni: onamMetni,
               notu: onamNotu,
-              hekimId: getSession()?.id
+              hekimId: getSession()?.id,
+              // KVKK kanıtı: rıza raporla birlikte kanıtlanır
+              kvkk_onay: true,
+              kvkk_surum: KVKK_SURUM,
+              kvkk_zaman: new Date().toISOString()
             }
             localStorage.setItem(`onam_raporu_${id}`, JSON.stringify(rapor))
             setOnamKaydedildi(true)
             setMMsg('Detaylı onam raporu kaydedildi.')
           }}><Save size={15} /> Onam Raporunu Kaydet</button>
-          {onamKaydedildi && <span className="muted"> ✓ Kaydedildi</span>}
+          {onamKaydedildi && (
+            <span className="kvkk-kanit"><Shield size={12} /> KVKK rızası alındı · metin v{KVKK_SURUM}</span>
+          )}
         </div>
         {mMsg && <p className="muted">{mMsg}</p>}
       </div>
