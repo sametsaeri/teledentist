@@ -466,6 +466,13 @@ export async function uploadFile(bucket, patientId, label, dataUrl, { tur = 'xra
   const bakimHatasi = bakimKontrol('Dosya yükleme')
   if (bakimHatasi) return bakimHatasi
   if (!hasSupabase) return { error: 'Supabase bağlı değil, yerel kayıt kullanıldı.' }
+  // UUID kontrolü: patientId ve createdBy UUID formatında olmalı
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const gecerliPatientId = UUID_RE.test(String(patientId)) ? patientId : null
+  const gecerliCreatedBy = createdBy && UUID_RE.test(String(createdBy)) ? createdBy : null
+  if (!gecerliPatientId) {
+    return { error: 'Hasta Supabase\'de kayıtlı değil. Önce hasta kaydını Supabase\'e aktarın.' }
+  }
 
   // Hasta mı yüklüyor hekim mi? Buna göre bildirim kime gider
   const yukleyen = getSession()
@@ -481,6 +488,11 @@ export async function uploadFile(bucket, patientId, label, dataUrl, { tur = 'xra
     ? `${patientId}/${klasorAdi}/${label}-${damga}.${uzanti}`
     : `${patientId}/${label}-${damga}.${uzanti}`
 
+  // Supabase bağlantısı yoksa veya patientId UUID değilse yerel kayıt
+  if (!gecerliPatientId) {
+    return { error: 'Hasta Supabase\'de kayıtlı değil. Önce hasta kaydını Supabase\'e aktarın.' }
+  }
+
   const up = await supabase.storage.from(bucket).upload(path, dataUrlToBlob(dataUrl), {
     contentType: uzanti === 'pdf' ? 'application/pdf' : 'image/png', upsert: false
   })
@@ -489,7 +501,7 @@ export async function uploadFile(bucket, patientId, label, dataUrl, { tur = 'xra
   // Kayıt satırı: silme ve arşivleme buna göre yapılır
   const notDegeri = note || not || ''
   const satirTemel = {
-    patient_id: patientId,
+    patient_id: gecerliPatientId,
     path,
     bucket,
     tur,
@@ -497,7 +509,7 @@ export async function uploadFile(bucket, patientId, label, dataUrl, { tur = 'xra
     label,
     tooth,
     boyut: dataUrl.length,
-    olusturan: createdBy || null,
+    olusturan: gecerliCreatedBy,
     created_at: zaman.toISOString(),
     arsiv: false
   }
