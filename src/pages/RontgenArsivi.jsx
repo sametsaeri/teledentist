@@ -180,7 +180,7 @@ export function RontgenArsivi() {
 
   const goruntule = async (kayit) => {
     if (kayit.img) { setIzleme({ ...kayit, url: kayit.img }); return }
-    const url = await fileUrl(kayit.path)
+    const url = await fileUrl(kayit.path, kayit.bucket)
     if (!url) { setHata('Dosya görüntülenemedi. Bağlantı süresi dolmuş olabilir.'); return }
     setIzleme({ ...kayit, url })
   }

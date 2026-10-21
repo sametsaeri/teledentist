@@ -612,8 +612,14 @@ export async function listAllMedicalFiles({ arsiv = null, tur = null } = {}) {
 }
 
 /** Tek bir dosyanın imzalı bağlantısını üretir (1 saat geçerli). */
-export async function fileUrl(path) {
-  return signedPhotoUrl(path)
+export async function fileUrl(path, bucket = 'xrays') {
+  if (!hasSupabase || !path) return null
+  try {
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600)
+    return error ? null : data?.signedUrl || null
+  } catch {
+    return null
+  }
 }
 
 /**
