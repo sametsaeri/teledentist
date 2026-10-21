@@ -1,7 +1,9 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState, Suspense, lazy } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { STATUS_TR } from '../data/teeth.js'
 import { ToothChart } from '../components/ToothChart.jsx'
+// 3B editör (three.js ~600kB) panel açılınca yüklensin — ilk giriş hızlansın
+const DisEditor = lazy(() => import('../components/Tooth3DEditor.jsx').then((m) => ({ default: m.DisEditor })))
 import { toothEducation, recallForTooth } from '../ai/toothAi.js'
 import { suggestRecall } from '../ai/recall.js'
 import { load, save, keys, getSession } from '../services/store.js'
@@ -22,7 +24,6 @@ import {
   CheckCircle, Clock, Stethoscope, User, Save, X, Alert, Tooth, Lock, Phone, Bell,
   ChevronLeft, ChevronRight, Video, Notebook, Shield
 } from '../components/Icons.jsx'
-import { DisEditor } from '../components/Tooth3DEditor.jsx'
 import { AnamnezForm } from '../components/AnamnezForm.jsx'
 import { DosyaArsivi } from '../components/DosyaArsivi.jsx'
 import { bildirimOlustur } from '../services/bildirim.js'
@@ -1082,14 +1083,16 @@ export function DoctorPatient() {
           selected={selected}
           onSelect={setSelected}
         />
-        <DisEditor
-          pid={id}
-          teeth={teeth}
-          selected={selected}
-          onSelect={setSelected}
-          onKaydedildi={() => getTeeth(id).then(setTeeth)}
-          mesajGoster={setMMsg}
-        />
+        <Suspense fallback={<p className="muted">3B editör yükleniyor…</p>}>
+          <DisEditor
+            pid={id}
+            teeth={teeth}
+            selected={selected}
+            onSelect={setSelected}
+            onKaydedildi={() => getTeeth(id).then(setTeeth)}
+            mesajGoster={setMMsg}
+          />
+        </Suspense>
       </div>
 
       {/* ---------- Online Görüşme ---------- */}

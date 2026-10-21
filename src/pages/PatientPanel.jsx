@@ -127,6 +127,7 @@ export function PatientPanel() {
   // Görüşme talebi: hastanın görüşme isteyeceği hekimi seçer
   const [hekimler, setHekimler] = useState([])
   const [secilenHekim, setSecilenHekim] = useState('')
+  const [sonGorusme, setSonGorusme] = useState(null) // son görüşme talebinin durumu
 
   useEffect(() => {
     if (isParent && session?.id) {
@@ -204,6 +205,15 @@ export function PatientPanel() {
     })
     return () => { iptal = true }
   }, [pid])
+
+  useEffect(() => {
+    if (!pid || !UUID_RE.test(String(pid))) return
+    // Son görüşme talebi: hekim okudu mu? (okundu = hekim katılmak üzere tıkladı)
+    listBildirimler({ limit: 30 }).then((liste) => {
+      const gorusme = liste.find((b) => b.kind === 'gorusme' && b.patient_id === pid)
+      if (gorusme) setSonGorusme(gorusme)
+    }).catch(() => {})
+  }, [pid, msg])
 
   useEffect(() => {
     if (!pid) return
@@ -466,11 +476,11 @@ export function PatientPanel() {
         <GunlukListe pid={pid} />
       </Card>
 
-      {/* ---------- 3B dişlerim ---------- */}
+      {/* ---------- Diş şemam ---------- */}
       <Card
         icon={Tooth}
-        title="Dişlerim — 3B Görünüm"
-        desc="Dişlerinizi döndürerek inceleyin, üzerine gelerek o dişin durumunu ve bilgisini görün."
+        title="Dişlerim"
+        desc="Diş şemanıza dokunarak o dişin durumunu ve bakım bilgisini görün."
       >
         <div className="tooth-summary">
           {Object.entries(summary).map(([s, n]) => (
@@ -709,6 +719,12 @@ export function PatientPanel() {
           </div>
         )}
         {msg && <p className="muted">{msg}</p>}
+        {sonGorusme && (
+          <p className="muted">
+            <Clock size={14} /> Son talebiniz: {String(sonGorusme.created_at || '').slice(0, 16).replace('T', ' ')} —{' '}
+            {sonGorusme.status === 'okundu' ? 'Hekiminiz okudu; en kısa sürede katılacaktır.' : 'Hekiminiz henüz görmedi.'}
+          </p>
+        )}
       </Card>
 
       {/* ---------- Randevu ve görüşme (hasta panelinin ana eylemi) ---------- */}
