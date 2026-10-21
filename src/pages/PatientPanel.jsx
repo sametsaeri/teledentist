@@ -688,6 +688,74 @@ export function PatientPanel() {
         <RandevuGorusmeKarti sonrakiRandevu={nextAppt} />
       </Card>
 
+      {/* ---------- Bilgi videoları ve içerikler ---------- */}
+      <Card icon={Video} title="Bilgi Videoları ve İçerikler" desc="Diş sağlığı hakkında eğitici videolar ve bilgiler.">
+        <div className="video-liste">
+          <div className="video-kart">
+            <h4>Diş Fırçalama Nasıl Yapılır?</h4>
+            <p className="muted">Doğru diş fırçalama tekniği ve süresi hakkında bilgi.</p>
+            <iframe
+              width="100%"
+              height="200"
+              src="https://www.youtube.com/embed/placeholder1"
+              title="Diş Fırçalama"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ borderRadius: 8, marginBottom: 8 }}
+            />
+            <ul className="muted small">
+              <li>Günde en az 2 kez, 2 dakika fırçalayın</li>
+              <li>Florürlü diş macunu kullanın</li>
+              <li>Fırçayı 45 derece açıyla tutun</li>
+              <li>Dilinizi de fırçalayın</li>
+            </ul>
+          </div>
+          <div className="video-kart">
+            <h4>Diş Tali (Floss) Nasıl Kullanılır?</h4>
+            <p className="muted">Diş aralarını temizlemek için diş tali kullanımı.</p>
+            <iframe
+              width="100%"
+              height="200"
+              src="https://www.youtube.com/embed/placeholder2"
+              title="Diş Tali Kullanımı"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ borderRadius: 8, marginBottom: 8 }}
+            />
+            <ul className="muted small">
+              <li>Günde en az 1 kez diş tali kullanın</li>
+              <li>Diş teli dişlerin arasına nazikçe yerleştirin</li>
+              <li>C şekli vererek diş eti çizgisini takip edin</li>
+              <li>Her diş için temiz bir bölüm kullanın</li>
+            </ul>
+          </div>
+          <div className="video-kart">
+            <h4>Çocuklar İçin Diş Sağlığı</h4>
+            <p className="muted">Çocuklarda diş bakım alışkanlıkları ve önleme.</p>
+            <ul className="muted small">
+              <li>İlk diş çıktıktan sonra fırçalamaya başlayın</li>
+              <li>Florürlü diş macunu kullanın (bezelye tanesi kadar)</li>
+              <li>Şekerli atıştırmalıkları sınırlayın</li>
+              <li>6 ayda bir diş hekimi kontrolü yapın</li>
+              <li>Gece yatmadan önce şekerli gıda tüketmeyin</li>
+            </ul>
+          </div>
+          <div className="video-kart">
+            <h4>Sağlıksız Atıştırmalıklar ve Diş Sağlığı</h4>
+            <p className="muted">Abur cubur ve şekerli gıdaların dişlere etkisi.</p>
+            <ul className="muted small">
+              <li>Şekerli içecekler diş çürüğü riskini artırır</li>
+              <li>Yapışkan şekerler diş yüzeyine yapışarak çürük yapar</li>
+              <li>Atıştırmalık olarak meyve, sebze, peynir tercih edin</li>
+              <li>Gece yatmadan önce şekerli gıda tüketmeyin</li>
+              <li>Atıştırmalık sonrası su için veya diş fırçalayın</li>
+            </ul>
+          </div>
+        </div>
+      </Card>
+
       {/* ---------- Acil durum rehberi ---------- */}
       <Card
         icon={Alert}
