@@ -528,32 +528,9 @@ export function PatientPanel() {
         </Card>
       )}
 
-      {/* ---------- Benim kayıtlarım ---------- */}
-      <Card icon={Clipboard} title="Benim Kayıtlarım" desc="Test sonuçlarınız ve hekiminizin önerileri.">
-        <div className="record-grid">
-          <div className="record-box">
-            <b><Alert size={15} /> Ağrı / Triyaj</b>
-            {(() => {
-              const last = triageLast(anamnesis)
-              return last ? <p>{last.level} · skor {last.score}</p> : <p className="muted">Kayıt yok</p>
-            })()}
-          </div>
-          <div className="record-box">
-            <b><Drop size={15} /> Diş Taşı (plak)</b>
-            {hygiene[0] ? <p>{hygiene[0].plaque} / 3</p> : <p className="muted">Kayıt yok</p>}
-          </div>
-          <div className="record-box">
-            <b><Sparkle size={15} /> Diş Kaygısı</b>
-            {anxiety[0] ? <p>{anxiety[0].total} / 25</p> : <p className="muted">Kayıt yok</p>}
-          </div>
-          <div className="record-box">
-            <b><Clock size={15} /> Son Kontrol</b>
-            <p>{patient.last_visit || 'Kayıt yok'}</p>
-          </div>
-        </div>
-        <div className="record-actions">
-          <Link to="/video"><button className="ghost"><Video size={16} /> Hekimimle Görüş</button></Link>
-        </div>
+      {/* ---------- Benim kayıtlarım (sadeleştirildi) ---------- */}
+      <Card icon={Clipboard} title="Son Kontrol" desc="Hekiminizin belirlediği kontrol tarihi.">
+        <p>{patient.last_visit || 'Henüz belirlenmedi'}</p>
       </Card>
 
       {/* ---------- Bilgilerim ---------- */}
