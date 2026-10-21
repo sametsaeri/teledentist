@@ -98,7 +98,7 @@ export default async function handler(req, res) {
     // SMS: "contact" alanı telefonnumarası görünümündeyse gönder
     const tel = String(a.contact || '').replace(/[^\d+]/g, '')
     if (tel.replace(/\D/g, '').length >= 10) {
-      await smsSend(tel, `TeleDentist hatırlatma: ${a.appt_date}${a.appt_time ? ` ${a.appt_time}` : ''} randevunuz var. ${a.is_online ? 'R online görüşme' : 'Klinik'} için bekleriz.`)
+      await smsSend(tel, `TeleDentist hatırlatma: ${a.appt_date}${a.appt_time ? ` ${a.appt_time}` : ''} randevunuz var. ${a.is_online ? 'Online görüşme' : 'Klinik'} için bekleriz.`)
     }
   }
 

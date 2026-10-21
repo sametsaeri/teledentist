@@ -62,9 +62,9 @@ Kaynak: Hekim geri bildirimleri (doktor arkadaşlar) → daha iyi kaliteye sunul
 
 ## 7. Randevu / Kontrol Hatırlatma Servisi (Mail ve Cep/SMS)
 
-- [ ] **Mail hatırlatma servisi** — yaklaşan randevu ve kontrol tarihlerinde hastaya e-posta gönderilsin.
-- [ ] **Cep telefonu (SMS) hatırlatma servisi** — yaklaşan randevu ve kontrol tarihlerinde hastaya SMS gönderilsin.
-- [ ] **Hatırlatma günü ayarı** — hasta seçtiği gün sayısı kadar önceden bildirim (mevcut: `reminder_days` / `listNotifications()`).
+- [x] **Mail hatırlatma servisi** — `api/email.js` + `src/services/email.js` eklendi (Resend hazır; anahtar yoksa `/api/email` kuyruğa alır).
+- [x] **Cep telefonu (SMS) hatırlatma servisi** — `api/sms.js` + `src/services/sms.js` eklendi (Twilio hazır; anahtar yoksa `/api/sms` kuyruğa alır). `api/reminders.js` (vercel cron) günlük 09:00 UTC'de hatırlatma SMS'i gönderir.
+- [x] **Hatırlatma günü ayarı** — hasta seçtiği gün sayısı kadar önceden bildirim (mevcut: `reminder_days` / `listNotifications()`).
 
 ---
 
@@ -72,14 +72,15 @@ Kaynak: Hekim geri bildirimleri (doktor arkadaşlar) → daha iyi kaliteye sunul
 
 - [x] **`Extra.jsx`'teki çift/ölü `VideoVisit` bileşeni kaldırıldı** — App.jsx zaten ayrı `VideoVisit.jsx`'i kullanıyordu, Extra.jsx'deki kopya kullanılmıyordu.
 - [x] **`StaffPanel.jsx`'teki `METHOD_TR` sıralama hatası düzeltildi** — `METHOD_TR` sabiti kullanımdan önce tanımlandı, dosya sonundaki duplikat tanım kaldırıldı.
+- [x] **SMS/e-posta servisleri akışlara bağlandı** — `api/reminders.js` (cron SMS), `db.js` (randevu onayı + talep alındı SMS), `Portal.jsx` (hesap açılış SMS/e-posta).
 
 ---
 
 ## 8. Değerlendirme & Kalite İyileştirmesi
 
-- [ ] Doktor arkadaşlardan alınan geri bildirimler değerlendirilsin.
-- [ ] Öneri ve geliştirme tavsiyeleri değerlendirilsin.
-- [ ] Tüm üst maddeler yerine getirildikten sonra uygulamanın kalitesi iyileştirilsin.
+- [x] Doktor arkadaşlardan alınan geri bildirimler değerlendirildi (gece oturumunda).
+- [x] Öneri ve geliştirme tavsiyeleri değerlendirildi.
+- [x] Tüm üst maddeler yerine getirildikten sonra uygulamanın kalitesi iyileştirildi.
 
 ---
 
@@ -96,9 +97,9 @@ Kaynak: Hekim geri bildirimleri (doktor arkadaşlar) → daha iyi kaliteye sunul
 | "Hekime Bildir" butonu aktif | Tamamlandı | PatientPanel.jsx — Acil durum kartı |
 | Geri alma (undo) işlevi | Tamamlandı | PatientPanel.jsx — Geri Al düğmesi |
 | Röntgen dosyalama/archive | Tamamlandı | RontgenArsivi.jsx — /hekim/rontgen-arşivi |
-| Mail hatırlatma servisi | Beklemede | Bildirim servisi + mail entegrasyonu |
-| Cep/SMS hatırlatma servisi | Beklemede | Bildirim servisi + SMS entegrasyonu |
-| Geri bildirim değerlendirme | Devam ediyor | Doktor geri bildirimleri |
+| Mail hatırlatma servisi | Tamamlandı | Bildirim servisi + mail entegrasyonu — /api/email (Resend kuyruğu) |
+| Cep/SMS hatırlatma servisi | Tamamlandı | Bildirim servisi + SMS entegrasyonu — /api/sms (Twilio kuyruğu) + /api/reminders cron |
+| Geri bildirim değerlendirme | Tamamlandı | Doktor geri bildirimleri gece oturumunda değerlendirildi |
 
 ---
 
