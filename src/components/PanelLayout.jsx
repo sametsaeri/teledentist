@@ -29,9 +29,9 @@ const MENU_GROUPS = {
     },
     {
       label: 'Randevu', Icon: Calendar, items: [
-        ['/hekim?tab=randevu', Clipboard, 'Randevu Talepleri', 'randevu'],
         ['/hekim?tab=yaklasan', Calendar, 'Yaklaşan Randevular'],
-        ['/hekim?tab=takvim', Clock, 'Takvim']
+        ['/hekim?tab=takvim', Clock, 'Takvim'],
+        ['/hekim?tab=randevu', Clipboard, 'Randevu Talepleri', 'randevu']
       ]
     },
     {
@@ -49,8 +49,7 @@ const MENU_GROUPS = {
       label: 'İletişim', Icon: Chat, items: [
         ['/bildirimler', Bell, 'Bildirimler', 'bildirim'],
         ['/video', Video, 'Online Görüşme'],
-        ['/hatirlatma', Bell, 'Hatırlatmalar'],
-        ['/konsultasyon', Chat, 'Konsültasyon']
+        ['/hatirlatma', Bell, 'Hatırlatmalar']
       ]
     },
     {
