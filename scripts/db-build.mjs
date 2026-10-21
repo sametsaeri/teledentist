@@ -24,8 +24,9 @@ const FILES = [
   ['migration_staff.sql',      '11) Sekreter ve diş teknisyeni rolleri + yardımcı tablolar'],
   ['setup_status.sql',        '12) Kurulum durumu fonksiyonu (uygulama bunu okur)'],
   ['migration_hekim_listesi.sql', '13) Hasta görüşme talebi: hekim listesi fonksiyonu (RLS bypass, minumum veri)'],
-  ['fix_admin.sql',           '14) Süper admin hesabını admin yapar'],
-  ['fix_demo_doctor.sql',     '15) Eski demo hekim kayıtlarını temizler']
+  ['migration_notifications_rls.sql', '14) Bildirim RLS: hasta okuma/yazma düzeltmesi'],
+  ['fix_admin.sql',           '15) Süper admin hesabını admin yapar'],
+  ['fix_demo_doctor.sql',     '16) Eski demo hekim kayıtlarını temizler']
 ]
 
 const banner = `-- ${'='.repeat(64)}

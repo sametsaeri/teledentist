@@ -18,7 +18,7 @@
 
 
 -- ================================================================
--- BÖLÜM 1/16: 1) Temel şema (profil, diş, triyaj, hijyen, anksiyete, randevu)
+-- BÖLÜM 1/17: 1) Temel şema (profil, diş, triyaj, hijyen, anksiyete, randevu)
 -- Kaynak: db/supabase.sql
 -- ================================================================
 
@@ -116,7 +116,7 @@ INSERT INTO storage.buckets (id, name, public) VALUES ('xrays','xrays', false) O
 INSERT INTO storage.buckets (id, name, public) VALUES ('photos','photos', false) ON CONFLICT (id) DO NOTHING;
 
 -- ================================================================
--- BÖLÜM 2/16: 2) Roller (admin/hekim), branş, sevk tablosu
+-- BÖLÜM 2/17: 2) Roller (admin/hekim), branş, sevk tablosu
 -- Kaynak: db/migration_roles.sql
 -- ================================================================
 
@@ -156,7 +156,7 @@ DROP POLICY IF EXISTS "hekim_update" ON profiles;
 CREATE POLICY "hekim_update" ON profiles FOR UPDATE USING (is_hekim() OR is_admin());
 
 -- ================================================================
--- BÖLÜM 3/16: 3) Kayıt istekleri tablosu
+-- BÖLÜM 3/17: 3) Kayıt istekleri tablosu
 -- Kaynak: db/migration_signup.sql
 -- ================================================================
 
@@ -180,7 +180,7 @@ DROP POLICY IF EXISTS "istek_hekim" ON kayit_istekleri;
 CREATE POLICY "istek_hekim" ON kayit_istekleri FOR ALL USING (is_hekim() OR is_admin());
 
 -- ================================================================
--- BÖLÜM 4/16: 4) Kayıt talebi düzeltmesi (user_id NOT NULL kaldırılır)
+-- BÖLÜM 4/17: 4) Kayıt talebi düzeltmesi (user_id NOT NULL kaldırılır)
 -- Kaynak: db/fix_kayit_istekleri.sql
 -- ================================================================
 
@@ -338,7 +338,7 @@ TO anon, authenticated;
 SELECT 'KURULUM TAMAM' AS sonuc;
 
 -- ================================================================
--- BÖLÜM 5/16: 4) Detaylı hasta bilgileri, randevu tarihi/online, bildirim, konsültasyon
+-- BÖLÜM 5/17: 4) Detaylı hasta bilgileri, randevu tarihi/online, bildirim, konsültasyon
 -- Kaynak: db/migration_v2.sql
 -- ================================================================
 
@@ -426,7 +426,7 @@ UPDATE profiles SET role = 'admin', name = 'Dt. Resul Yel'
 WHERE email = 'tcsametsari@gmail.com' AND role <> 'admin';
 
 -- ================================================================
--- BÖLÜM 6/16: 5) Kullanıcı adıyla giriş + kayıt kapalıyken hesap açma
+-- BÖLÜM 6/17: 5) Kullanıcı adıyla giriş + kayıt kapalıyken hesap açma
 -- Kaynak: db/migration_users.sql
 -- ================================================================
 
@@ -591,7 +591,7 @@ WHERE lower(email) = 'tcsametsari@gmail.com'
 SELECT id, email, username, name, role, branch FROM profiles ORDER BY created_at DESC;
 
 -- ================================================================
--- BÖLÜM 7/16: 6) Süper admin: şifre atama + tüm kullanıcı verisini düzenleme
+-- BÖLÜM 7/17: 6) Süper admin: şifre atama + tüm kullanıcı verisini düzenleme
 -- Kaynak: db/migration_admin_manage.sql
 -- ================================================================
 
@@ -736,7 +736,7 @@ WHERE n.nspname = 'public'
 ORDER BY p.proname;
 
 -- ================================================================
--- BÖLÜM 8/16: 7) Röntgen ve fotoğraf depolama (Supabase Storage)
+-- BÖLÜM 8/17: 7) Röntgen ve fotoğraf depolama (Supabase Storage)
 -- Kaynak: db/migration_storage.sql
 -- ================================================================
 
@@ -798,7 +798,7 @@ CREATE POLICY "photos_delete" ON storage.objects FOR DELETE
   USING ( bucket_id = 'photos' AND (public.is_hekim() OR public.is_admin()) );
 
 -- ================================================================
--- BÖLÜM 9/16: 8) Ağız fotoğrafları tablosu (Storage kayıtları)
+-- BÖLÜM 9/17: 8) Ağız fotoğrafları tablosu (Storage kayıtları)
 -- Kaynak: db/migration_photos.sql
 -- ================================================================
 
@@ -844,7 +844,7 @@ CREATE POLICY "photos_delete" ON photos FOR DELETE
   USING (is_hekim() OR is_admin());
 
 -- ================================================================
--- BÖLÜM 10/16: 9) Klinik modülleri: anamnez, tedavi planı, envanter, laboratuvar, fiyat, tahakkuk
+-- BÖLÜM 10/17: 9) Klinik modülleri: anamnez, tedavi planı, envanter, laboratuvar, fiyat, tahakkuk
 -- Kaynak: db/migration_clinic.sql
 -- ================================================================
 
@@ -963,7 +963,7 @@ CREATE POLICY "lab_rw" ON lab_cases FOR ALL
 -- ============================================================
 
 -- ================================================================
--- BÖLÜM 11/16: 10) Hekim kişisel takvimi (etkinlik ve görevler)
+-- BÖLÜM 11/17: 10) Hekim kişisel takvimi (etkinlik ve görevler)
 -- Kaynak: db/migration_events.sql
 -- ================================================================
 
@@ -999,7 +999,7 @@ DROP POLICY IF EXISTS "events_read_all" ON doctor_events;
 CREATE POLICY "events_read_all" ON doctor_events FOR SELECT USING (is_hekim() OR is_admin());
 
 -- ================================================================
--- BÖLÜM 12/16: 11) Sekreter ve diş teknisyeni rolleri + yardımcı tablolar
+-- BÖLÜM 12/17: 11) Sekreter ve diş teknisyeni rolleri + yardımcı tablolar
 -- Kaynak: db/migration_staff.sql
 -- ================================================================
 
@@ -1071,7 +1071,7 @@ CREATE POLICY "prep_rw" ON prep_notes FOR ALL
   USING (is_staff()) WITH CHECK (is_staff());
 
 -- ================================================================
--- BÖLÜM 13/16: 12) Kurulum durumu fonksiyonu (uygulama bunu okur)
+-- BÖLÜM 13/17: 12) Kurulum durumu fonksiyonu (uygulama bunu okur)
 -- Kaynak: db/setup_status.sql
 -- ================================================================
 
@@ -1184,7 +1184,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.setup_status() TO authenticated, anon;
 
 -- ================================================================
--- BÖLÜM 14/16: 13) Hasta görüşme talebi: hekim listesi fonksiyonu (RLS bypass, minumum veri)
+-- BÖLÜM 14/17: 13) Hasta görüşme talebi: hekim listesi fonksiyonu (RLS bypass, minumum veri)
 -- Kaynak: db/migration_hekim_listesi.sql
 -- ================================================================
 
@@ -1217,7 +1217,57 @@ $$;
 GRANT EXECUTE ON FUNCTION hastaya_hekim_listesi() TO anon, authenticated;
 
 -- ================================================================
--- BÖLÜM 15/16: 14) Süper admin hesabını admin yapar
+-- BÖLÜM 15/17: 14) Bildirim RLS: hasta okuma/yazma düzeltmesi
+-- Kaynak: db/migration_notifications_rls.sql
+-- ================================================================
+
+-- ==========================================================================
+-- Bildirim RLS düzeltmesi — hekim + hasta ikili taraf akışı
+-- ==========================================================================
+-- SORUN: tek politika "notif_rw FOR ALL USING (doctor_id = auth.uid() OR is_admin())"
+-- hastanın bilgi okumasını/içine yazmasını engelliyordu:
+--   - Hekim hastaya bildirim yazabiliyordu; hasta kendi bildirimini okuyamıyordu.
+--   - Hasta "görüşme talebi" gönderiyordu ama INSERT 403 veriyor,
+--     uygulama sessizce localStorage'a düşüyordu — bildirim DB'ye hiç gitmiyor.
+--
+-- ÇÖZÜM: okuma ve yazma için AYRI politikalar:
+--   OKUMA  : kendi hekim bildirimi / kendi hasta bildirimi / admin /
+--            hekim kanları (doctor_id NULL her hekime gider)
+--   YAZMA  : targeti kendinin olduğu satır veya admin
+--            (hekim kendi kanalına yazar; hasta kendi patient_id'siyle yazar)
+-- Idempotent.
+-- ==========================================================================
+
+DROP POLICY IF EXISTS "notif_rw" ON notifications;
+DROP POLICY IF EXISTS "notif_read" ON notifications;
+DROP POLICY IF EXISTS "notif_write" ON notifications;
+
+-- Okuma: hekim kendine geleni, hasta kendine geleni, admin her şeyi, hekim kanıroları
+CREATE POLICY "notif_read" ON notifications FOR SELECT
+USING (
+  doctor_id = auth.uid()
+  OR patient_id = auth.uid()
+  OR (doctor_id IS NULL AND (is_hekim() OR is_admin()))
+);
+
+-- Yazma: hedefin kendinsin veya admin
+-- (hekim -> doctor_id kendi set eder; hasta -> patient_id kendine yazar)
+CREATE POLICY "notif_write" ON notifications FOR INSERT
+WITH CHECK (
+  doctor_id = auth.uid()
+  OR patient_id = auth.uid()
+  OR is_admin()
+  OR (doctor_id IS NULL AND (is_hekim() OR is_admin()))
+);
+
+-- Okundu/silme işlemleri: yazan taraf kendi satırını güncelleyip savaş artık okur
+CREATE POLICY "notif_update" ON notifications FOR UPDATE
+USING (doctor_id = auth.uid() OR patient_id = auth.uid() OR is_admin());
+CREATE POLICY "notif_delete" ON notifications FOR DELETE
+USING (doctor_id = auth.uid() OR patient_id = auth.uid() OR is_admin());
+
+-- ================================================================
+-- BÖLÜM 16/17: 15) Süper admin hesabını admin yapar
 -- Kaynak: db/fix_admin.sql
 -- ================================================================
 
@@ -1262,7 +1312,7 @@ WHERE lower(email) = 'tcsametsari@gmail.com';
 -- sonra bu dosyayı TEKRAR çalıştır.
 
 -- ================================================================
--- BÖLÜM 16/16: 15) Eski demo hekim kayıtlarını temizler
+-- BÖLÜM 17/17: 16) Eski demo hekim kayıtlarını temizler
 -- Kaynak: db/fix_demo_doctor.sql
 -- ================================================================
 
