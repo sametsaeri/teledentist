@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { STATUS_TR } from '../data/teeth.js'
-import { ToothChart, ToothVisual } from '../components/ToothChart.jsx'
+import { ToothChart } from '../components/ToothChart.jsx'
 import { toothEducation, recallForTooth } from '../ai/toothAi.js'
 import { suggestRecall } from '../ai/recall.js'
 import { load, save, keys, getSession } from '../services/store.js'
@@ -18,10 +18,9 @@ import { triageScore } from '../services/clinical.js'
 import {
   Chart, Users, Calendar, Send, Clipboard, Camera, FileText, Plus, Check,
   CheckCircle, Clock, Stethoscope, User, Save, X, Alert, Tooth, Lock, Phone, Bell,
-  ChevronLeft, ChevronRight, Video, Notebook, TrendingUp, Shield
+  ChevronLeft, ChevronRight, Video, Notebook, Shield
 } from '../components/Icons.jsx'
 import { DisEditor } from '../components/Tooth3DEditor.jsx'
-import { DisGelecekSimulatoru } from '../components/DisGelecek.jsx'
 import { AnamnezForm } from '../components/AnamnezForm.jsx'
 import { DosyaArsivi } from '../components/DosyaArsivi.jsx'
 import { bildirimOlustur } from '../services/bildirim.js'

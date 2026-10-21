@@ -19,6 +19,7 @@ const IKON = {
   kayit_talebi: Clipboard,
   randevu: Calendar,
   randevu_bildirimi: CheckCircle,
+  randevu_hatirlatma: Calendar,
   foto: Camera,
   belge: FileText,
   anamnez: Alert,

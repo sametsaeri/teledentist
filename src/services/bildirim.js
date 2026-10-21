@@ -26,7 +26,8 @@ export const TURLER = {
   // Hekim kayıt talebini kabul etti — hasta ön değerlendirme formunu dolduracak
   kabul: { ad: 'Başvurunuz Onaylandı', onem: 'yuksek', ikon: 'kabul' },
   bakim: { ad: 'Sistem Bakımı', onem: 'kritik', ikon: 'bakim' },
-  gorusme: { ad: 'Görüşme Talebi', onem: 'yuksek', ikon: 'gorusme' }
+  gorusme: { ad: 'Görüşme Talebi', onem: 'yuksek', ikon: 'gorusme' },
+  randevu_hatirlatma: { ad: 'Randevu Hatırlatması', onem: 'yuksek', ikon: 'randevu' }
 }
 
 /**
