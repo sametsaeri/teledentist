@@ -30,6 +30,7 @@ const MENU_GROUPS = {
     {
       label: 'Randevu', Icon: Calendar, items: [
         ['/hekim?tab=randevu', Clipboard, 'Randevu Talepleri', 'randevu'],
+        ['/hekim?tab=yaklasan', Calendar, 'Yaklaşan Randevular'],
         ['/hekim?tab=takvim', Clock, 'Takvim']
       ]
     },

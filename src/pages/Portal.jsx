@@ -77,7 +77,8 @@ const TABS = [
   { id: 'triyaj', label: 'Triyaj ve Sevk', Icon: Clipboard, desc: 'Hasta triyaj kayıtları ve hekimler arası sevk.' },
   { id: 'foto', label: 'Hasta Fotoğrafları', Icon: Camera, desc: 'Hastanın gönderdiği fotoğrafları değerlendirin ve yorumlayın.' },
   { id: 'sure', label: 'Tedavi Süreleri', Icon: Clock, desc: 'İşlem süreleri, seans sayısı ve kontrol aralıkları.' },
-  { id: 'istek', label: 'Kayıt İstekleri', Icon: FileText, desc: 'Hasta kayıt taleplerini onaylayın.' }
+  { id: 'istek', label: 'Kayıt İstekleri', Icon: FileText, desc: 'Hasta kayıt taleplerini onaylayın.' },
+  { id: 'yaklasan', label: 'Yaklaşan Randevular', Icon: Calendar, desc: 'Yaklaşan randevu ve kontrol tarihleri.' }
 ]
 
 // Menüyü konulara göre gruplandır
@@ -788,6 +789,48 @@ export function DoctorList() {
           </div>
         </div>
       )}
+
+      {/* ---------------- YAKLAŞAN RANDEVULAR ---------------- */}
+      {tab === 'yaklasan' && (
+        <div className="card">
+          <h3><Calendar size={18} /> Yaklaşan Randevu ve Kontrol Tarihleri</h3>
+          <p className="muted">
+            Hasta randevuları ve kontrol tarihleri burada listelenir.
+            Hekim randevu oluşturur, sonraki kontrol tarihini ayarlar.
+          </p>
+          {(() => {
+            const yaklasan = (appts || [])
+              .filter((a) => a.appt_date && a.status !== 'tamamlandı')
+              .sort((a, b) => String(a.appt_date).localeCompare(String(b.appt_date)))
+            if (yaklasan.length === 0) {
+              return <p className="muted">Yaklaşan randevu yok.</p>
+            }
+            return yaklasan.map((a) => {
+              const gunler = Math.ceil((new Date(a.appt_date) - new Date()) / 86400000)
+              return (
+                <div className="appt-row" key={a.id}>
+                  <div>
+                    <strong>{a.name || 'Bilinmeyen hasta'}</strong>
+                    <span className="badge">{a.status === 'yeni' ? 'Bekliyor' : a.status === 'onaylı' ? 'Onaylandı' : a.status}</span>
+                    {a.is_online && <span className="badge online">Online</span>}
+                    <p className="muted">
+                      <Calendar size={13} /> {a.appt_date} {a.appt_time ? `· ${a.appt_time}` : ''}
+                      {gunler >= 0 ? ` · ${gunler === 0 ? 'BUGÜN' : `${gunler} gün kaldı`}` : ` · ${Math.abs(gunler)} gün geçti`}
+                    </p>
+                    {a.complaint && <p className="muted">{a.complaint}</p>}
+                  </div>
+                  <div className="toolbar">
+                    <Link to={`/hekim/hasta/${a.patient_id || ''}`}>
+                      <button className="ghost tiny">Hastayı Aç</button>
+                    </Link>
+                  </div>
+                </div>
+              )
+            })
+          })()}
+        </div>
+      )}
+
     </div>
   )
 }
