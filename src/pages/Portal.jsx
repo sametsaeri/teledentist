@@ -15,6 +15,8 @@ import {
   plansApi, notesApi, getSetupStatus, anamnesisApi
 } from '../services/db.js'
 import { triageScore } from '../services/clinical.js'
+import { smsGonder, smsTelefonUygun, hesapAcildiMesaji } from '../services/sms.js'
+import { mailGonder, hesapAcildiMail } from '../services/email.js'
 import {
   Chart, Users, Calendar, Send, Clipboard, Camera, FileText, Plus, Check,
   CheckCircle, Clock, Stethoscope, User, Save, X, Alert, Tooth, Lock, Phone, Bell,
@@ -142,6 +144,14 @@ function NewPatientForm({ onDone, onClose }) {
       hastaId: r.uid || null,
       link: '/hastam'
     })
+    // HASTAYA SMS + E-POSTA: hesap açıldı (servis yoksa kuyruğa alınır — akış bozulmaz)
+    try {
+      if (smsTelefonUygun(form.phone)) void smsGonder(form.phone, hesapAcildiMesaji(form.name, form.email))
+      if (form.email && form.email.includes('@')) {
+        const m = hesapAcildiMail(form.name, form.email, me?.name)
+        void mailGonder(form.email, m.subject, m.text)
+      }
+    } catch { /* bildirim kanalları hatası akışı bozmasın */ }
     setMsg(`${form.name} hesabı açıldı.`)
     onDone({ name: form.name, email: form.email, pass: form.pass, uid: r.uid })
   }
@@ -353,6 +363,15 @@ export function DoctorList() {
       childEmail: form.childEmail, username: form.username, extra
     })
     if (r.error) return setMsg(r.error)
+    // Hasta SMS + e-posta ile de bilgilendirilsin (servis yoksa kuyruk)
+    try {
+      const me2 = getSession()
+      if (smsTelefonUygun(form.phone)) void smsGonder(form.phone, hesapAcildiMesaji(form.name, form.email))
+      if (form.email && form.email.includes('@')) {
+        const m = hesapAcildiMail(form.name, form.email, me2?.name)
+        void mailGonder(form.email, m.subject, m.text)
+      }
+    } catch { /* bildirim kanalları hatası akışı bozmasın */ }
     setMsg(`${form.name} hesabı açıldı. Giriş: ${form.email} / ${form.pass}`)
     setForm(emptyForm())
     reload()

@@ -11,7 +11,7 @@ import {
 } from '../services/bildirim.js'
 import {
   Bell, Clipboard, Calendar, Camera, FileText, Stethoscope, Send,
-  Clock, Check, X, Alert, CheckCircle, ChevronRight, User
+  Clock, Check, X, Alert, CheckCircle, ChevronRight, User, Video, Shield
 } from './Icons.jsx'
 
 /** Tür → ikon eşlemesi. Yeni tür eklenirse buraya da eklenmelidir. */
@@ -25,7 +25,10 @@ const IKON = {
   anamnez: Alert,
   sevk: Send,
   kontrol: Clock,
-  bakim: Alert
+  bakim: Alert,
+  gorusme: Video,        // hasta/hekim görüntülü görüşme talebi
+  kabul: CheckCircle,    // hasta hesabı açıldı / başvuru onaylandı
+  onam: Shield           // tedavi onam formu
 }
 
 /** Bildirim satırı — tıklanınca okunur ve ilgili sayfaya gider. */

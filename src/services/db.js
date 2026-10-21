@@ -4,6 +4,7 @@ import { load, save, keys, getSession } from './store.js'
 import { allUsers, suMesaj, rpcYok, kullaniciAdiTuret } from './auth.js'
 import { bakimKontrol } from './bakim.js'
 import { bildirimOlustur } from './bildirim.js'
+import { smsGonder, smsTelefonUygun, randevuOnayMesaji, talepAlindiMesaji } from './sms.js'
 
 // Ağ yavaş kalırsa veri katmanı asılı kalmasın: okuma isteklerine zaman aşımı.
 // Başarısız olursa çağıran taraf yerel kayda düşer.
@@ -873,6 +874,10 @@ export async function insertAppointment({ name, contact, dept, complaint, apptDa
       hastaId: patientId || null,
       link: '/hekim?tab=randevu'
     })
+    // Hastaya "talebiniz alındı" SMS onayı — servis yoksa kuyruğa alınır
+    try {
+      if (smsTelefonUygun(contact)) void smsGonder(contact, talepAlindiMesaji(name))
+    } catch { /* SMS hatası akışı bozmasın */ }
     return {}
   }
   const list = load(keys.appointments, [])
@@ -900,6 +905,14 @@ export async function setAppointmentOnline(id, online) {
 
 export async function approveAppointment(id, doctorId, dateStr) {
   if (hasSupabase) {
+    // Bildirim + SMS için satırı önce oku (localStorage değil, DB gerçek kaynaktır)
+    let satir = null
+    try {
+      const res = await supabase.from('appointments')
+        .select('id, name, contact, patient_id, appt_time, is_online')
+        .eq('id', id).maybeSingle()
+      satir = res?.data || null
+    } catch { /* satır okunamadı — bildirim atlanır */ }
     let { error } = await supabase.from('appointments')
       .update({ status: 'onaylı', doctor_id: doctorId || null, appt_date: dateStr || null })
       .eq('id', id)
@@ -908,28 +921,33 @@ export async function approveAppointment(id, doctorId, dateStr) {
       error = retry.error
     }
     if (error) return { error: error?.message }
-    randevuOnayBildirimi(id, dateStr)
+    if (satir) randevuOnayBildirimi(satir, dateStr)
     return {}
   }
   const list = load(keys.appointments, []).map((a) => a.id === id ? { ...a, status: 'onaylı', doctor_id: doctorId, appt_date: dateStr || a.appt_date } : a)
   save(keys.appointments, list)
-  randevuOnayBildirimi(id, dateStr)
+  randevuOnayBildirimi(list.find((x) => String(x.id) === String(id)), dateStr)
   return {}
 }
 
-/** Randevu onaylandı — hastaya bildirilir. */
-function randevuOnayBildirimi(id, dateStr) {
-  const a = load(keys.appointments, []).find((x) => String(x.id) === String(id))
+/** Randevu onaylandı — hastaya bildirim + SMS yedeği gönderilir. */
+function randevuOnayBildirimi(a, dateStr) {
   if (!a) return
   bildirimOlustur({
     tur: 'randevu_bildirimi',
     title: `Randevunuz onaylandı — ${a.name}`,
     body: dateStr
-      ? `${String(dateStr).slice(0, 10)}${a.appt_time ? ` · ${a.appt_time}` : ''} tarihinde clinicamızda bekleriz.`
+      ? `${String(dateStr).slice(0, 10)}${a.appt_time ? ` · ${a.appt_time}` : ''} tarihinde kliniğimizde bekleriz.`
       : 'Randevunuz onaylandı. Detaylı bilgi için hekiminizle iletişime geçin.',
     hastaId: a.patient_id || null,
     link: '/hastam'
   })
+  // SMS yedeği — servis yapılandırılmamışsa /api/sms kuyruğa alır
+  try {
+    if (smsTelefonUygun(a.contact)) {
+      void smsGonder(a.contact, randevuOnayMesaji(a.name, dateStr || '', a.appt_time, a.is_online))
+    }
+  } catch { /* SMS hatası akışı bozmasın */ }
 }
 
 export async function completeAppointment(id) {
