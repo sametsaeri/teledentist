@@ -19,7 +19,7 @@
   "home_cta2": "Teledentistry'yi Öğren",
   "stat1_n": "1", "stat1_l": "Pedodonti",
   "stat2_n": "2D", "stat2_l": "Diş görünümü",
-  "stat3_n": "3/6/12", "stat3_l": "Ay kontrol önerisi",
+  "stat3_n": "Kontrol", "stat3_l": "Hekimin belirlediği aralık",
 
   "aim_title": "Hekimlerimizin Amacı",
   "aim_desc": "Yüz yüze muayenenin yerini almak değil, onu hızlandırmak. Şikayetinizi önden alıyoruz, röntgen ve fotoğraflarınızı inceliyoruz, kliniğe hazır bir tedavi planıyla geliyorsunuz. Kırsalda yaşayan, hareket kısıtlılığı olan ve özel bakım gereksinimi olan hastalar için erişimi kolaylaştırıyoruz.",
@@ -28,7 +28,7 @@
   "step1_t": "1. Randevu", "step1_d": "Bölümünü seç, şikayetini yaz, 15 dakika önce klinikte ol.",
   "step2_t": "2. Ön Değerlendirme", "step2_d": "Triyaj anketi + fotoğraf yükle, hekim önden incelesin.",
   "step3_t": "3. Tedavi", "step3_d": "Klinikte muayene ve tedavi, diş haritana işlenir.",
-  "step4_t": "4. Kontrol", "step4_d": "Riskine göre 3/6/12 ay sonra hatırlatma alırsın.",
+  "step4_t": "4. Kontrol", "step4_d": "Hekiminizin belirlediği kontrol aralığında bildirim alırsınız.",
 
   "dept_title": "Bölümlerimiz",
   "dept_rest": "Restoratif (Dolgu)", "dept_rest_d": "Çürük ve kırık dişler.",

@@ -19,7 +19,7 @@
   "home_cta2": "Learn Teledentistry",
   "stat1_n": "4", "stat1_l": "Dental units",
   "stat2_n": "2D", "stat2_l": "Tooth view",
-  "stat3_n": "3/6/12", "stat3_l": "Month recall",
+  "stat3_n": "Control", "stat3_l": "Doctor-set interval",
 
   "aim_title": "Our Doctors' Goal",
   "aim_desc": "Not to replace the in-person visit, but to speed it up. We collect your complaint in advance, review your X-rays and photos, and you arrive with a ready treatment plan. We make access easier for people in rural areas, with mobility limitations or special care needs.",
@@ -28,7 +28,7 @@
   "step1_t": "1. Appointment", "step1_d": "Pick your unit, write your complaint, be at the clinic 15 minutes early.",
   "step2_t": "2. Pre-assessment", "step2_d": "Upload triage survey + photo so the doctor reviews it in advance.",
   "step3_t": "3. Treatment", "step3_d": "Examination and treatment at the clinic, recorded on your tooth map.",
-  "step4_t": "4. Check-up", "step4_d": "Get a reminder after 3/6/12 months based on your risk.",
+  "step4_t": "4. Check-up", "step4_d": "You will receive a reminder at the control interval set by your doctor.",
 
   "dept_title": "Our Units",
   "dept_rest": "Restorative (Filling)", "dept_rest_d": "Cavities and broken teeth.",

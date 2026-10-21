@@ -22,13 +22,13 @@ const MENU_GROUPS = {
       ]
     },
     {
-      label: 'Klinik', Icon: Stethoscope, items: [
+      label: 'Hastalar', Icon: Users, items: [
         ['/hekim?tab=hastalar', Users, 'Hastalarım'],
         ['/hekim?tab=gunluk-not', Clipboard, 'Klinik Günlük']
       ]
     },
     {
-      label: 'Planlama', Icon: Calendar, items: [
+      label: 'Randevu', Icon: Calendar, items: [
         ['/hekim?tab=randevu', Clipboard, 'Randevu Talepleri', 'randevu'],
         ['/hekim?tab=takvim', Clock, 'Takvim']
       ]
@@ -36,8 +36,7 @@ const MENU_GROUPS = {
     {
       label: 'Değerlendirme', Icon: Sparkle, items: [
         ['/hekim?tab=triyaj', Sparkle, 'Triyaj ve Sevk'],
-        ['/hekim?tab=foto', Camera, 'Hasta Fotoğrafları'],
-        ['/hekim/rontgen-arşivi', Box, 'Röntgen Arşivi', 'foto']
+        ['/hekim/rontgen-arşivi', Box, 'Röntgen Arşivi']
       ]
     },
     {
