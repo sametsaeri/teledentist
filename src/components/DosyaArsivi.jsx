@@ -47,7 +47,7 @@ export function DosyaArsivi({ pid, tooth = null, tur = 'xray', baslik = 'Dosyala
   const [yukleniyor, setYukleniyor] = useState(false)
   const [mesaj, setMesaj] = useState('')
   const [hata, setHata] = useState('')
-  const [arsivGoster, setArsivGoster] = useState(false)
+  const [arsivGoster, setArsivGoster] = useState(null) // null = tümü, true = arşiv, false = aktif
   const [onayBekleyen, setOnayBekleyen] = useState(null)
   const [izleme, setIzleme] = useState(null)
   const [ara, setAra] = useState('')
@@ -102,7 +102,7 @@ export function DosyaArsivi({ pid, tooth = null, tur = 'xray', baslik = 'Dosyala
       if (sonuc.kayitYok) {
         setHata(sonuc.uyari)
       } else {
-        setMesaj('Dosya yüklendi ve arşive kaydedildi.')
+        setMesaj('Dosya yüklendi ve kaydedildi.')
       }
       yenile()
     } catch (err) {
@@ -178,7 +178,7 @@ export function DosyaArsivi({ pid, tooth = null, tur = 'xray', baslik = 'Dosyala
         <h4><Box size={16} /> {baslik} ({dosyalar.length})</h4>
         <span className="muted">
           {toplamBoyut > 0 ? `${(toplamBoyut / 1024 / 1024).toFixed(1)} MB · ` : ''}
-          {arsivGoster ? 'Arşivdeki dosyalar' : 'Aktif dosyalar'}
+          {arsivGoster === true ? 'Arşivdeki dosyalar' : arsivGoster === false ? 'Aktif dosyalar' : 'Tüm dosyalar'}
         </span>
       </div>
 
@@ -222,10 +222,24 @@ export function DosyaArsivi({ pid, tooth = null, tur = 'xray', baslik = 'Dosyala
         </label>
         <button
           type="button"
-          className="ghost"
-          onClick={() => setArsivGoster(!arsivGoster)}
+          className={`ghost ${arsivGoster === null ? 'active' : ''}`}
+          onClick={() => setArsivGoster(null)}
         >
-          <Clock size={15} /> {arsivGoster ? 'Aktif Dosyalar' : 'Arşivi Gör'}
+          <Box size={15} /> Tümü
+        </button>
+        <button
+          type="button"
+          className={`ghost ${arsivGoster === false ? 'active' : ''}`}
+          onClick={() => setArsivGoster(false)}
+        >
+          <Clock size={15} /> Aktif
+        </button>
+        <button
+          type="button"
+          className={`ghost ${arsivGoster === true ? 'active' : ''}`}
+          onClick={() => setArsivGoster(true)}
+        >
+          <Clock size={15} /> Arşiv
         </button>
         <input
           className="arsiv-ara"
@@ -240,7 +254,7 @@ export function DosyaArsivi({ pid, tooth = null, tur = 'xray', baslik = 'Dosyala
 
       {liste.length === 0 ? (
         <p className="muted">
-          {arsivGoster ? 'Arşivde dosya yok.' : 'Henüz dosya yüklenmedi. Röntgen, tomografi veya belge yükleyebilirsiniz.'}
+          {arsivGoster === true ? 'Arşivde dosya yok.' : 'Henüz dosya yüklenmedi. Röntgen, tomografi veya belge yükleyebilirsiniz.'}
         </p>
       ) : (
         <div className="arsiv-liste">

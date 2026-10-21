@@ -52,7 +52,7 @@ export function RontgenArsivi() {
   const [yukleniyor, setYukleniyor] = useState(false)
   const [mesaj, setMesaj] = useState('')
   const [hata, setHata] = useState('')
-  const [arsivGoster, setArsivGoster] = useState(false)
+  const [arsivGoster, setArsivGoster] = useState(null) // null = tümü, true = arşiv, false = aktif
   const [onayBekleyen, setOnayBekleyen] = useState(null)
   const [izleme, setIzleme] = useState(null)
   const [ara, setAra] = useState('')
@@ -139,7 +139,7 @@ export function RontgenArsivi() {
         save(keys.medicalFiles, mevcut)
         setMesaj(sonuc.uyari)
       } else {
-        setMesaj('Röntgen dosyası yüklendi ve arşive kaydedildi.')
+        setMesaj('Röntgen dosyası yüklendi ve kaydedildi.')
       }
       yenile()
       setYukleModal(false)
@@ -228,10 +228,22 @@ export function RontgenArsivi() {
             ))}
           </select>
           <button
-            className={`ghost ${arsivGoster ? '' : ''}`}
-            onClick={() => setArsivGoster(!arsivGoster)}
+            className={`ghost ${arsivGoster === null ? 'active' : ''}`}
+            onClick={() => setArsivGoster(null)}
           >
-            <Clock size={15} /> {arsivGoster ? 'Aktif Dosyalar' : 'Arşivi Gör'}
+            <Box size={15} /> Tümü
+          </button>
+          <button
+            className={`ghost ${arsivGoster === false ? 'active' : ''}`}
+            onClick={() => setArsivGoster(false)}
+          >
+            <Clock size={15} /> Aktif
+          </button>
+          <button
+            className={`ghost ${arsivGoster === true ? 'active' : ''}`}
+            onClick={() => setArsivGoster(true)}
+          >
+            <Clock size={15} /> Arşiv
           </button>
           <input
             className="arsiv-ara"
@@ -293,7 +305,7 @@ export function RontgenArsivi() {
 
       {liste.length === 0 ? (
         <p className="muted">
-          {arsivGoster ? 'Arşivde dosya yok.' : `Henüz ${seciliHasta ? hastaAd(seciliHasta) : 'herhangi bir hasta için'} röntgen dosyası yüklenmedi.`}
+          {arsivGoster === true ? 'Arşivde dosya yok.' : arsivGoster === false ? `Henüz ${seciliHasta ? hastaAd(seciliHasta) : 'herhangi bir hasta için'} aktif röntgen dosyası yok.` : `Henüz ${seciliHasta ? hastaAd(seciliHasta) : 'herhangi bir hasta için'} röntgen dosyası yok.`}
         </p>
       ) : (
         <div className="arsiv-liste">
