@@ -49,7 +49,8 @@ const MENU_GROUPS = {
       label: 'İletişim', Icon: Chat, items: [
         ['/bildirimler', Bell, 'Bildirimler', 'bildirim'],
         ['/video', Video, 'Online Görüşme'],
-        ['/hatirlatma', Bell, 'Hatırlatmalar']
+        ['/hatirlatma', Bell, 'Hatırlatmalar'],
+        ['/konsultasyon', Chat, 'Konsültasyon']
       ]
     },
     {

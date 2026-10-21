@@ -310,6 +310,9 @@ export function suMesaj(mesaj) {
 export async function createUserByDoctor({ name, email, pass, role, childEmail, branch, username, extra }) {
   const me = getSession()
   if (!me || (me.role !== 'hekim' && me.role !== 'admin')) return { error: 'Yetkisiz işlem.' }
+  // me.id UUID olmayabilir (yerel demo verisi); veritabanına UUID gönderilir
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const createdBy = me.id && UUID_RE.test(String(me.id)) ? me.id : null
   email = String(email || '').trim().toLowerCase()
   if (!name || !email || !pass) return { error: 'Ad, e-posta ve şifre zorunlu.' }
   if (!['hasta', 'ebeveyn', 'hekim', 'sekreter', 'teknisyen'].includes(role)) return { error: 'Rol seçin.' }
@@ -350,7 +353,7 @@ export async function createUserByDoctor({ name, email, pass, role, childEmail, 
     if (!uid) return { error: 'Kullanıcı oluşturulamadı.' }
     const row = {
       id: uid, role, email, name,
-      created_by: me.id,
+      created_by: createdBy,
       branch: role === 'hekim' ? (branch || 'genel') : 'genel',
       username: username || '',
       reminder_days: 5,
@@ -372,7 +375,7 @@ export async function createUserByDoctor({ name, email, pass, role, childEmail, 
     username: username || '',
     branch: role === 'hekim' ? (branch || 'genel') : 'genel',
     children: role === 'ebeveyn' && childEmail ? [childEmail] : [],
-    created_by: me.id,
+    created_by: createdBy,
     lastVisit: new Date().toISOString().slice(0, 10),
     treatmentType: 'kontrol', plaqueIndex: 1, anxietyScore: 3, reminderDays: 5,
     ...(extra || {})
