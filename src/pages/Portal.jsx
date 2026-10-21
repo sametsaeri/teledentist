@@ -875,12 +875,13 @@ export function DoctorPatient() {
   const [doctors, setDoctors] = useState([])
   const [refDoc, setRefDoc] = useState('')
   const [info, setInfo] = useState({})
+  const [foto, setFoto] = useState(null)
   const [onamMetni, setOnamMetni] = useState('')
   const [onamNotu, setOnamNotu] = useState('')
   const [onamKaydedildi, setOnamKaydedildi] = useState(false)
 
   useEffect(() => {
-    getPatient(id).then((p) => { setPatient(p || null); setInfo(p || {}) })
+    getPatient(id).then((p) => { setPatient(p || null); setInfo(p || {}); setFoto(p?.foto || null) })
     getTeeth(id).then(setTeeth)
     lastRecords(id).then(setRec)
     listDoctors().then(setDoctors)
@@ -955,6 +956,39 @@ export function DoctorPatient() {
               {[1, 2, 3, 5, 7, 10, 14].map((d) => <option key={d} value={d}>{d} gün</option>)}
             </select>
           </label>
+        </div>
+        {/* Vesikalık / fotoğraf yükleme */}
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+          <h4 style={{ margin: '0 0 8px' }}>Hasta Fotoğrafı / Vesikalık</h4>
+          {foto && (
+            <div style={{ marginBottom: 8 }}>
+              <img src={foto} alt="Hasta fotoğrafı" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)' }} />
+            </div>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={async (e) => {
+              const f = e.target.files?.[0]
+              if (!f) return
+              if (f.size > 2 * 1024 * 1024) { setMMsg('Dosya çok büyük (en fazla 2 MB).'); return }
+              const reader = new FileReader()
+              reader.onload = async () => {
+                const dataUrl = reader.result
+                setFoto(dataUrl)
+                const r = await updatePatient(id, { foto: dataUrl })
+                setMMsg(r.error || 'Fotoğraf kaydedildi.')
+              }
+              reader.readAsDataURL(f)
+            }}
+          />
+          {foto && (
+            <button className="ghost tiny" style={{ marginLeft: 8 }} onClick={async () => {
+              setFoto(null)
+              const r = await updatePatient(id, { foto: null })
+              setMMsg(r.error || 'Fotoğraf kaldırıldı.')
+            }}>Kaldır</button>
+          )}
         </div>
         <button onClick={saveInfo}><Save size={15} /> Bilgileri Kaydet</button>
         {mMsg && <p className="muted">{mMsg}</p>}

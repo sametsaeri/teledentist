@@ -109,6 +109,7 @@ export function PatientPanel() {
   const [anxiety, setAnxiety] = useState([])
   const [plans, setPlans] = useState([])
   const [info, setInfo] = useState({})
+  const [foto, setFoto] = useState(null)
   const [msg, setMsg] = useState('')
   const [saving, setSaving] = useState(false)
   const [onay, setOnay] = useState(false)
@@ -138,6 +139,7 @@ export function PatientPanel() {
       setPatient(p || null)
       setInfo(p || {})
       setTeeth(t || {})
+      setFoto(p?.foto || null)
       setAcilDurum(!!(p && p.acil_durum))
       setLoading(false)
     })
@@ -342,9 +344,14 @@ export function PatientPanel() {
       )}
       {/* ---------- Üst başlık ---------- */}
       <div className="panel-hero">
-        <div>
-          <h1><Tooth size={22} /> Merhaba, {patient.name}</h1>
-          <p className="muted">Diş sağlığınızla ilgili tüm bilgileriniz burada.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {foto && (
+            <img src={foto} alt="Profil fotoğrafı" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: '2px solid var(--line)' }} />
+          )}
+          <div>
+            <h1><Tooth size={22} /> Merhaba, {patient.name}</h1>
+            <p className="muted">Diş sağlığınızla ilgili tüm bilgileriniz burada.</p>
+          </div>
         </div>
         <span className="spacer" />
         <Link to="/video"><button className="btn-new"><Video size={16} /> Hekimimle Görüş</button></Link>
