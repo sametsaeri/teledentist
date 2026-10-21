@@ -29,7 +29,13 @@ export async function listDoctors() {
     try {
       const { data, error } = await withTimeout(supabase.from('profiles').select('*').eq('role', 'hekim').order('created_at', { ascending: false }))
       if (!error && data && data.length) return data
-    } catch { /* sunucuya ulaşılamadı, yerele düş */ }
+    } catch { /* sunucuya ulaşılamadı, aşağıda dene */ }
+    // Hasta rol RLS'e takıldıysa (kendi kaydını okur, hekimleri göremez):
+    // SECURITY DEFINER fonksiyon hekimlerin genel bilgilerini döner (id, name, branch).
+    try {
+      const { data: lite, error: e2 } = await supabase.rpc('hastaya_hekim_listesi')
+      if (!e2 && lite && lite.length) return lite.map((h) => ({ ...h, role: 'hekim' }))
+    } catch { /* fonksiyon kurulu değilse yerel listeye düş */ }
   }
   return allUsers().filter((u) => u.role === 'hekim')
 }
