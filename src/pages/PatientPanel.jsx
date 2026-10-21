@@ -409,7 +409,6 @@ export function PatientPanel() {
           <span>Önerilen Kontrol</span>
         </div>
         <div className="kpi"><b>{myAppts.length}</b><span>Toplam Randevu</span></div>
-        <div className="kpi"><b>{photos.length}</b><span>Gönderdiğim Fotoğraf</span></div>
       </div>
 
       {/* ---------- Uyarılar (hekim anamnezinden) ---------- */}
@@ -506,24 +505,7 @@ export function PatientPanel() {
         ))}
       </Card>
 
-      {/* ---------- Fotoğraflarım ---------- */}
-      <Card
-        icon={Camera} title="Fotoğraflarım" desc="Gönderdiğiniz fotoğraflar ve hekiminizin yorumu."
-        action={<Link to="/on-degerlendirme"><button className="ghost tiny"><Camera size={13} /> Fotoğraf Gönder</button></Link>}
-      >
-        {photos.length === 0 && <Empty text="Henüz fotoğraf göndermediniz." />}
-        {photos.map((p) => (
-          <div className="photo-row" key={p.id}>
-            {p.url ? <img src={p.url} alt="ağız" className="xray" /> : <p className="muted">Görüntü yüklenemedi.</p>}
-            <div>
-              <p className="muted">{String(p.created_at || '').slice(0, 10)}</p>
-              <p><strong>Hekim yorumu:</strong> {p.note || 'Henüz değerlendirilmedi.'}</p>
-              <span className="badge">{p.status === 'degerlendirildi' ? 'Değerlendirildi' : 'Hekim bekleniyor'}</span>
-            </div>
-          </div>
-        ))}
-      </Card>
-
+      {/* Fotoğraf gönderme kısmı kaldırıldı — sadece hekim vesikalık/fotoğraf ekleyebilir */}
       {/* ---------- Tedavi Planım ---------- */}
       {plans.length > 0 && (
         <Card
@@ -769,7 +751,6 @@ export function PatientPanel() {
       {/* ---------- Yardım ---------- */}
       <Card icon={FileText} title="Yardım ve Bilgilendirme">
         <div className="help-links">
-          <Link to="/on-degerlendirme"><ChevronRight size={15} /> Fotoğraf gönder</Link>
           <Link to="/video"><ChevronRight size={15} /> Hekimimle online görüş</Link>
           <Link to="/randevu"><ChevronRight size={15} /> Yeni randevu iste</Link>
           <Link to="/memnuniyet"><ChevronRight size={15} /> Görüşlerimi paylaş</Link>

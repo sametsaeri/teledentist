@@ -96,7 +96,7 @@ export default function App() {
         {/* /triyaj kaldırıldı — triyaj hekim panelinde doldurulur */}
         <Route path="/hijyen" element={<Panel roles={['hasta', 'ebeveyn']}><Hygiene /></Panel>} />
         <Route path="/anksiyete" element={<Panel roles={['hasta', 'ebeveyn']}><Anxiety /></Panel>} />
-        <Route path="/on-degerlendirme" element={<Panel roles={['hasta', 'ebeveyn']}><PhotoReview /></Panel>} />
+        {/* /on-degerlendirme kaldırıldı — hasta fotoğraf gönderemez, sadece hekim fotoğraf ekleyebilir */}
         <Route path="/kampanya" element={<Panel roles={['hasta', 'ebeveyn']}><Campaigns /></Panel>} />
         <Route path="/memnuniyet" element={<Panel roles={['hasta', 'ebeveyn']}><Satisfaction /></Panel>} />
 
