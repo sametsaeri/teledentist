@@ -573,6 +573,32 @@ export async function listMedicalFiles(patientId, { arsiv = null, tur = null } =
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
 }
 
+/**
+ * TÜM hastaların dosyalarını (röntgen, belge, foto) listeler.
+ * Röntgen Arşivi sayfasında "Tüm hastalar" seçeneği için kullanılır.
+ */
+export async function listAllMedicalFiles({ arsiv = null, tur = null } = {}) {
+  if (!hasSupabase) {
+    const hepsi = load(keys.medicalFiles, [])
+    return hepsi
+      .filter((f) => (arsiv === null ? true : !!f.arsiv === arsiv))
+      .filter((f) => (tur ? f.tur === tur : true))
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+  }
+  try {
+    let q = supabase.from('medical_files').select('*')
+    if (arsiv !== null) q = q.eq('arsiv', arsiv)
+    if (tur) q = q.eq('tur', tur)
+    const { data, error } = await withTimeout(q.order('created_at', { ascending: false }))
+    if (!error && data) return data
+  } catch { /* sunucuya ulaşılamadı */ }
+  // Yedek: tarayıcıdaki kayıtlar
+  return load(keys.medicalFiles, [])
+    .filter((f) => (arsiv === null ? true : !!f.arsiv === arsiv))
+    .filter((f) => (tur ? f.tur === tur : true))
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+}
+
 /** Tek bir dosyanın imzalı bağlantısını üretir (1 saat geçerli). */
 export async function fileUrl(path) {
   return signedPhotoUrl(path)

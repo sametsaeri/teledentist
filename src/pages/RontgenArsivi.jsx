@@ -12,7 +12,7 @@
 // Veri kaybı kuralı: Supabase yoksa tarayıcıya düşer, hiçbir dosya silinmez.
 import { useEffect, useMemo, useState } from 'react'
 import {
-  uploadFile, listMedicalFiles, deleteMedicalFile, setFileArsiv, setFileCategory, fileUrl
+  uploadFile, listMedicalFiles, listAllMedicalFiles, deleteMedicalFile, setFileArsiv, setFileCategory, fileUrl
 } from '../services/db.js'
 import { getSession, load, save, keys } from '../services/store.js'
 import { listPatients } from '../services/db.js'
@@ -74,8 +74,11 @@ export function RontgenArsivi() {
   }, [seciliHasta])
 
   const yenile = () => {
-    if (!seciliHasta) return
-    listMedicalFiles(seciliHasta, { arsiv: arsivGoster, tur: 'xray' }).then(setDosyalar)
+    if (seciliHasta) {
+      listMedicalFiles(seciliHasta, { arsiv: arsivGoster, tur: 'xray' }).then(setDosyalar)
+    } else {
+      listAllMedicalFiles({ arsiv: arsivGoster, tur: 'xray' }).then(setDosyalar)
+    }
   }
   useEffect(() => { yenile() }, [seciliHasta, arsivGoster])
 
@@ -290,7 +293,7 @@ export function RontgenArsivi() {
 
       {liste.length === 0 ? (
         <p className="muted">
-          {arsivGoster ? 'Arşivde dosya yok.' : `Henüz ${seciliHasta ? hastaAd(seciliHasta) : 'seçili hasta için'} röntgen dosyası yüklenmedi.`}
+          {arsivGoster ? 'Arşivde dosya yok.' : `Henüz ${seciliHasta ? hastaAd(seciliHasta) : 'herhangi bir hasta için'} röntgen dosyası yüklenmedi.`}
         </p>
       ) : (
         <div className="arsiv-liste">
