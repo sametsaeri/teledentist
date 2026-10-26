@@ -36,8 +36,7 @@ const MENU_GROUPS = {
     },
     {
       label: 'Tedavi', Icon: Sparkle, items: [
-        ['/hekim?tab=triyaj', Sparkle, 'Triyaj ve Sevk'],
-        ['/hekim?tab=sure', Clock, 'Tedavi Süreleri']
+        ['/hekim?tab=triyaj', Sparkle, 'Triyaj ve Sevk']
       ]
     },
     {

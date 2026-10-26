@@ -227,18 +227,15 @@ describe('DEVLET PROJESİ KURALI — hiçbir yerde ücret gösterilmez', () => {
     }
   })
 
-  it('yerine Tedavi Süreleri modülü vardır', () => {
-    expect(fs.readFileSync('src/pages/Portal.jsx', 'utf8')).toContain("tab === 'sure'")
-    expect(fs.readFileSync('src/pages/Portal.jsx', 'utf8')).toContain('TedaviSureleri')
-    expect(fs.readFileSync('src/components/PanelLayout.jsx', 'utf8')).toContain("['/hekim?tab=sure', Clock, 'Tedavi Süreleri']")
-    expect(fs.readFileSync('src/pages/DoctorModules.jsx', 'utf8')).toContain('export function TedaviSureleri')
+  it('Tedavi Süreleri sekmesi kaldırılmıştır (görsel sadelik)', () => {
+    expect(fs.readFileSync('src/pages/Portal.jsx', 'utf8')).not.toContain("tab === 'sure'")
+    expect(fs.readFileSync('src/components/PanelLayout.jsx', 'utf8')).not.toContain('Tedavi Süreleri')
+    expect(fs.readFileSync('src/pages/DoctorModules.jsx', 'utf8')).not.toContain('TedaviSureleri')
   })
 
-  it('modül ücret bilgisi sunmaz, bunu kullanıcıya da söyler', () => {
+  it('hekim panelinde ücret bilgisi sunulmaz', () => {
     const kod = fs.readFileSync('src/pages/DoctorModules.jsx', 'utf8')
-    const bolum = kod.split('export function TedaviSureleri')[1]?.split('/* ====')[0] || ''
-    expect(bolum).toMatch(/devlet projes/i)
-    expect(bolum).not.toContain('₺')
+    expect(kod).not.toContain('₺')
   })
 
   it('hasta panelinde ücret gösterilmez', () => {

@@ -3,9 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { Reveal } from '../components/Reveal.jsx'
 import { login, registerRequest } from '../services/auth.js'
+import { getSession } from '../services/store.js'
 import { KvkkOnay } from '../components/KvkkOnay.jsx'
 import { OnGorusmeAnamnez } from '../components/OnGorusmeAnamnez.jsx'
-import { insertAppointment } from '../services/db.js'
+import { insertAppointment, getPatient, getChildren } from '../services/db.js'
+import { otomatikRandevuGunu } from '../services/tarih.js'
 import {
   Logo, User, Stethoscope, Shield, Calendar, Phone, Book, Help, Cap,
   CheckCircle, Alert, Clipboard, FileText, Bell, Clock, Camera, Video,
@@ -176,24 +178,39 @@ export function About() {
   )
 }
 
-export function Appointment() {
+/**
+ * Randevu talep formu.
+ *
+ * `hasta` verilirse (panel içi kullanım) ad, iletişim ve önerilen tarihi
+ * kullanıcının profilinden otomatik doldurur; talep hastaya bağlanır
+ * (patient_id) ve hekime aynı isimle değil doğrudan hastanın ID'siyle düşer.
+ * `panelMi` ise hero üstbaşlığı ve geri dönüş bağlantısını gizler.
+ */
+export function Appointment({ hasta = null, panelMi = false }) {
   const { t } = useTranslation()
   const params = new URLSearchParams(window.location.search)
-  const [name, setName] = useState('')
-  const [contact, setContact] = useState('')
+  const [name, setName] = useState(hasta?.name || '')
+  const [contact, setContact] = useState(hasta?.phone || '')
   const [dept, setDept] = useState(params.get('dept') || '')
   const [complaint, setComplaint] = useState('')
-  const [apptDate, setApptDate] = useState('')
+  const [apptDate, setApptDate] = useState(() =>
+    (panelMi || hasta) ? otomatikRandevuGunu() : (params.get('tarih') || '')
+  )
   const [online, setOnline] = useState(false)
   const [kvkk, setKvkk] = useState(false)
   const [done, setDone] = useState(false)
   const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const submit = async () => {
     setErr('')
     if (!name || !contact || !complaint) return setErr('Ad, iletişim ve şikayet zorunlu.')
     if (!kvkk) return setErr('KVKK onayı gerekli.')
-    const r = await insertAppointment({ name, contact, dept, complaint, apptDate, online })
+    setBusy(true)
+    const r = await insertAppointment({
+      name, contact, dept, complaint, apptDate, online, patientId: hasta?.id || undefined
+    })
+    setBusy(false)
     if (r.error) return setErr(r.error)
     setDone(true)
   }
@@ -202,33 +219,109 @@ export function Appointment() {
     <div className="card">
       <h1><CheckCircle size={24} /> {t('appt_sent_t')}</h1>
       <p>{t('appt_sent_d')}</p>
+      {panelMi && <p className="muted">Talebiniz hekiminize iletildi; onaylandığında panelinizde görünür.</p>}
     </div>
   )
 
   return (
     <div>
-      <h1><FileText size={24} /> {t('appt_title')}</h1>
+      {!panelMi && <h1><FileText size={24} /> {t('appt_title')}</h1>}
       <div className="card">
-        <label>{t('appt_dept')}
-          <select value={dept} onChange={(e) => setDept(e.target.value)}>
-            <option value="">{t('appt_pick')}</option>
-            <option value="restoratif">Restoratif (Dolgu)</option>
-            <option value="endodonti">Endodonti (Kanal)</option>
-            <option value="periodontoloji">Periodontoloji (Diş Eti)</option>
-            <option value="pedodonti">Pedodonti (Çocuk)</option>
-          </select>
-        </label><br /><br />
-        <input placeholder={t('appt_name')} value={name} onChange={(e) => setName(e.target.value)} /><br /><br />
-        <input placeholder={t('appt_contact')} value={contact} onChange={(e) => setContact(e.target.value)} /><br /><br />
-        <input placeholder="Tercih edilen randevu tarihi" type="date" value={apptDate} onChange={(e) => setApptDate(e.target.value)} /><br /><br />
-        <textarea placeholder={t('appt_complaint')} rows="4" cols="40" value={complaint} onChange={(e) => setComplaint(e.target.value)} /><br /><br />
-        <label><input type="checkbox" checked={online} onChange={(e) => setOnline(e.target.checked)} /> Online (görüntülü) görüşme istiyorum — kırsal/uzak hastalar için</label><br /><br />
-        <label><input type="checkbox" checked={kvkk} onChange={(e) => setKvkk(e.target.checked)} /> {t('appt_kvkk')}</label><br /><br />
-        <button onClick={submit}>{t('appt_send')}</button>
+        {hasta && (
+          <div className="kurulum-notu">
+            <CheckCircle size={15} />
+            <p>
+              <b>{hasta.name}</b> olarak randevu talebi oluşturuyorsunuz.
+              Ad ve iletişim bilgileriniz profilinizden otomatik getirildi;
+              önerilen tarih de ilk uygun iş günü olarak seçildi. Dilediğiniz gibi değiştirebilirsiniz.
+            </p>
+          </div>
+        )}
+        <div className="grid form-grid">
+          <label>{t('appt_dept')}
+            <select value={dept} onChange={(e) => setDept(e.target.value)}>
+              <option value="">{t('appt_pick')}</option>
+              <option value="restoratif">Restoratif (Dolgu)</option>
+              <option value="endodonti">Endodonti (Kanal)</option>
+              <option value="periodontoloji">Periodontoloji (Diş Eti)</option>
+              <option value="pedodonti">Pedodonti (Çocuk)</option>
+            </select>
+          </label>
+          <label>Ad Soyad<input value={name} onChange={(e) => setName(e.target.value)} /></label>
+          <label>İletişim (telefon)<input value={contact} onChange={(e) => setContact(e.target.value)} inputMode="tel" /></label>
+          <label>Tercih edilen randevu tarihi<input type="date" value={apptDate} onChange={(e) => setApptDate(e.target.value)} /></label>
+          <label style={{ gridColumn: '1 / -1' }}>{t('appt_complaint')}
+            <textarea rows="4" value={complaint} onChange={(e) => setComplaint(e.target.value)} placeholder="örn: 16 nolu dişte ağrı var" />
+          </label>
+        </div>
+        <label style={{ display: 'flex', alignItems: 'start', gap: 8, margin: '10px 0' }}>
+          <input type="checkbox" checked={online} onChange={(e) => setOnline(e.target.checked)} style={{ marginTop: 4 }} />
+          Online (görüntülü) görüşme istiyorum — kırsal/uzak hastalar için
+        </label>
+        <label style={{ display: 'flex', alignItems: 'start', gap: 8, margin: '10px 0' }}>
+          <input type="checkbox" checked={kvkk} onChange={(e) => setKvkk(e.target.checked)} style={{ marginTop: 4 }} />
+          {t('appt_kvkk')}
+        </label>
+        <div className="toolbar">
+          <button onClick={submit} disabled={busy}>
+            {busy ? 'Gönderiliyor...' : t('appt_send')}
+          </button>
+          {!panelMi && <Link to="/e-randevu"><button className="ghost">{t('appt_back')}</button></Link>}
+        </div>
         {err && <p className="auth-err">{err}</p>}
         <p className="muted">{t('appt_note')}</p>
-        <p><Link to="/e-randevu"><button className="ghost">{t('appt_back')}</button></Link></p>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Panel içi randevu sayfası. Hasta/ebeveyn için profil bilgisi otomatik
+ * gelir (ebeveynde çocuk seçimi sunulur); hekim ve diğer roller için
+ * form boş ama panel düzeninde kalır — dışarıdaki siteye atılmaz.
+ */
+export function PanelRandevu() {
+  const session = getSession()
+  const isParent = session?.role === 'ebeveyn'
+  const hastaMi = session?.role === 'hasta' || isParent
+  const [kids, setKids] = useState([])
+  const [secim, setSecim] = useState(isParent ? null : session?.id)
+  const [hasta, setHasta] = useState(null)
+
+  useEffect(() => {
+    if (!isParent || !session?.id) return
+    getChildren(session.id).then((c) => {
+      setKids(c)
+      if (c.length) setSecim((s) => s || c[0].id)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!secim || !hastaMi) return
+    let iptal = false
+    getPatient(secim).then((p) => { if (!iptal) setHasta(p || null) })
+    return () => { iptal = true }
+  }, [secim])
+
+  return (
+    <div>
+      <div className="panel-hero">
+        <h1><Calendar size={22} /> Randevu Al</h1>
+        <p className="muted">Bilgileriniz otomatik getirilir; önerilen tarih ilk uygun iş günüdür.</p>
+      </div>
+      {kids.length > 1 && (
+        <div className="card toolbar">
+          <span>Hangi çocuğunuz?</span>
+          {kids.map((c) => (
+            <button key={c.id} className={secim === c.id ? '' : 'ghost'} onClick={() => setSecim(c.id)}>
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
+      {hastaMi && !hasta
+        ? <div className="card"><p className="muted">Profil bilgileriniz yükleniyor, lütfen bekleyin...</p></div>
+        : <Appointment hasta={hastaMi && hasta ? hasta : null} panelMi key={secim || 'misafir'} />}
     </div>
   )
 }

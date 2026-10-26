@@ -881,7 +881,7 @@ export async function insertAppointment({ name, contact, dept, complaint, apptDa
     return {}
   }
   const list = load(keys.appointments, [])
-  list.push({ id: Date.now(), name, contact, dept: dept || 'genel-dis', complaint, appt_date: apptDate || null, status: 'yeni', is_online: !!online, created_at: new Date().toISOString() })
+  list.push({ id: Date.now(), name, contact, dept: dept || 'genel-dis', complaint, appt_date: apptDate || null, status: 'yeni', is_online: !!online, created_at: new Date().toISOString(), ...(patientId ? { patient_id: patientId } : {}) })
   save(keys.appointments, list)
   bildirimOlustur({
     tur: 'randevu',
@@ -899,6 +899,40 @@ export async function setAppointmentOnline(id, online) {
     return { error: error?.message }
   }
   const list = load(keys.appointments, []).map((a) => a.id === id ? { ...a, is_online: !!online } : a)
+  save(keys.appointments, list)
+  return {}
+}
+
+/**
+ * Hekimin belirlediği kontrol tarihini doğrudan ONAYLI randevu olarak
+ * takvime yazar. Normal talep akışından farklıdır: onay bekler, bildirim
+ * göndermez; hasta panelinde, hekim takviminde ve hatırlatmalarında
+ * otomatik görünür. Kolon eksikse (migration_v2 çalışmadıysa) sade yazar.
+ */
+export async function insertCalendarAppointment({ name, contact, apptDate, complaint, patientId }) {
+  if (hasSupabase) {
+    const row = {
+      name, contact: contact || '', dept: 'genel-dis',
+      complaint: complaint || 'Kontrol randevusu',
+      appt_date: apptDate || null, status: 'onaylı'
+    }
+    if (patientId) row.patient_id = patientId
+    let { error } = await supabase.from('appointments').insert({ ...row, is_online: false })
+    if (error && /is_online|appt_date|patient_id/i.test(error.message || '')) {
+      const retry = await supabase.from('appointments').insert({
+        name, contact: row.contact, dept: row.dept, complaint: row.complaint, status: 'onaylı'
+      })
+      error = retry.error
+    }
+    if (error) return { error: error?.message }
+    return {}
+  }
+  const list = load(keys.appointments, [])
+  list.push({
+    id: Date.now(), name, contact: contact || '', dept: 'genel-dis',
+    complaint: complaint || 'Kontrol randevusu', appt_date: apptDate || null,
+    status: 'onaylı', is_online: false, created_at: new Date().toISOString()
+  })
   save(keys.appointments, list)
   return {}
 }

@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, useParams, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout.jsx'
 import { PanelLayout } from './components/PanelLayout.jsx'
-import { Home, About, Appointment, PatientLogin, DoctorLogin, AdminLogin, StaffLogin, RegisterRequest } from './pages/Pages.jsx'
+import { Home, About, PatientLogin, DoctorLogin, AdminLogin, StaffLogin, RegisterRequest, PanelRandevu } from './pages/Pages.jsx'
 import { DoctorList, DoctorPatient } from './pages/Portal.jsx'
 import { PatientPanel } from './pages/PatientPanel.jsx'
 import { Triage, Hygiene, Anxiety, PhotoReview, Report } from './pages/Clinical.jsx'
@@ -43,6 +43,22 @@ function Public({ children }) {
   return <Layout>{children}</Layout>
 }
 
+/**
+ * Randevu oluşturma YALNIZCA paneleden yapılabilir — dışarıdan
+ * (girilsiz) randevu talebi alınamaz. Giriş yapmamış kullanıcı
+ * danışan girişine yönlendirilir; giriş yapan her rol panel
+ * düzeni içinde kendi randevu kalemini görür.
+ */
+function RandevuGecis() {
+  const u = currentUser()
+  if (!u) return <Navigate to="/danisan-girisi" replace />
+  return (
+    <Panel roles={['admin', 'hekim', 'hasta', 'ebeveyn', 'sekreter', 'teknisyen']}>
+      <PanelRandevu />
+    </Panel>
+  )
+}
+
 function Panel({ roles, children }) {
   return (
     <Require roles={roles}>
@@ -65,7 +81,7 @@ export default function App() {
         <Route path="/" element={<Public><Home /></Public>} />
         <Route path="/teledentistry" element={<Public><About /></Public>} />
         <Route path="/e-randevu" element={<Public><ERandevu /></Public>} />
-        <Route path="/randevu" element={<Public><Appointment /></Public>} />
+        <Route path="/randevu" element={<RandevuGecis />} />
         <Route path="/egitim" element={<Public><Education /></Public>} />
         <Route path="/sss" element={<Public><Faq /></Public>} />
 

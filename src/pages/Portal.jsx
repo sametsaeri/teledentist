@@ -12,7 +12,7 @@ import {
   listPatients, getPatient, getTeeth, saveTooth, lastRecords, updatePatient,
   insertTriage, insertHygiene, insertAnxiety, listDoctors, listReferrals, referPatient,
   listAppointments, insertAppointment, approveAppointment, completeAppointment,
-  repairAccount,
+  repairAccount, insertCalendarAppointment,
   loadImage, setAppointmentOnline, listPhotos, listTriage, setPhotoNote, signedPhotoUrl,
   plansApi, notesApi, getSetupStatus, anamnesisApi
 } from '../services/db.js'
@@ -30,8 +30,9 @@ import { bildirimOlustur } from '../services/bildirim.js'
 import { kabulMesaji } from '../services/onGorusme.js'
 import { KVKK_SURUM } from '../components/KvkkOnay.jsx'
 import {
-  DailyFlow, TedaviSureleri, ClinicJournal, ClinicStats, DemoSeeder, DoctorSchedule
+  DailyFlow, ClinicJournal, ClinicStats, DemoSeeder, DoctorSchedule
 } from './DoctorModules.jsx'
+import { sonrakiBosGun, otomatikRandevuGunu } from '../services/tarih.js'
 
 function xrayKey(pid, tooth) { return `${pid}_${tooth}` }
 
@@ -82,7 +83,6 @@ const TABS = [
   { id: 'takvim', label: 'Takvim', Icon: Calendar, desc: 'Onaylı randevuların aylık görünümü.' },
   { id: 'triyaj', label: 'Triyaj ve Sevk', Icon: Clipboard, desc: 'Hasta triyaj kayıtları ve hekimler arası sevk.' },
   { id: 'foto', label: 'Hasta Fotoğrafları', Icon: Camera, desc: 'Hastanın gönderdiği fotoğrafları değerlendirin ve yorumlayın.' },
-  { id: 'sure', label: 'Tedavi Süreleri', Icon: Clock, desc: 'İşlem süreleri, seans sayısı ve kontrol aralıkları.' },
   { id: 'yaklasan', label: 'Yaklaşan Randevular', Icon: Calendar, desc: 'Yaklaşan randevu ve kontrol tarihleri.' }
 ]
 
@@ -336,6 +336,24 @@ export function DoctorList() {
   const pending = appts.filter((a) => a.status === 'yeni')
   const approved = appts.filter((a) => a.status === 'onaylı' && a.appt_date)
 
+  // Bekleyen her talep için çakışmasız ilk uygun iş günü otomatik önerilir;
+  // hekim tek tuşla onaylayabilir, dilerse tarihi elle değiştirir.
+  useEffect(() => {
+    setApproveDate((mevcut) => {
+      // Herhangi bir randevunun (onaylı/talep) bulunduğu günü ele alır
+      const doluGunler = new Set(appts.map((a) => a.appt_date).filter(Boolean))
+      const sonraki = { ...mevcut }
+      let degisti = false
+      for (const a of pending) {
+        if (sonraki[a.id]) continue
+        sonraki[a.id] = sonrakiBosGun(doluGunler)
+        doluGunler.add(sonraki[a.id])
+        degisti = true
+      }
+      return degisti ? sonraki : mevcut
+    })
+  }, [pending, approved, appts])
+
   // Hasta listesi sıralaması
   const patientsSorted = patients.slice().sort((a, b) => {
     if (sortBy === 'tarih') return String(b.last_visit || '').localeCompare(String(a.last_visit || ''))
@@ -442,9 +460,6 @@ export function DoctorList() {
           onComplete={async (id) => { const r = await completeAppointment(id); setMsg(r.error || 'Randevu tamamlandı.'); reload() }}
         />
       )}
-
-      {/* ---------------- TEDAVİ SÜRELERİ (ücret yok) ---------------- */}
-      {tab === 'sure' && <TedaviSureleri patients={all} plans={clinic.plans} />}
 
       {/* ---------------- KLINIK GÜNLÜK ---------------- */}
       {tab === 'gunluk-not' && <ClinicJournal patients={all} />}
@@ -566,6 +581,12 @@ export function DoctorList() {
         <div className="card">
           <h3><Send size={18} /> Gelen Randevu Talepleri ({pending.length})</h3>
           {pending.length === 0 && <p className="muted">Bekleyen talep yok.</p>}
+          {pending.length > 0 && (
+            <p className="muted small">
+              Önerilen randevu tarihi otomatik doldurulur (ilk boş iş günü). Onayla'ya basmanız yeterli;
+              dilediğinizde tarihi değiştirin.
+            </p>
+          )}
           {pending.map((a) => (
             <div key={a.id} className="appt-row">
               <div>
@@ -809,7 +830,7 @@ export function DoctorPatient() {
   const [onamMetni, setOnamMetni] = useState('')
   const [onamNotu, setOnamNotu] = useState('')
   const [onamKaydedildi, setOnamKaydedildi] = useState(false)
-  const [randevuTarih, setRandevuTarih] = useState('')
+  const [randevuTarih, setRandevuTarih] = useState(otomatikRandevuGunu)
   const [randevuSaat, setRandevuSaat] = useState('')
   const [randevuNot, setRandevuNot] = useState('')
   const [randevuOnline, setRandevuOnline] = useState(false)
@@ -1001,8 +1022,38 @@ export function DoctorPatient() {
               if (!kontrolTarihi) { setRandevuMsg('Kontrol tarihi seçin.'); return }
               const r = await updatePatient(id, { last_visit: kontrolTarihi })
               if (r.error) { setRandevuMsg(r.error); return }
-              setRandevuMsg('Sonraki kontrol tarihi ayarlandı.')
+              // Kontrol tarihi aynı zamanda ONAYLI randevu olarak takvime yazılır:
+              // hekim takviminde görünür, hatırlatma üretilir, hasta paneline düşer.
+              const mevcut = await listAppointments()
+              const nm = (patient?.name || '').toLowerCase()
+              const ayniGunde = (mevcut || []).some((a) =>
+                a.status !== 'iptal' && a.appt_date === kontrolTarihi &&
+                ((a.patient_id && a.patient_id === id) || (!a.patient_id && (a.name || '').toLowerCase() === nm))
+              )
+              if (!ayniGunde) {
+                const c = await insertCalendarAppointment({
+                  patientId: id, name: patient?.name || '', contact: patient?.phone || '',
+                  apptDate: kontrolTarihi, complaint: 'Kontrol randevusu (hekim belirledi)'
+                })
+                if (c.error) { setRandevuMsg(c.error); return }
+                bildirimOlustur({
+                  tur: 'kontrol',
+                  title: `Kontrol Tarihi — ${patient?.name || 'Hasta'}`,
+                  body: `${kontrolTarihi} tarihli kontrol takvime eklendi; hatırlatma üretilecek.`,
+                  hekimId: getSession()?.id || null,
+                  hastaId: id,
+                  link: '/hekim?tab=takvim'
+                })
+              }
+              setRandevuMsg('Kontrol tarihi kaydedildi; hatırlatma üretilecek ve takvimde görünecek.')
               getPatient(id).then((p) => { setPatient(p || null); setInfo(p || {}) })
+              listAppointments().then((appts) => {
+                const filtered = (appts || []).filter((a) =>
+                  (a.patient_id && a.patient_id === id) ||
+                  (!a.patient_id && (a.name || '').toLowerCase() === (patient?.name || '').toLowerCase())
+                )
+                setHastaRandevulari(filtered)
+              })
             }}>
               <Clock size={15} /> Kontrol Tarihi Kaydet
             </button>

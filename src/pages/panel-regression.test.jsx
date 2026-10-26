@@ -39,7 +39,7 @@ import { PanelLayout } from '../components/PanelLayout.jsx'
 import { DoctorList } from '../pages/Portal.jsx'
 import { PatientPanel } from '../pages/PatientPanel.jsx'
 import { StaffPanel } from '../pages/StaffPanel.jsx'
-import { TedaviSureleri, ClinicJournal, DoctorSchedule, DailyFlow, ClinicStats } from '../pages/DoctorModules.jsx'
+import { ClinicJournal, DoctorSchedule, DailyFlow, ClinicStats } from '../pages/DoctorModules.jsx'
 
 // Her render sonrası "temizleme fonksiyonu bir fonksiyon olmalı" kontrolü yapılır.
 // Vitest, mount/unmount sırasında oluşan hataları zaten test hatası olarak yazar.
@@ -59,7 +59,6 @@ describe('Beyaz ekran regresyon testi (16.10.2026)', () => {
 
     const moduller = [
       ['Günlük Akış', () => <DailyFlow appts={[]} patients={[HASTA]} onComplete={() => {}} />],
-      ['Tedavi Süreleri', () => <TedaviSureleri patients={[HASTA]} plans={[]} />],
       ['Klinik Günlük', () => <ClinicJournal patients={[HASTA]} />],
       ['Kişisel Takvim', () => <DoctorSchedule />]
     ]
@@ -84,7 +83,7 @@ describe('Beyaz ekran regresyon testi (16.10.2026)', () => {
     localStorage.setItem('td_users', JSON.stringify([HASTA, HEKIM]))
 
     // Menüden modüllere 5 kez geçiş yap (döngüsel)
-    for (const t of ['ozet', 'sure', 'takvim', 'gunluk-not', 'foto']) {
+    for (const t of ['ozet', 'gunluk', 'takvim', 'gunluk-not', 'foto']) {
       const { unmount } = render(
         <MemoryRouter initialEntries={[`/hekim?tab=${t}`]}>
           <PanelLayout><DoctorList /></PanelLayout>

@@ -6,11 +6,9 @@ import { getSession } from '../services/store.js'
 import {
   notesApi, eventsApi
 } from '../services/db.js'
-import { ISLEMLER } from '../ai/prognos.js'
-import { kontrolAraligi } from '../data/disAdlari.js'
 import {
   Plus, Check, X, Clock, Clipboard, User, Flask,
-  Camera, TrendingUp, Wrench, Calendar, Save, Users, Tooth, Notebook
+  Camera, TrendingUp, Wrench, Calendar, Save, Tooth, Notebook
 } from '../components/Icons.jsx'
 
 /* ------------------------------------------------------------------ */
@@ -243,165 +241,7 @@ export function DailyFlow({ appts, patients, onComplete }) {
   )
 }
 
-/* ================================================================== */
-/* 2) TEDAVİ SÜRELERİ — planlama aracı (ÜCRET YOK)                     */
-/* ------------------------------------------------------------------ */
-/* NEDEN ÜCRET YOK: Bu proje devlet projesidir. Devlet tarafından          */
-/* belirlenmiş bir fiyat/ücret listesi YOKTUR. Önceden burada fiyat        */
-/* listesi ve hasta bakiyesi tutuluyordu; bu hem yanıltıcıydı hem de      */
-/* projeye uygun değildi. Yerine klinik olarak anlamlı ve mevzuata uygun   */
-/* olan SEANS ve SÜRE takibi kondu: hekim planlama yapar, hasta öder       */
-/* değil.                                                                  */
-/* ================================================================== */
-export function TedaviSureleri({ patients, plans = [] }) {
-  const [msg, setMsg] = useState('')
-  const [q, setQ] = useState('')
-
-  // Tedavi planındaki kayıtlardan gerçek süre toplamı
-  const planSatirlari = useMemo(() => {
-    const islemler = new Map()
-    plans.forEach((p) => {
-      const kod = p.islem || p.tedavi || 'muayene'
-      const islem = ISLEMLER[kod]
-      const ad = islem?.ad || p.islem_adi || p.tedavi || 'Belirtilmemiş işlem'
-      const seans = Number(p.seans || islem?.seans || 1)
-      const mevcut = islemler.get(ad) || {
-        ad, seans: 0, hastaSayisi: 0, durum: p.status || 'devam',
-        dakika: islem ? sureDakika(islem.sure) : 35
-      }
-      mevcut.seans += seans
-      mevcut.hastaSayisi += 1
-      mevcut.durum = p.status || mevcut.durum
-      islemler.set(ad, mevcut)
-    })
-    return [...islemler.values()].sort((a, b) => b.seans - a.seans)
-  }, [plans])
-
-  const toplamSeans = planSatirlari.reduce((t, r) => t + r.seans, 0)
-  const devamEden = plans.filter((p) => p.status === 'devam').length
-  const tamamlanan = plans.filter((p) => p.status === 'tamam').length
-  const tamamlanmaOrani = plans.length ? Math.round((tamamlanan / plans.length) * 100) : 0
-
-  // Tedavi başına ortalama süre (dakika)
-  const ortalamaDk = planSatirlari.length
-    ? Math.round(planSatirlari.reduce((t, r) => t + r.dakika, 0) / planSatirlari.length)
-    : 35
-
-  const ql = q.toLowerCase()
-  const isimListesi = patients.filter((u) =>
-    !ql || (u.name || '').toLowerCase().includes(ql) || (u.phone || '').includes(ql)
-  )
-
-  return (
-    <div>
-      <div className="kurulum-notu">
-        <Clock size={15} />
-        <p>
-          Bu proje <b>devlet projesidir</b> ve devlet tarafından belirlenmiş bir ücret listesi
-          bulunmamaktadır. Bu ekran ücret göstermez; yalnızca tedavi planlaması için
-          <b> gerekli seans sayısını ve süreyi</b> takip eder.
-        </p>
-      </div>
-
-      <div className="kpi-row compact">
-        <div className="kpi"><b>{plans.length}</b><span>Tedavi Planı</span></div>
-        <div className="kpi"><b>{toplamSeans}</b><span>Toplam Seans</span></div>
-        <div className="kpi"><b>{devamEden}</b><span>Devam Eden</span></div>
-        <div className={`kpi ${tamamlanmaOrani < 50 && plans.length > 0 ? 'warn' : ''}`}>
-          <b>%{tamamlanmaOrani}</b><span>Tamamlanma</span>
-        </div>
-      </div>
-
-      <div className="card">
-        <h3><Clock size={18} /> Standart İşlem Süreleri</h3>
-        <p className="muted">
-          Her işlem için ortalama seans sayısı ve süre. Planlama yaparken referans olur;
-          hastanın durumuna göre değişebilir.
-        </p>
-        <div className="sure-tablosu">
-          <table>
-            <thead>
-              <tr><th>İşlem</th><th>Seans</th><th>Tahmini Süre</th></tr>
-            </thead>
-            <tbody>
-              {Object.entries(ISLEMLER).map(([kod, i]) => (
-                <tr key={kod}>
-                  <td>{i.ad}</td>
-                  <td><b>{i.seans}</b></td>
-                  <td className="muted">{i.sure}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="muted">
-          Ortalama işlem süresi: <b>{ortalamaDk} dakika</b>. Bir güne planlanabilecek
-          muayene sayısı buna göre belirlenir.
-        </p>
-      </div>
-
-      <div className="card">
-        <h3><Clipboard size={18} /> Tedavi Planı Özeti ({planSatirlari.length})</h3>
-        {planSatirlari.length === 0 ? (
-          <p className="muted">
-            Henüz tedavi planı kaydı yok. Hasta detay sayfasından plan oluşturduğunuzda
-            burada toplam seans ve süre görünür.
-          </p>
-        ) : (
-          <div className="sure-liste">
-            {planSatirlari.map((r) => (
-              <div className="appt-row" key={r.ad}>
-                <div>
-                  <strong>{r.ad}</strong>
-                  <p className="muted">
-                    {r.hastaSayisi} hasta · toplam <b>{r.seans} seans</b> · durum: {r.durum}
-                  </p>
-                </div>
-                <span className="badge">{r.durum}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="card">
-        <div className="card-head">
-          <h3><Users size={18} /> Hasta Bazında Kontrol</h3>
-          <input placeholder="Hasta ara..." value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <p className="muted">
-          Hastanın önerilen kontrol aralığı ve son muayenesi. Randevu planlamasında
-          zamanlama kararını buradan verirsiniz.
-        </p>
-        {isimListesi.length === 0 && <p className="muted">Kayıtlı hasta yok.</p>}
-        {isimListesi.slice(0, 20).map((p) => {
-          const son = p.last_visit || p.lastVisit
-          const kontrol = kontrolAraligi(p.treatment_type || 'kontrol')
-          return (
-            <div className="appt-row" key={p.id}>
-              <div>
-                <strong>{p.name}</strong> <span className="muted">{p.phone || 'telefon yok'}</span>
-                <p className="muted">
-                  Son muayene: {son || 'kayıt yok'} · Önerilen aralık: {kontrol.metin}
-                </p>
-              </div>
-              <Link to={`/hekim/hasta/${p.id}`}><button className="ghost">Hastayı Aç</button></Link>
-            </div>
-          )
-        })}
-        {msg && <p className="muted">{msg}</p>}
-      </div>
-    </div>
-  )
-}
-
-/** "2–3 seans" / "30–45 dk" gibi metinden üst sınırı dakikaya çevirir. */
-function sureDakika(metin, varsayilan = 35) {
-  const rakamlar = String(metin || '').match(/\d+/g)
-  if (!rakamlar) return varsayilan
-  const son = Number(rakamlar[rakamlar.length - 1])
-  return String(metin).includes('seans') ? son * 30 : son
-}
+/* TEDAVİ SÜRELERİ modülü görsel sadelik için kaldırıldı (sekme yok).    */
 
 /* ================================================================== */
 /* 5) KLINIK GÜNLÜK (tüm hastaların notları)                            */
@@ -497,7 +337,7 @@ export function ClinicStats({ patients, appts, plans, photos = [] }) {
     { Icon: User, n: patients.length, l: 'Kayıtlı hasta', to: '?tab=hastalar' },
     { Icon: Calendar, n: inMonth.length, l: 'Bu ay randevu talebi', to: '?tab=randevu' },
     { Icon: Clipboard, n: devamEden, l: 'Devam eden tedavi', to: '?tab=hastalar' },
-    { Icon: Clock, n: tamamlanan, l: 'Tamamlanan tedavi', to: '?tab=sure' },
+    { Icon: Clock, n: tamamlanan, l: 'Tamamlanan tedavi', to: '?tab=takvim' },
     { Icon: Camera, n: pendingPhotos, l: 'Değerlendirilmeyen fotoğraf', to: '?tab=foto' },
     { Icon: TrendingUp, n: appts.filter((a) => a.status === 'tamamlandı').length, l: 'Tamamlanan randevu', to: '?tab=takvim' }
   ]
