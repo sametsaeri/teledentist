@@ -130,11 +130,29 @@ function CallRoom({ room, user, onLeave }) {
         const pc = new RTCPeerConnection({ iceServers: ICE })
         streamRef.current?.getTracks().forEach((t) => pc.addTrack(t, streamRef.current))
         pc.ontrack = (e) => {
-          if (remoteVideo.current) remoteVideo.current.srcObject = e.streams[0]
+          const video = remoteVideo.current
+          if (!video) return
+          try {
+            if (e.streams && e.streams[0]) {
+              video.srcObject = e.streams[0]
+            } else {
+              const ms = video.srcObject instanceof MediaStream ? video.srcObject : new MediaStream()
+              if (e.track) ms.addTrack(e.track)
+              video.srcObject = ms
+            }
+            const playPromise = video.play()
+            if (playPromise && typeof playPromise.catch === 'function') {
+              playPromise.catch(() => {
+                // Otomatik oynatma engellendiyse sessiz dene, sonra kullaniciya birak
+                video.muted = true
+                video.play().catch(() => {})
+              })
+            }
+          } catch (err) { note('Video oynatma hatasi: ' + err.message) }
           setStatus('bağlandı')
           note('Karşı taraf görüntüsü alındı')
         }
-        pc.onicecandidate = (e) => { if (e.candidate) send('ice', e.candidate) }
+        pc.onicecandidate = (e) => { if (e.candidate) { send('ice', e.candidate); note('ICE adayi gonderildi') } }
         pc.onconnectionstatechange = () => {
           if (pc.connectionState === 'connected') setStatus('bağlandı')
           note('Bağlantı: ' + pc.connectionState)
