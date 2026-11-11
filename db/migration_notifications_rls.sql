@@ -18,6 +18,8 @@
 DROP POLICY IF EXISTS "notif_rw" ON notifications;
 DROP POLICY IF EXISTS "notif_read" ON notifications;
 DROP POLICY IF EXISTS "notif_write" ON notifications;
+DROP POLICY IF EXISTS "notif_update" ON notifications;
+DROP POLICY IF EXISTS "notif_delete" ON notifications;
 
 -- Okuma: hekim kendine geleni, hasta kendine geleni, admin her şeyi, hekim kanıroları
 CREATE POLICY "notif_read" ON notifications FOR SELECT

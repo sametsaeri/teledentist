@@ -25,6 +25,7 @@ const FILES = [
   ['setup_status.sql',        '12) Kurulum durumu fonksiyonu (uygulama bunu okur)'],
   ['migration_hekim_listesi.sql', '13) Hasta görüşme talebi: hekim listesi fonksiyonu (RLS bypass, minumum veri)'],
   ['migration_notifications_rls.sql', '14) Bildirim RLS: hasta okuma/yazma düzeltmesi'],
+  ['migration_arsiv_kvkk.sql', '15) Anamnez, dosya arsivi, KVKK riza, bakim modu'],
   ['fix_admin.sql',           '15) Süper admin hesabını admin yapar'],
   ['fix_demo_doctor.sql',     '16) Eski demo hekim kayıtlarını temizler']
 ]
