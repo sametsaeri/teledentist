@@ -143,7 +143,7 @@ function CallRoom({ room, user, onLeave }) {
         return pc
       }
 
-      ch.onBroadcast({ event: 'sdp' }, async ({ payload }) => {
+      ch.on('broadcast', { event: 'sdp' }, async ({ payload }) => {
         if (!payload) return
         const pc = ensurePc()
         await pc.setRemoteDescription(new RTCSessionDescription(payload))
@@ -154,20 +154,19 @@ function CallRoom({ room, user, onLeave }) {
         }
       })
 
-      ch.onBroadcast({ event: 'ice' }, async ({ payload }) => {
+      ch.on('broadcast', { event: 'ice' }, async ({ payload }) => {
         if (!payload || !pcRef.current) return
         try { await pcRef.current.addIceCandidate(new RTCIceCandidate(payload)) } catch {}
       })
 
       const onPresence = () => {
         const st = ch.presenceState()
-        const others = Object.keys(st).filter((k) => k !== String(ch.myChannelId || ''))
         const count = Object.keys(st).length
-        setPeerHere(count > 1 || others.length > 0)
+        setPeerHere(count > 1)
       }
-      ch.onPresence({ event: 'join' }, onPresence)
-      ch.onPresence({ event: 'leave' }, onPresence)
-      ch.onPresenceSync(onPresence)
+      ch.on('presence', { event: 'join' }, onPresence)
+      ch.on('presence', { event: 'leave' }, onPresence)
+      ch.on('presence', { event: 'sync' }, onPresence)
 
       await ch.subscribe(async (state) => {
         if (state !== 'SUBSCRIBED') return
@@ -176,20 +175,24 @@ function CallRoom({ room, user, onLeave }) {
 
         // İlk katılımcı teklif gönderir; diğerleri cevap verir
         poll = setInterval(async () => {
-          if (pcRef.current?.signalingState === 'have-local-offer') return
+          if (pcRef.current) return
           const st = ch.presenceState()
           const total = Object.keys(st).length
-          if (total >= 2 && !pcRef.current) {
+          if (total < 2) return
+          const tumKimlikler = Object.values(st).flat()
+            .map((p) => String(p?.userId || '')).filter(Boolean)
+          if (tumKimlikler.length < 2) return
+          const enKucuk = tumKimlikler.slice().sort()[0]
+          if (String(user.id) !== enKucuk) return
+          try {
+            const pc = ensurePc()
+            const offer = await pc.createOffer()
+            await pc.setLocalDescription(offer)
+            await send('sdp', offer)
+            setStatus('bağlanıyor...')
+            note('Arama teklifi gönderildi')
             clearInterval(poll)
-            try {
-              const pc = ensurePc()
-              const offer = await pc.createOffer()
-              await pc.setLocalDescription(offer)
-              await send('sdp', offer)
-              setStatus('bağlanıyor...')
-              note('Arama teklifi gönderildi')
-            } catch (e) { note('Teklif hatası: ' + e.message) }
-          }
+          } catch (e) { note('Teklif hatası: ' + e.message) }
         }, 1500)
       })
     }
